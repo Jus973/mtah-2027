@@ -1,0 +1,103 @@
+# PLAN_STATUS: running state
+
+Last updated: Fri 30 Oct 2026, end of agent session 1 (M0).
+
+## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
+
+The current RULES.md / FAQ.md contradict several parts of PLAN.md. **The rules win.** Quotes are
+from RULES.md:
+
+1. **No hand labels on the provided game, for any purpose.** "No hand labels on the provided game,
+   in any amount and for any purpose — not for the submission, not to train a model and not to
+   validate one." This removes PLAN §6.1 (25-minute hand-labelled validation set), the M2 T2
+   track, `tools/labeler/`, `validation/val_gt.csv`, Appendix D email 2, and decision-rule
+   step 6.4.2 as written. Hand labels on **other games** are allowed in any amount (disclose them).
+2. **The public 5 minutes are not a tuning set.** "They are not training data and not a tuning
+   set." That affects the following PLAN items:
+   - §2.3 and M1 `decode/latency.py`: "calibrate latency on the 20 public transitions" → calibrate
+     on sim/open data instead.
+   - M1 "pick the hypothesis whose spell structure matches, then grid r_c, n_c, v_c, t_c" on the
+     public window → that is choosing between versions; do it on sim/open data.
+   - M1 Smart-Tagging `tag_offset_frames` learned from public set pieces → learn the convention
+     on other data or derive it without GT.
+   - Checking correctness on the public window (alignment, team sign, file format) is still
+     allowed.
+3. **No rules or constants tied to specific frames of the game.** Watching the video to debug is
+   fine; "turning what you saw into labels, corrections, or rules and constants tied to specific
+   frames of the game is" not.
+4. Any human-produced data about this game (event feeds, corrected tracking) is forbidden. This
+   matches PLAN §3.
+
+**Decision needed (humans):** revise PLAN §5 M1–M3 and §6 so selection relies on (a) simulation on
+open data (DFL/IDSSE, Metrica samples), (b) optional hand labels on *other* matches, (c) structural
+bands, and (d) the public window only as a correctness check. The agent has not edited PLAN.md.
+
+## Done (agent, M0)
+
+- `CLAUDE.md`, `.claude/settings.json` (deny rules include `/Users/justinzhang/mtah2027/**`),
+  `.gitignore`, `.cursorignore`, and a pre-commit guard (`scripts/check_no_data.py`) that blocks
+  data dirs, bundle file types and files > 5 MB.
+- Official repo vendored unmodified @ `f8f2629` (`evaluation/`, `starter/`, `games.py`). sha256
+  manifest in `third_party/`; a test fails if any vendored file changes.
+- Pinned env: Python 3.11.14, `requirements.txt` (pip freeze: numpy 2.4.6, pandas 3.1.0,
+  kloppy 3.18.0, scipy 1.17.1, lightgbm 4.7.0, PyYAML 6.0.3, pytest 9.2.0, pre-commit 4.7.0).
+- `src/mtah/`: `registry` (real + fake matches), `io/atd` (streaming parser → float64 arrays,
+  npz cache outside repo), `io/tags`, `features/baseline` (vectorised starter baseline),
+  `features/context.attacking_direction`, `events/restarts.detect_kickoffs`, `eval/score`
+  (wraps the official scorer), `eval/bands` (§6.3), `submit/write`.
+- `fakedata/generate.py`: synthetic 2-half match in the bundle layout. Its EPTS XML loads in
+  kloppy 3.18.0 with no warnings, and kloppy's arrays equal ours.
+- `scripts/`: `run_cache.py`, `baseline_check.py`, `run_anchors.py`, `sim_costs.py`.
+  Make targets: `setup fake test cache baseline-check anchors sim-costs score`.
+- 17 tests pass with no real data present (`make test`, ~4 s).
+
+## Measured numbers
+
+- `scripts/sim_costs.py` on the public GT reproduces every row of the PLAN §2 table
+  (e.g. 25 frames late 0.776 / 0.933; spurious 0.5 s flicker 0.550 / 0.991).
+- Fake match (seed 0, 2 × 10 min): 115 spells, median 5.4 s, 23% < 2 s, 56% < 6 s; ball missing
+  on 41.4% of live graded frames; 21.3 visible players on graded frames.
+- On the fake match: kick-offs detected at exactly the true frames, attacking direction correct in
+  both halves, vectorised baseline identical to the starter on every frame, and swapping H/A
+  takes the fake GT's spellF1 to exactly 0.
+- **Nothing has been run on the real bundle yet.**
+
+## TODO for humans (run locally; paste back only the printed lines)
+
+1. **Real-data M0 checks.** Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
+   ```bash
+   cd ~/Documents/github/mtah-2027 && export MTAH_DATA_DIR=/Users/justinzhang/mtah2027
+   make cache            # expect 113,488 / 94,214 ball frames, ~20.5 objects, home = Barcelona
+   make baseline-check   # expect 4× byte-identical; public smooth50 0.3256, smooth125 0.4242
+   make anchors          # expect kick-offs 11185 and 113742; direction flips at half-time
+   ```
+   If `baseline-check` is not byte-identical, stop: nothing else is trustworthy (PLAN M0 falsifier).
+   If `anchors` misses by ±1 frame, report the offset; do not hard-code the answer.
+2. **ffprobe both videos** (stream metadata only, no frames):
+   ```bash
+   for f in tactical/BAR-ATH_tactical.mp4 broadcast/BAR-ATH_broadcast.mp4; do ffprobe -v error -show_entries stream=codec_type,codec_name,channels,sample_rate,r_frame_rate -of compact "$MTAH_DATA_DIR/$f"; done
+   ```
+   Paste back the output. Audio present on both, one or neither decides T3 scope.
+3. `brew install libomp` (needed for LightGBM from M2).
+4. **Emails** (Appendix D): send 1 (cloud assistants) and 3 (deadline hour). **Drop email 2**,
+   because RULES.md now answers it (no hand labels on this game). RULES.md also invites rule
+   questions as GitHub issues; anything team-specific should go by email.
+5. **Stray bundle copies:** `~/Downloads/tactical/` and `~/Downloads/tactical 2/` each hold a copy
+   of `BAR-ATH_tactical_smart_tagging.xml`. Consolidate into `~/mtah2027` and delete them, since
+   the T&C require tracking and deleting all copies.
+6. Revise PLAN §5–§6 for the rule changes above.
+
+## Blocked / known limitations
+
+- `make autopsy candidate sync submission doc` are stubs (M1+).
+- Fake data: the ball group's third field is written as speed (the real semantics are unverified;
+  nothing reads it). No goals or after-goal kick-offs, no duplicate tracks, and home share ≈ 0.5,
+  so the home-share band does not apply to fake GT.
+- The kick-off detector assumes the ball is visible resting on the spot. If the real ATD loses
+  the ball at kick-off it returns `not_found`, and a formation/halfway-crossing fallback is needed.
+
+## Next steps
+
+M1 (after human checks pass and the plan is revised): autopsy table (correctness only), touch
+detector, dead-ball v1, sparse Viterbi decoder, candidate v1, and an early Form upload.
+Open-data sim (`learn/degrade.py`, DFL/IDSSE) moves earlier: it is now the primary tuning signal.
