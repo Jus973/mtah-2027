@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./data/**)",
+      "Read(./cache/**)",
+      "Read(/Users/justinzhang/mtah2027/**)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(less:*)",
+      "Bash(more:*)",
+      "Bash(strings:*)",
+      "Bash(xxd:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(ffplay:*)"
+    ]
+  }
+}

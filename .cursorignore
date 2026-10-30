@@ -1,0 +1,16 @@
+data/
+cache/
+*.mp4
+*.npz
+*.parquet
+validation/raw/
+validation/val_gt.csv
+submissions/candidates/
+fakedata/out/
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.DS_Store
+.env
+/Users/justinzhang/mtah2027/

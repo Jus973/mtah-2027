@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: no-match-data
+        name: block match data and derivatives
+        entry: python3 scripts/check_no_data.py
+        language: system
+        pass_filenames: true
