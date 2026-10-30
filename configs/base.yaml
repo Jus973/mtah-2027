@@ -1,0 +1,44 @@
+# Shared constants and M0 thresholds. Every threshold lives here (CLAUDE.md).
+# Candidate configs (v1_rules.yaml, ...) start with `inherit: base.yaml` and override keys.
+
+# Smart Tagging Team values -> side. Strings as published in DATA.md (sic: "Atletic").
+tag_team_map:
+  Barcelona: H
+  Atletic Club: A
+
+kickoff:
+  # Search window around each "Kick Off (Start)" tag, seconds before tag start / after tag end.
+  search_before_s: 10.0
+  search_after_s: 10.0
+  # Ball "at the centre spot": within this many metres of (L/2, W/2).
+  centre_radius_m: 2.0
+  # Formation check: fraction of each team's visible players in their own half (tolerance below).
+  own_half_frac: 0.9
+  own_half_tol_m: 1.0
+  # Kick-off frame = first frame the ball has moved more than this from its resting spot.
+  ball_moved_m: 0.5
+  # Minimum frames the ball must rest at the centre before the kick.
+  min_rest_frames: 5
+
+direction:
+  # Frames after each half's kick-off used to estimate attacking direction from team centroids.
+  window_frames: 125
+
+bands:  # PLAN.md §6.3, over graded frames
+  spells: [280, 550]
+  frac_lt_2s: [0.10, 0.30]
+  frac_lt_6s: [0.35, 0.60]
+  mean_spell_s: [7.0, 16.0]
+  d_runs: [60, 150]
+  home_share_alive: [0.55, 0.72]
+  max_x_frac: 0.02
+
+# Published facts used ONLY as assertions on derived values (never as pipeline inputs).
+published:
+  n_frames: 199319
+  ball_present_all: 113488
+  ball_present_graded: 94214
+  mean_objects_graded: 20.5
+  kickoff_frames: {1: 11185, 2: 113742}
+  kickoff_team: {1: A, 2: H}
+  home_tag_club: Barcelona
