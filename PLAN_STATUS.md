@@ -64,11 +64,23 @@ selection signal.
 - On the fake match: kick-offs detected at exactly the true frames, attacking direction correct in
   both halves, vectorised baseline identical to the starter on every frame, and swapping H/A
   takes the fake GT's spellF1 to exactly 0.
-- **Nothing has been run on the real bundle yet.**
+- **Real bundle, human run 31 Oct:**
+  - `make cache`: all checks PASS. 199,319 contiguous lines; ball on 113,488 frames overall and
+    94,214 graded; 20.49 visible objects on graded frames; home = Barcelona. Slots: 24 home and
+    22 away (not 23/23).
+  - Ball outside [0,1] on 631 frames (x) and 4,333 frames (y): **the ATD does not clamp**, so
+    out-of-bounds is usable as a `D`-onset detector (M1).
+  - `make baseline-check`: all 4 baselines **byte-identical**; public smooth50 0.3256 and
+    smooth125 0.4242 exact. Frame alignment, team mapping and parsing are proven (M0 falsifier
+    cleared).
+  - `make anchors`: **FAIL.** Kick-off not found in either half. Both tag windows do contain the
+    published frames (half 1 tag 11097–11222, half 2 tag 113660–113785), so the time base is
+    fine. The ball-at-spot or formation criterion is what fails. Diagnose with `make anchors-diag`.
+  - LightGBM now loads (libomp installed).
 
 ## TODO for humans (run locally; paste back only the printed lines)
 
-1. **Real-data M0 checks.** Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
+1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
    ```bash
    cd ~/Documents/github/mtah-2027 && export MTAH_DATA_DIR=/Users/justinzhang/mtah2027
    make cache            # expect 113,488 / 94,214 ball frames, ~20.5 objects, home = Barcelona
@@ -77,16 +89,15 @@ selection signal.
    ```
    If `baseline-check` is not byte-identical, stop: nothing else is trustworthy (PLAN M0 falsifier).
    If `anchors` misses by ±1 frame, report the offset; do not hard-code the answer.
-2. **ffprobe both videos** (stream metadata only, no frames):
-   ```bash
-   for f in tactical/BAR-ATH_tactical.mp4 broadcast/BAR-ATH_broadcast.mp4; do ffprobe -v error -show_entries stream=codec_type,codec_name,channels,sample_rate,r_frame_rate -of compact "$MTAH_DATA_DIR/$f"; done
-   ```
-   Paste back the output. Audio present on both, one or neither decides T3 scope.
-3. `brew install libomp` (needed for LightGBM from M2).
+2. **Stream metadata** (ffprobe is not installed, so this uses PyAV and decodes no frames):
+   `make probe`. Paste back the output: audio on both feeds, one or neither decides T3 scope.
+3. ~~`brew install libomp`~~ done. Separately, Homebrew reports outdated Command Line Tools;
+   update them via Software Update (only matters for future brew installs).
+7. **Kick-off diagnosis:** `make anchors-diag`; paste back the output.
 4. **Emails** (Appendix D): send 1 (cloud assistants), the **new** 2 (Smart Tagging as a
    label-free selection signal) and 3 (deadline hour). RULES.md also invites rule questions as
    GitHub issues; anything team-specific should go by email.
-5. **Stray bundle copies:** `~/Downloads/tactical/` and `~/Downloads/tactical 2/` each hold a copy
+5. ~~Stray bundle copies~~ deleted 31 Oct. `~/Downloads/tactical/` and `~/Downloads/tactical 2/` each hold a copy
    of `BAR-ATH_tactical_smart_tagging.xml`. Consolidate into `~/mtah2027` and delete them, since
    the T&C require tracking and deleting all copies.
 6. Review the revised PLAN.md (§1, §5 M1–M3, §6) and object to anything you disagree with.

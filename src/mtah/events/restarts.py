@@ -4,6 +4,8 @@ A kick-off frame is the frame the ball is struck: the last frame it rests on the
 moves. Nothing here hard-codes the published frames (11,185 / 113,742); scripts assert them.
 """
 
+import warnings
+
 import numpy as np
 
 from mtah.io import tags as tagio
@@ -27,7 +29,8 @@ def _own_half_fraction(atd, t, direction, cfg):
 
 def _formation_direction(atd, t):
     """Direction guess from centroids at frame t: the lower-x team attacks +x."""
-    with np.errstate(all="ignore"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # a team with no visible player
         hx = np.nanmean(atd.xy[t, atd.team_of_slot == HOME, 0])
         ax = np.nanmean(atd.xy[t, atd.team_of_slot == AWAY, 0])
     home = 1 if hx < ax else -1

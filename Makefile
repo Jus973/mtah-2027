@@ -4,7 +4,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test cache baseline-check anchors sim-costs score autopsy candidate sync submission doc check-data
+.PHONY: setup fake test cache baseline-check anchors anchors-diag probe sim-costs score autopsy candidate sync submission doc check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -30,6 +30,12 @@ baseline-check: check-data
 
 anchors: check-data
 	$(PY) scripts/run_anchors.py --game $(GAME)
+
+anchors-diag: check-data
+	$(PY) scripts/diag_kickoff.py --game $(GAME)
+
+probe: check-data
+	$(PY) scripts/probe_streams.py --game $(GAME)
 
 sim-costs:
 	$(PY) scripts/sim_costs.py
