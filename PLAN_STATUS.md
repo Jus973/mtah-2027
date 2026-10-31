@@ -77,6 +77,15 @@ selection signal.
     published frames (half 1 tag 11097–11222, half 2 tag 113660–113785), so the time base is
     fine. The ball-at-spot or formation criterion is what fails. Diagnose with `make anchors-diag`.
   - LightGBM now loads (libomp installed).
+  - `make probe`: **both videos have audio** (AAC stereo 48 kHz), so T3 audio sync and whistle
+    cues are in scope. Tactical video: h264 1920x1080, 25 fps, 199,319 frames. Broadcast:
+    164,487 container frames vs 164,488 ATD records (note for sync).
+  - `make anchors-diag`: the tracked ball never rests on the spot (closest 1.38 m in half 1 and
+    3.34 m in half 2; median per-frame step ~0.3 m, i.e. jitter). The formation is present (own-half
+    fraction holds ≥ 0.90 for 351 frames in half 1) but peaks right at the 0.9 threshold. Ball
+    normalised range reaches y = 1.489 (≈ 33 m off the pitch), so outlier cleaning is needed.
+    Proposed fix: formation-break-based kick-off with the ball as a loose check, ±1 s tolerance,
+    reporting the offset; the pipeline uses the published kick-offs from games.py / the starter.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 
@@ -89,11 +98,11 @@ selection signal.
    ```
    If `baseline-check` is not byte-identical, stop: nothing else is trustworthy (PLAN M0 falsifier).
    If `anchors` misses by ±1 frame, report the offset; do not hard-code the answer.
-2. **Stream metadata** (ffprobe is not installed, so this uses PyAV and decodes no frames):
+2. ~~**Stream metadata**~~ done: audio on both. (ffprobe is not installed, so this uses PyAV and decodes no frames):
    `make probe`. Paste back the output: audio on both feeds, one or neither decides T3 scope.
 3. ~~`brew install libomp`~~ done. Separately, Homebrew reports outdated Command Line Tools;
    update them via Software Update (only matters for future brew installs).
-7. **Kick-off diagnosis:** `make anchors-diag`; paste back the output.
+7. ~~Kick-off diagnosis~~ done 31 Oct (see measured numbers). Decide on the proposed detector fix.
 4. **Emails** (Appendix D): send 1 (cloud assistants), the **new** 2 (Smart Tagging as a
    label-free selection signal) and 3 (deadline hour). RULES.md also invites rule questions as
    GitHub issues; anything team-specific should go by email.
