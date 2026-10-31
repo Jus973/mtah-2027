@@ -21,15 +21,20 @@ import games  # noqa: E402  (vendored, unmodified)
 
 FAKE_META = "fake_meta.json"
 SUFFIXES = games.SUFFIXES
+# Degraded open-data matches (learn/degrade.py): large, so outside the repo.
+SIM_DIR = os.path.expanduser(os.environ.get("MTAH_SIM_DIR", "~/opendata/sim"))
 
 
 def data_dir_for(game, data_dir=None):
-    """Bundle root. Real matches default to games.DATA_DIR ($MTAH_DATA_DIR or ./data)."""
+    """Bundle root. Real matches default to games.DATA_DIR ($MTAH_DATA_DIR or ./data); synthetic
+    ones live in fakedata/out/<game> (fake) or SIM_DIR/<game> (degraded open data)."""
     if data_dir:
         return data_dir
     if game in games.GAMES:
         return games.DATA_DIR
-    return os.path.join(ROOT, "fakedata", "out", game)
+    fake = os.path.join(ROOT, "fakedata", "out", game)
+    sim = os.path.join(SIM_DIR, game)
+    return sim if not os.path.isdir(fake) and os.path.isdir(sim) else fake
 
 
 def is_fake(game, data_dir=None):

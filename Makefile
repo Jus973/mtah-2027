@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe sim-costs score autopsy candidate sync submission doc check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-costs score autopsy candidate sync submission doc check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -43,6 +43,23 @@ anchors-diag: check-data
 
 probe: check-data
 	$(PY) scripts/probe_streams.py --game $(GAME)
+
+atd-stats: check-data
+	$(PY) scripts/atd_stats.py --game $(GAME)
+
+# DFL/IDSSE open data (2.63 GB, CC BY) to $$MTAH_OPEN_DIR (default ~/opendata/idsse).
+open-data:
+	$(PY) scripts/fetch_open_data.py
+
+# Sim on degraded open data (PLAN.md §6.1): fit degradation, build DFL-* bundles, acceptance test.
+sim-fit:
+	$(PY) scripts/fit_sim.py
+
+sim:
+	$(PY) scripts/build_sim.py
+
+sim-check:
+	$(PY) scripts/sim_check.py
 
 sim-costs:
 	$(PY) scripts/sim_costs.py

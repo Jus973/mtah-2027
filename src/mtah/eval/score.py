@@ -19,7 +19,7 @@ def gt_path(gt):
         raise ValueError("no hand-labelled validation set: RULES.md (2026-10-23) forbids hand "
                          "labels on the provided game for any purpose, validation included")
     if gt.startswith("sim:"):
-        return os.path.join(registry.ROOT, "fakedata", "out", gt[4:], "gt.csv")
+        return os.path.join(registry.data_dir_for(gt[4:]), "gt.csv")
     return gt
 
 
