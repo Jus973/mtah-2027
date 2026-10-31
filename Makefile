@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-costs score autopsy candidate sync submission doc check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-costs score autopsy candidate sync submission doc check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -60,6 +60,10 @@ sim:
 
 sim-check:
 	$(PY) scripts/sim_check.py
+
+# Tune owner hypotheses H1-H3 on the sim's fit matches, compare on held-out (D = sim GT oracle).
+sim-rules:
+	$(PY) scripts/sim_rules.py
 
 sim-costs:
 	$(PY) scripts/sim_costs.py

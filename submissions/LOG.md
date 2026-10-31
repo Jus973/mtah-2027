@@ -21,3 +21,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   more fragmented than the real one (see PLAN_STATUS.md, known sim biases).
 - 2026-10-31: Public-window bug check is now verdict-only (`make airlock T=public-check CSV=...`);
   `score()` refuses the public GT for candidates. Candidate CSVs are read-denied to the agent.
+- 2026-10-31: Rules v1 touches + owner hypotheses H1-H3, tuned on the sim fit matches and
+  compared on held-out with oracle D: H1 0.606, H2 0.585, H3 0.504 (smooth50 + oracle D 0.403).
+  H1 picked (configs/rules.yaml); H2 kept (configs/rules_h2.yaml). Touch statistics on the real
+  match (airlock) match the sim's closely, so the tuned 1.0 m radius should transfer.

@@ -59,6 +59,7 @@ def spec(game, data_dir=None):
             "pitch": tuple(meta["pitch"]),
             "half_blocks": [tuple(b) for b in meta["half_blocks"]],
             "fake": True,
+            "kind": meta.get("kind", "fake"),  # "fake" (fakedata/) or "sim" (degraded open data)
         }
     entry = games.GAMES[game]
     return {
@@ -68,6 +69,7 @@ def spec(game, data_dir=None):
         "pitch": tuple(entry["pitch"]),
         "half_blocks": [tuple(b) for b in games.half_video_blocks(game)],
         "fake": False,
+        "kind": "real",
     }
 
 

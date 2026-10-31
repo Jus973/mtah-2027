@@ -1,7 +1,8 @@
 # PLAN_STATUS: running state
 
-Last updated: Sat 31 Oct 2026, agent session 2. M0 done; M1 started: the degraded open-data
-simulator is built and passes its acceptance test (smooth50 0.261 vs reference 0.243).
+Last updated: Sat 31 Oct 2026, agent session 2. M0 done. M1: sim v0 accepted (smooth50 0.261 vs
+reference 0.243); public check is verdict-only; touches + owner hypotheses done, H1 picked
+(held-out sim spellF1 0.606 with oracle D, vs 0.403 for smooth50 + oracle D).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -150,6 +151,37 @@ selection: J03WQQ, J03WR9.**
   5. No Smart Tagging in the sim yet: tag-based components cannot run on it until set-piece tags
      are derived from the DFL events.
 
+**Rules v1: touches and owner hypotheses (31 Oct).** `features/ball.py` (drop > 10 m off the
+pitch and > 40 m/s steps, fill gaps ≤ 10 frames), `features/players.py` (per-team nearest
+player), `events/touches.py` (contact episode = ball within r of a player, nearest team constant;
+a touch if the ball stays close ≥ min_frames, turns ≥ min_turn_deg, or changes speed
+≥ min_dv_mps), `decode/rules.py` (H1 any touch, H2 controlled touch, H3 two consecutive
+same-team touches; flip on the touch's first frame; after D the first touch decides).
+`make sim-rules` tunes each hypothesis on the fit matches and compares them on the held-out ones,
+with **D taken from the sim GT** (owner rule alone; dead-ball v1 is next):
+
+| held-out (J03WQQ, J03WR9) | spellF1 | macroF1 | spells / GT | transition F1 @25 |
+|---|---|---|---|---|
+| baseline smooth50 | 0.286 | 0.642 | 1.13 | 0.16 |
+| smooth50 + oracle D | 0.403 | 0.817 | 1.01 | 0.49 |
+| **H1 + oracle D** (rules.yaml) | **0.606** | 0.913 | 0.96 | 0.70 |
+| H2 + oracle D (rules_h2.yaml) | 0.585 | 0.907 | 0.94 | 0.68 |
+| H3 + oracle D | 0.504 | 0.895 | 0.52 | 0.62 |
+
+- Tuned touch settings (H1): r 1.0 m, min_frames 12, turn ≥ 20°, Δv ≥ 12 m/s, all inside their
+  grids. H2's control parameters went to their "off" ends (n_c 2, v_c 1.0, t_c 0.25 s), i.e. on
+  the sim a strict touch filter makes the control test redundant.
+- **H1 picked** (wins both held-out matches, fewest parameters: §6.4). **Caveat:** DFL's
+  possession flips on touches more readily than the real GT ("touches, deflections, unwon aerials
+  are not changes"), which favours H1 (sim bias 1). Re-check H1 vs H2 on the real match with
+  label-free checks (Smart-Tagging consistency, bands) once dead-ball v1 exists.
+- **Transfer check, label-free** (`make airlock T=touch-stats` vs the same script on sim
+  matches): ball within 1.0 m of a player on 28.7% of real ball-seen frames vs 28.0–29.7% on the
+  sim; nearest-player distance p10/p25/p50 0.44/0.89/1.90 m real vs 0.51/0.85–0.90/2.2 m sim;
+  nearest-team switches 28.8 vs 26–27 per minute; touches at r = 1.0 m 21.4 vs 24.7–25.9 per
+  minute; real contact episodes run longer (median 12 vs 8 frames). The sim-tuned radius should
+  transfer; the real ball "sticks" to a player a little longer.
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
@@ -193,12 +225,13 @@ selection: J03WQQ, J03WR9.**
 ## Next steps
 
 M1, in order:
-1. ~~Public bug check~~ done 31 Oct: `make airlock T=public-check CSV=<candidate>` prints
-   pass (spellF1 ≥ 0.35) / fail / broken (< 0.05) plus a team-sign flag and the validator
-   result, never the number. `score()` refuses the public GT except for reproducing the
-   published baselines and GT self-tests. The official smooth50 file correctly gets "fail"
-   (0.3256 < 0.35); the public GT as its own candidate gets "pass".
-2. Smart-Tagging-style set-piece tags for the sim from the DFL events (bias 5 above).
-3. Autopsy table (bug check only), touch detector, dead-ball v1 (out-of-bounds is viable: the
-   real ATD does not clamp), sparse Viterbi decoder, owner hypotheses H1–H3 compared on the sim
-   (fit matches; held-out matches only for the final pick), candidate v1, early Form upload.
+1. ~~Public bug check~~ done (verdict-only).
+2. ~~Touches + owner hypotheses~~ done: H1 (rules.yaml), H2 kept (rules_h2.yaml).
+3. Dead-ball v1 (`events/deadball.py`): out of bounds (the real ATD does not clamp), ball still +
+   players static, long ball gaps (the real ATD loses the ball mostly in stoppages), tag restarts.
+   Tune and measure on the sim against its D; replaces the oracle D above.
+4. Gap policy and the sparse Viterbi decoder; latency residuals on the sim.
+5. Candidate v1 on the real match through the airlock: bands, public bug check (verdict only),
+   then the early Form upload (human).
+6. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), needed to
+   test tag-based restarts on the sim.

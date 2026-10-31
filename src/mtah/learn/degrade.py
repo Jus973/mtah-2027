@@ -15,6 +15,7 @@ q, f_mean, s and g are fitted (scripts/fit_sim.py) so that the sim's label-free 
 (learn/stats.py) match the real ones in configs/sim.yaml `targets`; all other numbers are measured.
 """
 
+import glob
 import json
 import os
 import zlib
@@ -167,6 +168,8 @@ def write_sim(match, cfg, mcfg, seed, out_root=None, game=None):
     out = os.path.join(out_root or registry.SIM_DIR, game)
     tac = os.path.join(out, "tactical")
     os.makedirs(tac, exist_ok=True)
+    for stale in glob.glob(os.path.join(out, "*_atd_v*.npz")):  # parse cache of an older build
+        os.remove(stale)
     slots, ball, team_of_slot = degrade(match, cfg, mcfg, seed)
     pitch = np.asarray(match.pitch)
     (k1, e1), (k2, e2) = match.halves.tolist()

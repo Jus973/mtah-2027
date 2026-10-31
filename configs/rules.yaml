@@ -1,0 +1,28 @@
+# Rules v1: ball cleaning, touch detection and owner hypotheses (PLAN.md M1).
+# Tuned on the sim's fit matches only (scripts/sim_rules.py); the held-out sim matches pick the
+# hypothesis; the public window is a pass/fail bug check and tunes nothing.
+inherit: sim.yaml
+
+ball:
+  outside_m: 10.0           # positions farther than this outside the pitch are dropped
+  v_max_mps: 40.0           # one-frame steps faster than this are dropped
+  max_interp_gap: 10        # gaps up to this many frames are filled linearly
+
+# Tuned by make sim-rules on the 5 fit matches (31 Oct), D from the sim GT. Held-out spellF1:
+# H1 0.606, H2 0.585 (configs/rules_h2.yaml), H3 0.504; smooth50 + oracle D 0.403.
+touch:
+  r_touch_m: 1.0            # a player within this of the ball = contact
+  bridge_frames: 2          # contact gaps this short (same nearest team) stay one episode
+  min_frames: 12            # an episode is a touch if the ball stays close this long ...
+  min_turn_deg: 20          # ... or turns this much ...
+  min_dv_mps: 12.0          # ... or changes speed this much
+  kin_offset_frames: 3      # velocity measured this many frames before / after the episode
+
+owner:
+  # H1 wins both held-out matches and is the simplest rule (PLAN.md §6.4). Caveat: DFL's
+  # possession flips on touches more readily than the real GT, which favours H1; re-check H1 vs
+  # H2 with label-free checks on the real match once dead-ball v1 exists.
+  hypothesis: H1
+  n_c: 2                    # H2 only: controlled if the ball stays close >= n_c frames,
+  v_c_mps: 1.0              #     or is slower than this after the touch,
+  t_c_s: 0.25               #     or the next touch is the same team's within t_c seconds

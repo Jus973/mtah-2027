@@ -1,0 +1,11 @@
+# Rules v1 alternative: owner hypothesis H2 with its own tuned touch settings (make sim-rules,
+# 31 Oct; fit spellF1 0.591, held-out 0.585 vs H1 0.606). min_frames sits on its grid edge (20).
+inherit: rules.yaml
+
+touch:
+  min_frames: 20
+  min_turn_deg: 10
+  min_dv_mps: 4.0
+
+owner:
+  hypothesis: H2

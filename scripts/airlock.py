@@ -28,6 +28,7 @@ JOBS = {
     "probe": "probe_streams.py",
     "atd-stats": "atd_stats.py",
     "public-check": "public_check.py",
+    "touch-stats": "touch_stats.py",
 }
 CSV_JOBS = {"public-check"}  # jobs that take a candidate CSV (CSV=...)
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")

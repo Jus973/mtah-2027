@@ -161,16 +161,21 @@ def load_cache(path):
 
 
 def load_game(game, data_dir=None, source="tactical", use_cache=True):
-    """Atd for a registered match (real or fake). Real matches are cached outside the repo."""
+    """Atd for a registered match. Real matches are cached outside the repo, sim matches inside
+    their own folder (also outside the repo); fakedata matches are small and never cached."""
     registry.gate(game, data_dir)
     sp = registry.spec(game, data_dir)
-    fake = sp["fake"]
-    path = cache_path(game, source)
-    if use_cache and not fake and os.path.isfile(path):
+    if sp["kind"] == "sim":
+        path = os.path.join(registry.data_dir_for(game, data_dir),
+                            "{}_atd_v{}.npz".format(source, CACHE_VERSION))
+    else:
+        path = cache_path(game, source)
+    cached = use_cache and sp["kind"] in ("real", "sim")
+    if cached and os.path.isfile(path):
         return load_cache(path), None
     meta, raw = registry.require(["atd_meta", "atd_raw"], game, data_dir, source)
     n = sp["n_frames"] if source == "tactical" else None
     atd, stats = load_atd(meta, raw, pitch=sp["pitch"], n_frames=n)
-    if use_cache and not fake:
+    if cached:
         save_cache(atd, path)
     return atd, stats
