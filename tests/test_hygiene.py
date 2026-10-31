@@ -26,8 +26,13 @@ def test_ignores():
 
 def test_agent_rules_present():
     assert "NEVER read/print/decode/display" in read("CLAUDE.md")
-    deny = json.loads(read(".claude/settings.json"))["permissions"]["deny"]
+    assert "make airlock" in read("CLAUDE.md")
+    settings = json.loads(read(".claude/settings.json"))
+    deny = settings["permissions"]["deny"]
     assert "Read(./data/**)" in deny and any(d.startswith("Read(/") for d in deny)
+    hooks = [h["command"] for m in settings["hooks"]["PreToolUse"] for h in m["hooks"]]
+    assert any("guard_data.py" in c for c in hooks)
+    assert ".mtah.local" in read(".gitignore").split()
 
 
 def test_precommit_guard():

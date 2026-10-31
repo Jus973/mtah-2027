@@ -162,6 +162,7 @@ def load_cache(path):
 
 def load_game(game, data_dir=None, source="tactical", use_cache=True):
     """Atd for a registered match (real or fake). Real matches are cached outside the repo."""
+    registry.gate(game, data_dir)
     sp = registry.spec(game, data_dir)
     fake = sp["fake"]
     path = cache_path(game, source)

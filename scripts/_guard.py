@@ -1,10 +1,20 @@
-"""Shared guard for real-data scripts: aggregates only, and say so up front."""
+"""Shared setup for real-data scripts: arguments, the real-data gate, and the report.
+
+Scripts emit everything through put() / check(). In a terminal these print as before; under
+scripts/airlock.py they are collected as JSON and validated before an agent sees them.
+"""
 
 import os
 import sys
 
+from mtah import registry
+from mtah.airlock import OUT_ENV, Report
+
 BANNER = ("[aggregates only] This script reads the match bundle and prints counts, scores and "
           "per-event scalars. Paste back only what it prints.")
+
+REPORT = Report()
+put, check = REPORT.put, REPORT.check
 
 
 def game_args(argv=None):
@@ -13,12 +23,13 @@ def game_args(argv=None):
     parser.add_argument("--game", default="BAR-ATH", help="BAR-ATH (real) or a fakedata game")
     parser.add_argument("--data-dir", default=None)
     args = parser.parse_args(argv)
-    if args.game == "BAR-ATH" and not (args.data_dir or os.environ.get("MTAH_DATA_DIR")):
-        sys.exit("MTAH_DATA_DIR is not set. export MTAH_DATA_DIR=/path/to/mtah2027")
-    print(BANNER)
+    if not registry.is_fake(args.game, args.data_dir):
+        if not (args.data_dir or os.environ.get("MTAH_DATA_DIR")):
+            sys.exit("MTAH_DATA_DIR is not set. export MTAH_DATA_DIR=/path/to/mtah2027")
+        try:
+            registry.gate(args.game, args.data_dir)
+        except PermissionError as err:
+            sys.exit(str(err))
+    if not os.environ.get(OUT_ENV):
+        print(BANNER)
     return args
-
-
-def check(name, ok, detail=""):
-    print("  [{}] {}{}".format("PASS" if ok else "FAIL", name, "  " + detail if detail else ""))
-    return bool(ok)

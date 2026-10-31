@@ -35,7 +35,7 @@ if sp["fake"]:
     ref = starter.nearest_player_labels(raw, starter.team_of_each_track(meta), sp["n_frames"],
                                         sp["pitch"])
     ok &= check("vectorised codes == starter codes", (ref == codes).all(),
-                "{} frames differ".format(int((ref != codes).sum())))
+                frames_differ=(ref != codes).sum())
 
 for name, window in starter.VARIANTS:
     path = write_csv(os.path.join(out_dir, name + ".csv"), starter.smooth(codes, window))
@@ -43,12 +43,12 @@ for name, window in starter.VARIANTS:
         continue
     official = os.path.join(registry.ROOT, "evaluation", "results", name + ".csv")
     same = filecmp.cmp(path, official, shallow=False)
-    ok &= check("{} byte-identical".format(name), same, "sha256 ours {} official {}".format(
-        sha256(path)[:12], sha256(official)[:12]))
+    ok &= check("{} byte-identical".format(name), same, sha256_ours=sha256(path)[:12],
+                sha256_official=sha256(official)[:12])
     if name in EXPECTED_PUBLIC:
         s = score(path, "public")
         ok &= check("{} public spellF1 {:.4f} (expect {})".format(
             name, s["spell_f1_mean"], EXPECTED_PUBLIC[name]),
             abs(s["spell_f1_mean"] - EXPECTED_PUBLIC[name]) < 5e-5,
-            "macroF1 {:.4f}".format(s["macro_f1"]))
+            macro_f1=round(s["macro_f1"], 4))
 sys.exit(0 if ok else 1)

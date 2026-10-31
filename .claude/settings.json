@@ -1,9 +1,13 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(make airlock:*)"
+    ],
     "deny": [
       "Read(./data/**)",
       "Read(./cache/**)",
       "Read(/Users/justinzhang/mtah2027/**)",
+      "Read(/Users/justinzhang/mtah2027_cache/**)",
       "Bash(cat:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
@@ -13,6 +17,21 @@
       "Bash(xxd:*)",
       "Bash(ffmpeg:*)",
       "Bash(ffplay:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__terminal__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_data.py\"",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
     ]
   }
 }

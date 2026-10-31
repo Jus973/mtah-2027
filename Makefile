@@ -1,10 +1,11 @@
 # MTAH 2027. Real-data targets need MTAH_DATA_DIR and print aggregates only (CLAUDE.md).
+# Humans run them in a terminal; agents run them through the airlock: make airlock T=<target>.
 PY      ?= .venv/bin/python
 GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test cache baseline-check anchors anchors-diag probe sim-costs score autopsy candidate sync submission doc check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe sim-costs score autopsy candidate sync submission doc check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -18,6 +19,12 @@ fake:
 
 test:
 	$(PY) -m pytest
+
+# make airlock T=anchors: a real-data target with validated, aggregate-only output (scripts/airlock.py).
+# The bundle path comes from MTAH_DATA_DIR or .mtah.local; the full log stays beside the cache.
+T ?=
+airlock:
+	@$(PY) scripts/airlock.py $(T) --game $(GAME)
 
 check-data:
 	@test -n "$(MTAH_DATA_DIR)" || (echo "MTAH_DATA_DIR is not set" && exit 1)

@@ -77,7 +77,21 @@ def asset_paths(game, data_dir=None, source="tactical"):
     return {name: os.path.join(folder, stem + SUFFIXES[name]) for name in assets}
 
 
+def gate(game, data_dir=None):
+    """Refuse the real bundle unless a human is at a terminal or the airlock is collecting output.
+
+    An agent's shell has no terminal, so its only way in is scripts/airlock.py, which validates
+    what comes back (mtah.airlock). Synthetic matches are never gated.
+    """
+    from mtah.airlock import OUT_ENV
+    if is_fake(game, data_dir) or os.environ.get(OUT_ENV) or sys.stdout.isatty():
+        return
+    raise PermissionError("the real match bundle opens only in a terminal (a human) or through "
+                          "the airlock: make airlock T=<target>")
+
+
 def require(names, game, data_dir=None, source="tactical"):
+    gate(game, data_dir)
     paths = asset_paths(game, data_dir, source)
     missing = [paths[n] for n in names if not os.path.isfile(paths[n])]
     if missing:

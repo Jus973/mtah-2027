@@ -8,7 +8,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _guard import check, game_args  # noqa: E402
+from _guard import check, game_args, put  # noqa: E402
 
 from mtah import config, registry  # noqa: E402
 from mtah.events.restarts import detect_kickoffs  # noqa: E402
@@ -23,10 +23,10 @@ atd, _ = load_game(args.game, args.data_dir)
 tags = load_tags(registry.require(["smart_tagging"], args.game, args.data_dir)[0], sp["fps"])
 ko = detect_kickoffs(atd, tags, cfg["kickoff"], sp["fps"])
 for half, row in sorted(ko.items()):
-    print("half {}: {}".format(half, row))
+    put("half {}".format(half), row)
 frames = {h: r["frame"] for h, r in ko.items() if r["frame"] is not None}
 direction = attacking_direction(atd, frames, cfg["direction"]["window_frames"]) if len(frames) == 2 else {}
-print("attacking direction (+1 = towards x=1):", direction)
+put("attacking direction (+1 = towards x=1)", direction)
 
 if sp["fake"]:
     with open(os.path.join(registry.data_dir_for(args.game, args.data_dir), "fake_meta.json")) as f:
@@ -37,14 +37,13 @@ else:
     expect = {int(k): v for k, v in cfg["published"]["kickoff_frames"].items()}
     expect_dir = None
 
-print("\nchecks")
 ok = True
 tol = cfg["kickoff"]["tolerance_frames"]
 for half, frame in sorted(expect.items()):
     got = ko.get(half, {}).get("frame")
     ok &= check("half {} kick-off within +/-{} of {}".format(half, tol, frame),
                 got is not None and abs(got - frame) <= tol,
-                "got {} (offset {})".format(got, None if got is None else got - frame))
+                got=got, offset=None if got is None else got - frame)
 for half, (_, first, last) in zip((1, 2), sp["half_blocks"]):
     ok &= check("half {} kick-off inside graded block".format(half),
                 frames.get(half) is not None and first <= frames[half] <= last)
