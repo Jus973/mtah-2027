@@ -1,6 +1,6 @@
 # PLAN_STATUS: running state
 
-Last updated: Fri 30 Oct 2026, end of agent session 1 (M0).
+Last updated: Sat 31 Oct 2026, agent session 2 (PLAN.md revised for the rule changes).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -28,9 +28,13 @@ from RULES.md:
 4. Any human-produced data about this game (event feeds, corrected tracking) is forbidden. This
    matches PLAN §3.
 
-**Decision needed (humans):** revise PLAN §5 M1–M3 and §6 so selection relies on (a) simulation on
-open data (DFL/IDSSE, Metrica samples), (b) optional hand labels on *other* matches, (c) structural
-bands, and (d) the public window only as a correctness check. The agent has not edited PLAN.md.
+**Resolved 31 Oct: PLAN.md revised** (see the banner at its top). Selection now rests on
+held-out simulation over degraded open data (§6.1). Label-free checks on the real match back it up:
+Smart-Tagging consistency, structural bands and stability (§6.2). The public window is a pass/fail
+bug check (spellF1 ≥ 0.35), never compared across candidates. The hand-label labeler and
+validation set are gone, replaced by a debug-only clip viewer. `learn/degrade.py` and its acceptance
+test moved from M2 into M1. Appendix D email 2 now asks the organisers to confirm Smart Tagging as a
+selection signal.
 
 ## Done (agent, M0)
 
@@ -79,13 +83,13 @@ bands, and (d) the public window only as a correctness check. The agent has not 
    ```
    Paste back the output. Audio present on both, one or neither decides T3 scope.
 3. `brew install libomp` (needed for LightGBM from M2).
-4. **Emails** (Appendix D): send 1 (cloud assistants) and 3 (deadline hour). **Drop email 2**,
-   because RULES.md now answers it (no hand labels on this game). RULES.md also invites rule
-   questions as GitHub issues; anything team-specific should go by email.
+4. **Emails** (Appendix D): send 1 (cloud assistants), the **new** 2 (Smart Tagging as a
+   label-free selection signal) and 3 (deadline hour). RULES.md also invites rule questions as
+   GitHub issues; anything team-specific should go by email.
 5. **Stray bundle copies:** `~/Downloads/tactical/` and `~/Downloads/tactical 2/` each hold a copy
    of `BAR-ATH_tactical_smart_tagging.xml`. Consolidate into `~/mtah2027` and delete them, since
    the T&C require tracking and deleting all copies.
-6. Revise PLAN §5–§6 for the rule changes above.
+6. Review the revised PLAN.md (§1, §5 M1–M3, §6) and object to anything you disagree with.
 
 ## Blocked / known limitations
 
@@ -98,6 +102,6 @@ bands, and (d) the public window only as a correctness check. The agent has not 
 
 ## Next steps
 
-M1 (after human checks pass and the plan is revised): autopsy table (correctness only), touch
-detector, dead-ball v1, sparse Viterbi decoder, candidate v1, and an early Form upload.
-Open-data sim (`learn/degrade.py`, DFL/IDSSE) moves earlier: it is now the primary tuning signal.
+M1 (after the human checks pass): first `learn/degrade.py` on DFL/IDSSE and its acceptance test,
+since it is the selection signal. Then the autopsy table (bug check only), touch detector, dead-ball
+v1, sparse Viterbi decoder, candidate v1 and an early Form upload.
