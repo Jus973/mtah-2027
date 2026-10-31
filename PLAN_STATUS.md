@@ -86,6 +86,12 @@ selection signal.
     normalised range reaches y = 1.489 (≈ 33 m off the pitch), so outlier cleaning is needed.
     Proposed fix: formation-break-based kick-off with the ball as a loose check, ±1 s tolerance,
     reporting the offset; the pipeline uses the published kick-offs from games.py / the starter.
+  - **Kick-off detector v2 (31 Oct):** line-up = both teams ≥ 80% in own half (≥ 1 s, 5-frame
+    gaps bridged). Candidates are ranked by ball near the centre around the break, then by distance
+    from the tag. The kick is refined to the last frame of the closest-approach near-centre ball
+    run. On 10 fake seeds × 2 halves, all are within +1 frame. The fake generator's in-play
+    formation was stretched: before, 52% of open play looked like a line-up; now 2%. Real-data
+    result pending a human run.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 
@@ -102,7 +108,8 @@ selection signal.
    `make probe`. Paste back the output: audio on both feeds, one or neither decides T3 scope.
 3. ~~`brew install libomp`~~ done. Separately, Homebrew reports outdated Command Line Tools;
    update them via Software Update (only matters for future brew installs).
-7. ~~Kick-off diagnosis~~ done 31 Oct (see measured numbers). Decide on the proposed detector fix.
+7. ~~Kick-off diagnosis~~ done 31 Oct. **Detector rebuilt** (formation break + ball near
+   centre, ±25-frame tolerance). Re-run `make anchors` and paste back the output.
 4. **Emails** (Appendix D): send 1 (cloud assistants), the **new** 2 (Smart Tagging as a
    label-free selection signal) and 3 (deadline hour). RULES.md also invites rule questions as
    GitHub issues; anything team-specific should go by email.

@@ -25,7 +25,7 @@ ko = detect_kickoffs(atd, tags, cfg["kickoff"], sp["fps"])
 for half, row in sorted(ko.items()):
     print("half {}: {}".format(half, row))
 frames = {h: r["frame"] for h, r in ko.items() if r["frame"] is not None}
-direction = attacking_direction(atd, frames, cfg["direction"]["window_frames"]) if frames else {}
+direction = attacking_direction(atd, frames, cfg["direction"]["window_frames"]) if len(frames) == 2 else {}
 print("attacking direction (+1 = towards x=1):", direction)
 
 if sp["fake"]:
@@ -39,9 +39,11 @@ else:
 
 print("\nchecks")
 ok = True
+tol = cfg["kickoff"]["tolerance_frames"]
 for half, frame in sorted(expect.items()):
     got = ko.get(half, {}).get("frame")
-    ok &= check("half {} kick-off == {}".format(half, frame), got == frame,
+    ok &= check("half {} kick-off within +/-{} of {}".format(half, tol, frame),
+                got is not None and abs(got - frame) <= tol,
                 "got {} (offset {})".format(got, None if got is None else got - frame))
 for half, (_, first, last) in zip((1, 2), sp["half_blocks"]):
     ok &= check("half {} kick-off inside graded block".format(half),

@@ -10,15 +10,19 @@ kickoff:
   # Search window around each "Kick Off (Start)" tag, seconds before tag start / after tag end.
   search_before_s: 10.0
   search_after_s: 10.0
-  # Ball "at the centre spot": within this many metres of (L/2, W/2).
-  centre_radius_m: 2.0
-  # Formation check: fraction of each team's visible players in their own half (tolerance below).
-  own_half_frac: 0.9
+  # Line-up: per team, at least this fraction of visible players in their own half (the two
+  # kick-takers stand on the halfway line, so 1.0 is unattainable), with this tolerance.
+  own_half_frac: 0.8
   own_half_tol_m: 1.0
-  # Kick-off frame = first frame the ball has moved more than this from its resting spot.
-  ball_moved_m: 0.5
-  # Minimum frames the ball must rest at the centre before the kick.
-  min_rest_frames: 5
+  gap_fill_frames: 5          # bridge brief dropouts in the line-up mask
+  min_formation_frames: 25    # a line-up lasts at least 1 s
+  # Ball refinement around the formation break.
+  ball_search_before_s: 3.0
+  ball_search_after_s: 1.0
+  loose_radius_m: 5.0         # "near the centre" given ~1-3 m tracking offset/jitter at the spot
+  rest_slack_m: 1.0           # within this of the closest approach = still at the resting spot
+  # Acceptance: derived kick-off within this many frames of the published one (1 s).
+  tolerance_frames: 25
 
 direction:
   # Frames after each half's kick-off used to estimate attacking direction from team centroids.

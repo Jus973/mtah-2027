@@ -43,6 +43,9 @@ H, A = 0, 1
 FORMATION = np.array([
     [0.04, 0.50], [0.18, 0.15], [0.16, 0.38], [0.16, 0.62], [0.18, 0.85],
     [0.30, 0.30], [0.28, 0.50], [0.30, 0.70], [0.42, 0.18], [0.45, 0.50], [0.42, 0.82]])
+# In play the block is stretched: forwards push past halfway (x up to ~0.72), so open play rarely
+# looks like a kick-off line-up, as in real matches.
+PLAY_FORMATION = FORMATION * np.array([1.6, 1.0])
 # Kick-off: everyone in own half; one striker on the spot, one beside it.
 KICKOFF_FORMATION = FORMATION.copy()
 KICKOFF_FORMATION[9] = [0.497, 0.50]
@@ -115,7 +118,7 @@ class Sim:
                 # Blend from kick-off formation to the moving block over 3 s after the kick.
                 w = np.clip((t - kick) / (3.0 * FPS), 0.0, 1.0)[:, None, None]
                 shift = (play[t] - 0.5) * (1 if team == H else -1) * self.home_dir[half]
-                block = FORMATION[None] + np.stack([shift * 0.9 + 0.05, np.zeros_like(shift)],
+                block = PLAY_FORMATION[None] + np.stack([shift * 0.9 + 0.05, np.zeros_like(shift)],
                                                    axis=1)[:, None, :]
                 local = (1 - w) * KICKOFF_FORMATION[None] + w * (block + jitter[t][:, idx])
                 self.pos[t, idx] = team_xy(local, d)
