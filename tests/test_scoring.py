@@ -10,7 +10,7 @@ import pytest
 import baseline as starter
 from mtah import config, registry
 from mtah.eval.bands import bands
-from mtah.eval.score import PUBLIC_GT, score
+from mtah.eval.score import PUBLIC_GT, public_check, score
 from mtah.features.baseline import nearest_player_codes
 from mtah.submit.write import validate, write_csv
 
@@ -28,8 +28,26 @@ def gt_labels(fake):
 
 
 def test_public_gt_self_score():
-    s = score(PUBLIC_GT, "public")
+    s = score(PUBLIC_GT, "public", allow_public=True)
     assert s["spell_f1_mean"] == 1.0 and s["n_gt_spells"] == 17
+
+
+def test_public_window_refuses_exact_scores():
+    with pytest.raises(PermissionError, match="tuning set"):
+        score(PUBLIC_GT, "public")
+
+
+def test_public_check_verdicts(tmp_path):
+    cfg = config.load()["public_check"]
+    gt = np.loadtxt(PUBLIC_GT, delimiter=",", skiprows=1, dtype=str)[:, 1]
+    assert public_check(PUBLIC_GT, cfg) == {"verdict": "pass", "reason": None,
+                                            "swap_scores_higher": False}
+    swapped = public_check(swap(gt), cfg)
+    assert swapped["verdict"] == "broken" and swapped["swap_scores_higher"]
+    assert public_check(gt, dict(cfg, floor=1.01))["verdict"] == "fail"
+    short = write_csv(str(tmp_path / "short.csv"), gt[:100])
+    assert public_check(short, cfg)["verdict"] == "invalid"
+    assert set(public_check(PUBLIC_GT, cfg)) == {"verdict", "reason", "swap_scores_higher"}
 
 
 def test_team_sign_is_catastrophic(fake, fake_atd):

@@ -27,7 +27,9 @@ JOBS = {
     "anchors-diag": "diag_kickoff.py",
     "probe": "probe_streams.py",
     "atd-stats": "atd_stats.py",
+    "public-check": "public_check.py",
 }
+CSV_JOBS = {"public-check"}  # jobs that take a candidate CSV (CSV=...)
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
 
@@ -96,7 +98,12 @@ def main():
     parser.add_argument("job", choices=sorted(JOBS))
     parser.add_argument("--game", default="BAR-ATH")
     parser.add_argument("--data-dir", default=None, help="synthetic matches only")
+    parser.add_argument("--csv", default=None, help="candidate CSV, for " + ", ".join(sorted(CSV_JOBS)))
     args = parser.parse_args()
+    if (args.csv is not None) != (args.job in CSV_JOBS):
+        sys.exit("airlock: CSV=... is required by, and only by: " + ", ".join(sorted(CSV_JOBS)))
+    if args.csv and not (args.csv.endswith(".csv") and os.path.isfile(args.csv)):
+        sys.exit("airlock: CSV must be an existing .csv file")
     fake = registry.is_fake(args.game, args.data_dir)
     if args.data_dir and not fake:
         sys.exit("airlock: --data-dir is for synthetic matches; the bundle path comes from "
@@ -118,6 +125,8 @@ def main():
     cmd = [sys.executable, os.path.join(registry.ROOT, "scripts", JOBS[args.job]), "--game", args.game]
     if args.data_dir:
         cmd += ["--data-dir", args.data_dir]
+    if args.csv:
+        cmd += ["--csv", os.path.abspath(args.csv)]
     with open(log_path, "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                             env=env, cwd=registry.ROOT).returncode

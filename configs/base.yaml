@@ -37,6 +37,10 @@ bands:  # PLAN.md §6.3, over graded frames
   home_share_alive: [0.55, 0.72]
   max_x_frac: 0.02
 
+public_check:  # PLAN.md §6.4: the public window is a pass/fail bug check, never a score
+  floor: 0.35          # spellF1 below this = a bug or a wrong owner hypothesis (debug on the sim)
+  broken_below: 0.05   # spellF1 below this = team sign inverted or frames misaligned
+
 # Published facts used ONLY as assertions on derived values (never as pipeline inputs).
 published:
   n_frames: 199319

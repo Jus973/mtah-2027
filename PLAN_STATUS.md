@@ -193,8 +193,11 @@ selection: J03WQQ, J03WR9.**
 ## Next steps
 
 M1, in order:
-1. Airlock job for the public bug check that releases only pass/fail at spellF1 ≥ 0.35, so the
-   public window cannot become a tuning signal (RULES.md). Needed before candidate v1.
+1. ~~Public bug check~~ done 31 Oct: `make airlock T=public-check CSV=<candidate>` prints
+   pass (spellF1 ≥ 0.35) / fail / broken (< 0.05) plus a team-sign flag and the validator
+   result, never the number. `score()` refuses the public GT except for reproducing the
+   published baselines and GT self-tests. The official smooth50 file correctly gets "fail"
+   (0.3256 < 0.35); the public GT as its own candidate gets "pass".
 2. Smart-Tagging-style set-piece tags for the sim from the DFL events (bias 5 above).
 3. Autopsy table (bug check only), touch detector, dead-ball v1 (out-of-bounds is viable: the
    real ATD does not clamp), sparse Viterbi decoder, owner hypotheses H1–H3 compared on the sim

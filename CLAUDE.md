@@ -6,6 +6,8 @@
 - Agents run real-data targets only as `make airlock T=<target>` (scripts/airlock.py): it releases a report only if it
   passes the aggregate policy (src/mtah/airlock.py) and logs every release. Never set MTAH_DATA_DIR yourself, never
   type the bundle or cache path, never run real-data targets in a terminal tab.
+- The public window is pass/fail only: check a candidate with `make airlock T=public-check CSV=...`; never
+  call `score(..., "public")` on one. Candidate CSVs are per-frame, bundle-derived output: never read them.
 - Never commit anything derived from the match bundle. Pre-commit blocks data/, cache/, *.mp4, *.txt > 5 MB, *.npz, *.parquet.
 - Every threshold lives in configs/*.yaml. Every candidate CSV is logged in submissions/LOG.md with config hash + git SHA + scores.
 - Determinism: fixed seeds, CPU inference for the final run, pinned deps. `make submission` must regenerate a byte-identical file (sha256 recorded).

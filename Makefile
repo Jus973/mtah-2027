@@ -24,7 +24,7 @@ test:
 # The bundle path comes from MTAH_DATA_DIR or .mtah.local; the full log stays beside the cache.
 T ?=
 airlock:
-	@$(PY) scripts/airlock.py $(T) --game $(GAME)
+	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv $(CSV))
 
 check-data:
 	@test -n "$(MTAH_DATA_DIR)" || (echo "MTAH_DATA_DIR is not set" && exit 1)
@@ -64,8 +64,9 @@ sim-check:
 sim-costs:
 	$(PY) scripts/sim_costs.py
 
-# make score CSV=path/to.csv GT=public|sim:<game>|path
-GT ?= public
+# make score CSV=path/to.csv GT=sim:<game>|path. The public window refuses: candidates get a
+# pass/fail verdict only, via make airlock T=public-check CSV=... (RULES.md: not a tuning set).
+GT ?=
 score:
 	$(PY) -c "import json,sys; from mtah.eval.score import score; print(json.dumps(score('$(CSV)', '$(GT)', bootstrap=1000), indent=2))"
 

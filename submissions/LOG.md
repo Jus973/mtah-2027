@@ -19,3 +19,5 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   statistics (measured through the airlock; ball lost mostly in stoppages). Sim acceptance test
   PASS: official baseline smooth50 0.261 on the sim vs 0.243 full-match reference. The sim GT is
   more fragmented than the real one (see PLAN_STATUS.md, known sim biases).
+- 2026-10-31: Public-window bug check is now verdict-only (`make airlock T=public-check CSV=...`);
+  `score()` refuses the public GT for candidates. Candidate CSVs are read-denied to the agent.

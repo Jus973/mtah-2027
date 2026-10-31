@@ -46,7 +46,7 @@ for name, window in starter.VARIANTS:
     ok &= check("{} byte-identical".format(name), same, sha256_ours=sha256(path)[:12],
                 sha256_official=sha256(official)[:12])
     if name in EXPECTED_PUBLIC:
-        s = score(path, "public")
+        s = score(path, "public", allow_public=True)  # published numbers, not a candidate
         ok &= check("{} public spellF1 {:.4f} (expect {})".format(
             name, s["spell_f1_mean"], EXPECTED_PUBLIC[name]),
             abs(s["spell_f1_mean"] - EXPECTED_PUBLIC[name]) < 5e-5,

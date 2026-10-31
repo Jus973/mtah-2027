@@ -17,11 +17,14 @@ REPORT = Report()
 put, check = REPORT.put, REPORT.check
 
 
-def game_args(argv=None):
+def game_args(argv=None, add=None):
+    """--game / --data-dir (plus whatever `add(parser)` declares), then the real-data gate."""
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--game", default="BAR-ATH", help="BAR-ATH (real) or a fakedata game")
     parser.add_argument("--data-dir", default=None)
+    if add:
+        add(parser)
     args = parser.parse_args(argv)
     if not registry.is_fake(args.game, args.data_dir):
         if not (args.data_dir or os.environ.get("MTAH_DATA_DIR")):

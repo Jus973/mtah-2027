@@ -19,11 +19,11 @@ def report(values, checks=()):
     return {"values": values, "checks": list(checks)}
 
 
-def run_airlock(job, game, data_dir, cache):
+def run_airlock(job, game, data_dir, cache, *extra):
     env = dict(os.environ, MTAH_CACHE_DIR=str(cache))
     env.pop("MTAH_DATA_DIR", None)
     return subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "airlock.py"), job,
-                           "--game", game, "--data-dir", data_dir],
+                           "--game", game, "--data-dir", data_dir, *extra],
                           capture_output=True, text=True, env=env, cwd=ROOT)
 
 
@@ -128,3 +128,20 @@ def test_guard_hook(tmp_path, command, blocked):
     proc = subprocess.run([sys.executable, HOOK], input=json.dumps(event), capture_output=True,
                           text=True, env=dict(os.environ, CLAUDE_PROJECT_DIR=str(tmp_path)))
     assert proc.returncode == (2 if blocked else 0), proc.stderr
+
+
+def test_public_check_job_releases_a_verdict_only(fake, tmp_path):
+    from mtah.eval.score import PUBLIC_GT
+    cand = tmp_path / "cand.csv"
+    shutil.copy(PUBLIC_GT, cand)
+    proc = run_airlock("public-check", fake["game"], fake["data_dir"], tmp_path, "--csv", str(cand))
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "verdict: pass" in proc.stdout and "[PASS] public bug check passes" in proc.stdout
+    assert "spell_f1" not in proc.stdout and "1.0" not in proc.stdout.replace("0.05", "")
+
+
+def test_airlock_csv_only_where_declared(fake, tmp_path):
+    from mtah.eval.score import PUBLIC_GT
+    assert run_airlock("anchors", fake["game"], fake["data_dir"], tmp_path,
+                       "--csv", PUBLIC_GT).returncode != 0
+    assert run_airlock("public-check", fake["game"], fake["data_dir"], tmp_path).returncode != 0

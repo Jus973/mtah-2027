@@ -30,6 +30,7 @@ def test_agent_rules_present():
     settings = json.loads(read(".claude/settings.json"))
     deny = settings["permissions"]["deny"]
     assert "Read(./data/**)" in deny and any(d.startswith("Read(/") for d in deny)
+    assert "Read(./submissions/candidates/**)" in deny
     hooks = [h["command"] for m in settings["hooks"]["PreToolUse"] for h in m["hooks"]]
     assert any("guard_data.py" in c for c in hooks)
     assert ".mtah.local" in read(".gitignore").split()
