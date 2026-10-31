@@ -26,6 +26,7 @@ JOBS = {
     "anchors": "run_anchors.py",
     "anchors-diag": "diag_kickoff.py",
     "probe": "probe_streams.py",
+    "atd-stats": "atd_stats.py",
 }
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3

@@ -1,0 +1,66 @@
+# Simulation on degraded open data (PLAN.md §6.1, M1 learn/degrade.py).
+# `measure` defines the label-free ATD statistics that scripts/atd_stats.py reports; the
+# `degrade` numbers are those statistics measured on the real ATD (aggregates only, through the
+# airlock), never anything tied to specific frames.
+inherit: base.yaml
+
+measure:
+  speed_window_frames: 10            # ball speed = displacement over this many frames (beats jitter)
+  speed_edges_mps: [2, 6, 12, 20]    # -> bins <2, 2-6, 6-12, 12-20, >=20, plus "unknown"
+  crowd_radius_m: 3.0
+  crowd_edges: [1, 2, 3]             # players within crowd_radius_m: 0, 1, 2, >=3
+  edge_margin_m: 3.0                 # ball within this of a pitch line (or outside) = "edge"
+  gap_length_edges: [1, 2, 3, 4, 6, 9, 13, 19, 26, 41, 61, 101, 161, 251, 401, 751, 1001, 1501, 2501]
+  tracklet_edges: [1, 25, 125, 250, 750, 1500, 3000, 7500, 15000, 30000, 80000]
+  low_max_visible: 6                 # team-wide dropout episode: this many tracks or fewer
+  high_min_visible: 12               # extra-track episode: this many tracks or more
+  jump_m: 5.0                        # step between consecutive seen ball frames above this = jump
+
+# Real-ATD targets for the fit (make airlock T=atd-stats, 31 Oct 2026; graded frames only).
+targets:
+  ball_missing_frac: 0.4069
+  gaps_per_frame: 0.000938          # 149 gaps / 158,857 graded frames
+  gap_median_frames: 268
+  collective_speed_ratio: 0.517     # median player speed, ball missing / ball seen (1.000 / 1.933)
+  p11_given_7to11: [0.6266, 0.6710] # P(11 tracks | 7-11 tracks), home / away
+
+degrade:
+  slots: [24, 22]                   # home / away slot pools, as in the real ATD metadata
+  stoppage_lag_frames: 25           # ball lost up to 1 s after it goes dead
+  hazard_prior_frames: 2000         # shrinkage of sparse hazard cells towards their margins
+  # Real gap onsets [seen frames, onsets]: [speed <2, 2-6, 6-12, 12-20, >=20, unknown][crowd 0,1,2,3+]
+  hazard:
+    inside:
+      - [[3699, 6], [9538, 23], [2036, 8], [259, 3]]
+      - [[4540, 5], [17550, 15], [5642, 12], [1078, 3]]
+      - [[9264, 4], [10807, 10], [2698, 7], [506, 1]]
+      - [[9007, 3], [2486, 1], [437, 0], [82, 0]]
+      - [[1691, 1], [381, 0], [65, 0], [33, 0]]
+      - [[297, 0], [532, 0], [135, 0], [28, 0]]
+    edge:
+      - [[1074, 4], [2029, 6], [517, 3], [53, 1]]
+      - [[1549, 3], [1937, 8], [1037, 1], [118, 1]]
+      - [[773, 12], [936, 2], [289, 0], [20, 0]]
+      - [[425, 4], [115, 0], [5, 0], [0, 0]]
+      - [[129, 2], [19, 0], [10, 0], [1, 0]]
+      - [[211, 0], [143, 0], [29, 0], [4, 0]]
+  # Real gap lengths, all onset speeds pooled, over measure.gap_length_edges (149 gaps).
+  gap_length_hist: [2, 8, 2, 1, 0, 2, 0, 1, 0, 0, 0, 23, 31, 26, 34, 6, 9, 2, 2]
+  gap_length_cap: 5000
+  # Real slot tracklets, home + away pooled, over measure.tracklet_edges (1,219 tracklets).
+  tracklet_hist: [2, 217, 147, 207, 141, 151, 239, 90, 20, 5, 0]
+  tracklet_cap: 80000
+  # Team-wide dropouts (<= 6 tracks) and extra-track episodes (>= 12): per team per graded frame,
+  # lengths over measure.tracklet_edges, home + away pooled.
+  low_runs: {rate: 1.479e-4, hist: [7, 16, 6, 10, 5, 3, 0, 0, 0, 0, 0]}
+  high_runs: {rate: 4.186e-4, hist: [31, 54, 25, 18, 5, 0, 0, 0, 0, 0, 0]}
+  dup_offset_m: 1.0
+  # Fitted by scripts/fit_sim.py on the `fit` matches to the targets above.
+  # 31 Oct, 5 fit matches: missing 0.415 (real 0.407), gaps/frame 0.00089 (0.00094), median gap
+  # 342 (268) frames, speed ratio 0.59 (0.517), P(11|7-11) 0.627 (0.649). q sits at its bound: the
+  # real ball is lost in stoppages even more than "every stoppage, 70% of it" reproduces.
+  fitted: {q: 1.0, f_mean: 0.7, s: 0.4, g_frames: 100}
+
+matches:
+  fit: [J03WMX, J03WN1, J03WOH, J03WOY, J03WPY]
+  holdout: [J03WQQ, J03WR9]          # selection only (PLAN.md §6.1)
