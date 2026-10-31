@@ -94,7 +94,7 @@ The T&C forbid uploading the videos, datasets, confidential information **or any
 
 - The agent **never reads, prints, decodes, renders, or displays** anything under `data/`, `cache/`, or `$MTAH_DATA_DIR` — no `cat`, `head`, `less`, `grep`, `ffmpeg -i`, `Read` tool, image viewing, notebook cell outputs with rows. Not even "just the first 5 lines".
 - Scripts print **aggregates and per-event scalars only** (counts, percentages, scores, histograms, a table of ≤ 50 derived event scalars). Never raw tracking rows, never pixel data, never verbatim XML/text content.
-- All real-data runs are launched via `make` targets / `scripts/*.py` whose output format was designed for this. Humans run them if in doubt and paste back only the printed aggregates.
+- All real-data runs are launched via `make` targets / `scripts/*.py` whose output format was designed for this. Agents launch them only through the airlock, `make airlock T=<target>` (added 31 Oct): the target's stdout/stderr go to a log beside the cache, and the agent receives its report only if it passes the aggregate policy in `src/mtah/airlock.py` (numbers, booleans, short single-line strings, lists ≤ 64, ≤ 16 KB; crash messages withheld). Every release is appended to `<cache>/airlock/released.jsonl` for audit. The library refuses the real bundle without a terminal or the airlock, and a PreToolUse hook blocks agent commands that name the bundle path or set the data variables. Humans can still run targets in a terminal and paste back the printed aggregates.
 - Development and tests use `fakedata/` (synthetic) and open datasets (§6.2). The real bundle is used only for calibration numbers that end up as scalars in `configs/*.yaml`.
 - Nothing derived from the bundle enters the public repo: no caches, no clipped video, no frame-level exports, no model weights trained on the bundle (weights from *open* data are fine). The final CSV itself is fine.
 - **No hand labels on this match, for any purpose** (RULES.md §1) — not to train, not to validate, not to patch. Hand labels on *other* matches are allowed if disclosed and accessible to the organisers. The public GT is a correctness check only (alignment, team sign, format), never a tuning or selection signal.
@@ -110,6 +110,9 @@ The T&C forbid uploading the videos, datasets, confidential information **or any
 - NEVER read/print/decode/display anything under data/, cache/, or $MTAH_DATA_DIR. Not one line, not one frame.
   Scripts may print aggregates and per-event scalars only. If a task needs you to look at the data, stop and ask a human.
 - Develop against fakedata/ (make fake) and open datasets. Real-data runs go through make targets only.
+- Agents run real-data targets only as `make airlock T=<target>` (scripts/airlock.py): it releases a report only if it
+  passes the aggregate policy (src/mtah/airlock.py) and logs every release. Never set MTAH_DATA_DIR yourself, never
+  type the bundle or cache path, never run real-data targets in a terminal tab.
 - Never commit anything derived from the match bundle. Pre-commit blocks data/, cache/, *.mp4, *.txt > 5 MB, *.npz, *.parquet.
 - Every threshold lives in configs/*.yaml. Every candidate CSV is logged in submissions/LOG.md with config hash + git SHA + scores.
 - Determinism: fixed seeds, CPU inference for the final run, pinned deps. `make submission` must regenerate a byte-identical file (sha256 recorded).

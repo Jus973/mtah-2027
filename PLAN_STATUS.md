@@ -1,6 +1,7 @@
 # PLAN_STATUS: running state
 
-Last updated: Sat 31 Oct 2026, agent session 2 (PLAN.md revised for the rule changes).
+Last updated: Sat 31 Oct 2026, agent session 2 (rule-change revision; kick-off detector v2 passes on
+real data; the airlock lets the agent run real-data targets itself).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -53,7 +54,16 @@ selection signal.
   kloppy 3.18.0 with no warnings, and kloppy's arrays equal ours.
 - `scripts/`: `run_cache.py`, `baseline_check.py`, `run_anchors.py`, `sim_costs.py`.
   Make targets: `setup fake test cache baseline-check anchors sim-costs score`.
-- 17 tests pass with no real data present (`make test`, ~4 s).
+- **Airlock (31 Oct):** `make airlock T=<cache|baseline-check|anchors|anchors-diag|probe>` lets the
+  agent run real-data targets itself. Scripts report through `put()/check()` (`src/mtah/airlock.py`). In a
+  terminal these print as before; under the airlock they become JSON, released to the agent only if they
+  pass the aggregate policy. Child stdout/stderr and crash messages stay in `<cache>/airlock/*.log`, and
+  every release is appended to `<cache>/airlock/released.jsonl` (exactly what the agent saw).
+  `registry.gate` refuses the real bundle without a terminal or the airlock.
+  `.claude/hooks/guard_data.py` (PreToolUse) blocks agent commands that name the bundle or cache path or
+  set the data variables. The bundle path lives in `.mtah.local` (gitignored).
+- 41 tests pass with no real data present (`make test`, ~6 s), including airlock leak tests: a
+  corrupted raw line whose crash message would quote it is withheld.
 
 ## Measured numbers
 
@@ -90,8 +100,12 @@ selection signal.
     gaps bridged). Candidates are ranked by ball near the centre around the break, then by distance
     from the tag. The kick is refined to the last frame of the closest-approach near-centre ball
     run. On 10 fake seeds × 2 halves, all are within +1 frame. The fake generator's in-play
-    formation was stretched: before, 52% of open play looked like a line-up; now 2%. Real-data
-    result pending a human run.
+    formation was stretched: before, 52% of open play looked like a line-up; now 2%.
+  - `make anchors` with v2 (human run, then agent run via the airlock, identical): **all PASS.**
+    Detected 11189 and 113746, both **+4 frames** (0.16 s) from the published kick-offs; method
+    formation+ball, one candidate per half; line-up held 358 / 355 frames and broke 15 / 18 frames
+    after the kick. Direction: home attacks +x in half 1, −x in half 2. Not tuned to remove the +4
+    (that would be a frame-specific constant); the pipeline uses the published kick-offs.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 
@@ -108,9 +122,12 @@ selection signal.
    `make probe`. Paste back the output: audio on both feeds, one or neither decides T3 scope.
 3. ~~`brew install libomp`~~ done. Separately, Homebrew reports outdated Command Line Tools;
    update them via Software Update (only matters for future brew installs).
-7. ~~Kick-off diagnosis~~ done 31 Oct. **Detector rebuilt** (formation break + ball near
-   centre, ±25-frame tolerance). Re-run `make anchors` and paste back the output.
-4. **Emails** (Appendix D): send 1 (cloud assistants), the **new** 2 (Smart Tagging as a
+7. ~~Kick-off diagnosis and re-run~~ done 31 Oct: v2 PASS at +4 frames in both halves.
+8. **Nothing more to run by hand for M0.** The agent now runs real-data targets with `make airlock`.
+   To audit what it has received, read `~/mtah2027_cache/airlock/released.jsonl` (an agent may not).
+   The guard hook loads only in Claude Code sessions opened in this repo, so start new sessions there.
+4. **Emails** (Appendix D): send 1 (cloud assistants; it asks exactly whether an assistant may
+   receive aggregates, which is what both the airlock and pasting do), the **new** 2 (Smart Tagging as a
    label-free selection signal) and 3 (deadline hour). RULES.md also invites rule questions as
    GitHub issues; anything team-specific should go by email.
 5. ~~Stray bundle copies~~ deleted 31 Oct. `~/Downloads/tactical/` and `~/Downloads/tactical 2/` each hold a copy
@@ -124,11 +141,15 @@ selection signal.
 - Fake data: the ball group's third field is written as speed (the real semantics are unverified;
   nothing reads it). No goals or after-goal kick-offs, no duplicate tracks, and home share ≈ 0.5,
   so the home-share band does not apply to fake GT.
-- The kick-off detector assumes the ball is visible resting on the spot. If the real ATD loses
-  the ball at kick-off it returns `not_found`, and a formation/halfway-crossing fallback is needed.
+- The airlock guards against accidents (per-frame arrays, raw lines, XML, crash messages), not a
+  determined agent: Python run by the agent could still open files. The gate, hook and deny rules are
+  layers; CLAUDE.md is the rule.
+- Whether a cloud assistant may receive aggregates at all is the open T&C question (email 1). The
+  airlock sends the same aggregates that pasting did, with mechanical checks instead of a human eye.
 
 ## Next steps
 
-M1 (after the human checks pass): first `learn/degrade.py` on DFL/IDSSE and its acceptance test,
+M0 done. M1: first `learn/degrade.py` on DFL/IDSSE and its acceptance test,
 since it is the selection signal. Then the autopsy table (bug check only), touch detector, dead-ball
-v1, sparse Viterbi decoder, candidate v1 and an early Form upload.
+v1, sparse Viterbi decoder, candidate v1 and an early Form upload. Add an airlock job for the public bug check that releases
+pass/fail at spellF1 ≥ 0.35 only, so the public window cannot become a tuning signal (RULES.md).

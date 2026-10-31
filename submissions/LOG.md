@@ -11,3 +11,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   the PLAN §2 cost table exactly on the public GT. Fake match generator, ATD loader, kick-off and
   direction detection, and 17 tests, all passing with no real data present. Real-data checks are
   pending a human run (see PLAN_STATUS.md).
+- 2026-10-31: Kick-off detector v2 (formation break, ±1 s) PASS on real data, +4 frames in both
+  halves. Added the airlock (`make airlock T=<target>`, `src/mtah/airlock.py`, `scripts/airlock.py`):
+  agent-run real-data targets release only policy-checked aggregates, and every release is logged in
+  `<cache>/airlock/released.jsonl`. First agent run: anchors, identical to the human run.
