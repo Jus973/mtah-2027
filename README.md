@@ -16,7 +16,19 @@ export MTAH_DATA_DIR=/path/to/mtah2027      # real data: humans run these, paste
 make cache                                  # parse ATD -> npz cache, check published counts
 make baseline-check                         # regenerate official baselines byte-for-byte
 make anchors                                # derive kick-offs + attacking direction, assert them
+make atd-stats                              # label-free degradation statistics (sim targets)
+make airlock T=<target>                     # how an agent runs any of these (aggregates only)
+
+make open-data                              # DFL/IDSSE open dataset, 2.63 GB, CC BY -> ~/opendata/idsse
+make sim-fit                                # fit degradation parameters to the real ATD statistics
+make sim                                    # degraded open-data matches -> ~/opendata/sim/DFL-*
+make sim-check                              # sim acceptance test: official baseline ~0.24 on the sim
 ```
+
+Simulation data: Bassek, M., Rein, R., Weber, H. et al. *An integrated dataset of spatiotemporal
+and event data in elite soccer.* Scientific Data 12, 195 (2025),
+doi:10.6084/m9.figshare.28196177 (CC BY 4.0). Degraded copies are rebuilt by `make sim`, never
+committed.
 
 Layout: `src/mtah/` (pipeline), `configs/` (every threshold), `fakedata/` (synthetic generator),
 `scripts/` (make-target entry points), `evaluation/`, `starter/`, `games.py` (vendored official

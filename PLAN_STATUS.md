@@ -1,7 +1,7 @@
 # PLAN_STATUS: running state
 
-Last updated: Sat 31 Oct 2026, agent session 2 (rule-change revision; kick-off detector v2 passes on
-real data; the airlock lets the agent run real-data targets itself).
+Last updated: Sat 31 Oct 2026, agent session 2. M0 done; M1 started: the degraded open-data
+simulator is built and passes its acceptance test (smooth50 0.261 vs reference 0.243).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -107,6 +107,49 @@ selection signal.
     after the kick. Direction: home attacks +x in half 1, −x in half 2. Not tuned to remove the +4
     (that would be a frame-specific constant); the pipeline uses the published kick-offs.
 
+## M1 progress (31 Oct)
+
+**Sim v0 (PLAN §6.1) is built and accepted.** Pipeline: `make open-data` (DFL/IDSSE, 7 matches,
+2.63 GB, CC BY, MD5-checked, to `~/opendata/idsse`) → `learn/idsse.py` (DFL positions → CleanMatch:
+true positions, ball, BallStatus, BallPossession; referees dropped) → `learn/degrade.py` → `make sim`
+writes `~/opendata/sim/DFL-<id>/` in the bundle layout with `gt.csv` (D where the ball is dead,
+else the possessing team). Fit matches: J03WMX, J03WN1, J03WOH, J03WOY, J03WPY. **Held out for
+selection: J03WQQ, J03WR9.**
+
+- **Real ATD degradation stats** (`make airlock T=atd-stats`, label-free, graded frames):
+  - Ball missing on 40.7% of frames, but in only 149 gaps, median 268 frames. The lengths are
+    bimodal: 16 gaps < 26 frames, 133 of ≥ 101 frames, none in between.
+  - Players move half as fast while the ball is missing (median 1.00 vs 1.93 m/s), so **the ball
+    is lost mostly in stoppages.**
+  - Tracks are smooth (player |d²| median 1.4 mm); no ball jumps > 5 m; 981 frames with the ball
+    > 5 m outside the pitch.
+  - Team-wide dropouts (≤ 6 tracks) 27 home / 20 away, mean ~13 s. Extra-track episodes
+    (≥ 12 tracks) 78 / 55, mean ~6 s. 1,219 slot tracklets, mean ~100 s.
+  - The fake generator is far from this (many short gaps); it stays a test fixture only.
+- **Degradation model:** stoppage loss (each dead stretch with prob. q, for a fraction f of it) +
+  open-play gaps at the real hazard by ball speed × crowding × pitch edge (scaled by s) + tracklets,
+  dropouts, duplicates and slot churn at the real rates. Fitted (`make sim-fit`): q 1.0, f_mean 0.7,
+  s 0.4, g 100 frames. Achieved vs real: missing 0.415 / 0.407, gaps per 1,000 frames 0.89 / 0.94,
+  median gap 342 / 268, speed ratio 0.59 / 0.517, P(11 | 7–11 tracks) 0.627 / 0.649.
+- **Acceptance test** (`make sim-check`, official baseline logic, official scorer): PASS.
+  | | raw | smooth25 | smooth50 | smooth125 |
+  |---|---|---|---|---|
+  | sim mean (7) | 0.103 | 0.258 | **0.261** | 0.192 |
+  | real (official) | 0.049 | 0.200 | 0.243 | 0.224 |
+- **Known sim biases (read before trusting a sim ranking):**
+  1. The sim GT is more fragmented than the real one: 340–477 spells per 90 min, 25–37% under 2 s
+     (inferred real: ~20%). DFL's possession flips more often than Metrica's mechanical GT, so the
+     sim favours fast-reacting methods (it ranks smooth25 ≈ smooth50 > smooth125, while the real
+     match ranks smooth50 > smooth125 > smooth25). Treat sim differences in *time-scale*
+     parameters as coarse; differences in *event detection* should transfer better.
+  2. Raw per-frame nearest player scores 2× higher on the sim (0.10 vs 0.05): sim tracks are
+     cleaner near the ball than real ones (extra tracks are offset copies, not referees or
+     mislabelled objects).
+  3. The real ball is lost in stoppages even more than q = 1 reproduces (speed ratio 0.59 vs 0.517).
+  4. J03WN1 and J03WQQ include a red card (10 v 11), as real matches can.
+  5. No Smart Tagging in the sim yet: tag-based components cannot run on it until set-piece tags
+     are derived from the DFL events.
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
@@ -149,7 +192,10 @@ selection signal.
 
 ## Next steps
 
-M0 done. M1: first `learn/degrade.py` on DFL/IDSSE and its acceptance test,
-since it is the selection signal. Then the autopsy table (bug check only), touch detector, dead-ball
-v1, sparse Viterbi decoder, candidate v1 and an early Form upload. Add an airlock job for the public bug check that releases
-pass/fail at spellF1 ≥ 0.35 only, so the public window cannot become a tuning signal (RULES.md).
+M1, in order:
+1. Airlock job for the public bug check that releases only pass/fail at spellF1 ≥ 0.35, so the
+   public window cannot become a tuning signal (RULES.md). Needed before candidate v1.
+2. Smart-Tagging-style set-piece tags for the sim from the DFL events (bias 5 above).
+3. Autopsy table (bug check only), touch detector, dead-ball v1 (out-of-bounds is viable: the
+   real ATD does not clamp), sparse Viterbi decoder, owner hypotheses H1–H3 compared on the sim
+   (fit matches; held-out matches only for the final pick), candidate v1, early Form upload.
