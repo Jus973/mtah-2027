@@ -25,3 +25,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   compared on held-out with oracle D: H1 0.606, H2 0.585, H3 0.504 (smooth50 + oracle D 0.403).
   H1 picked (configs/rules.yaml); H2 kept (configs/rules_h2.yaml). Touch statistics on the real
   match (airlock) match the sim's closely, so the tuned 1.0 m radius should transfer.
+- 2026-10-31: Dead-ball v1 (out of bounds, long gaps, stillness; D up to the restart touch),
+  tuned end to end on the sim fit matches: held-out spellF1 0.541 with detected D (oracle 0.606,
+  official baseline 0.286). Real match, label-free: 135 D runs (band PASS), 86% of set-piece tags
+  start inside predicted D; predicted restarts sit 9.5 s after set-piece tag starts.

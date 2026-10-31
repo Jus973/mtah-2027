@@ -1,8 +1,8 @@
 # PLAN_STATUS: running state
 
 Last updated: Sat 31 Oct 2026, agent session 2. M0 done. M1: sim v0 accepted (smooth50 0.261 vs
-reference 0.243); public check is verdict-only; touches + owner hypotheses done, H1 picked
-(held-out sim spellF1 0.606 with oracle D, vs 0.403 for smooth50 + oracle D).
+reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-ball v1: held-out
+sim spellF1 0.541 with detected D (0.606 with oracle D; official baseline 0.286).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -182,6 +182,32 @@ with **D taken from the sim GT** (owner rule alone; dead-ball v1 is next):
   minute; real contact episodes run longer (median 12 vs 8 frames). The sim-tuned radius should
   transfer; the real ball "sticks" to a player a little longer.
 
+**Dead-ball v1 (31 Oct).** `events/deadball.py`: evidence = ball out of bounds (observed beyond
+a line by > 0.5 m for ≥ 15 frames), long ball gaps (≥ 25 frames), stillness (ball and players
+calm); evidence runs within 50 frames merge, and each is D up to the restart touch. `make sim-dead`
+tunes it end to end (H1 spellF1) on the fit matches:
+
+| held-out | spellF1 | alive/dead F1 | transition F1 @25 |
+|---|---|---|---|
+| H1 + oracle D | 0.606 | 1.000 | 0.70 |
+| **H1 + detected D** (rules.yaml) | **0.541** | 0.889 | 0.58 |
+| H1 + D from gaps only | 0.534 | 0.878 | 0.58 |
+| H1 + D out of bounds + stillness (no gaps) | 0.454 | 0.797 | 0.47 |
+| H2 + detected D | 0.522 | 0.892 | 0.57 |
+| official baseline smooth50 | 0.286 | – | 0.16 |
+
+- **Gaps carry the detector, and that is partly circular:** the sim loses the ball in stoppages
+  by construction (fitted q = 1). The real ATD supports it even more strongly (speed ratio 0.517
+  real vs 0.59 sim), and the no-gap variant still beats the baseline (0.454 vs 0.286).
+  Stillness adds nothing on the sim (tuned to effectively off).
+- **D is over-predicted:** 51–52% of graded frames vs 41% in the sim GT (precision 0.79, recall
+  0.98). H1 still beats H2 with detected D.
+- **Real match, label-free** (`make airlock T=dead-stats`): D on 49.7% of graded frames (likely
+  over by ~10 points, as on the sim); 135 D runs (band 60–150: PASS); 86% of the 57 set-piece tags
+  start inside a predicted D run (chance ≈ 50%). Set-piece tags are fixed 35 s windows and the
+  predicted restart falls **9.5 s after the tag start** (IQR 6.0–13.2 s): stored as
+  `tags.set_piece_restart_after_start_s` for tag-anchored restarts later.
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
@@ -225,13 +251,12 @@ with **D taken from the sim GT** (owner rule alone; dead-ball v1 is next):
 ## Next steps
 
 M1, in order:
-1. ~~Public bug check~~ done (verdict-only).
-2. ~~Touches + owner hypotheses~~ done: H1 (rules.yaml), H2 kept (rules_h2.yaml).
-3. Dead-ball v1 (`events/deadball.py`): out of bounds (the real ATD does not clamp), ball still +
-   players static, long ball gaps (the real ATD loses the ball mostly in stoppages), tag restarts.
-   Tune and measure on the sim against its D; replaces the oracle D above.
-4. Gap policy and the sparse Viterbi decoder; latency residuals on the sim.
-5. Candidate v1 on the real match through the airlock: bands, public bug check (verdict only),
-   then the early Form upload (human).
-6. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), needed to
-   test tag-based restarts on the sim.
+1. ~~Public bug check~~, ~~touches + owner hypotheses~~, ~~dead-ball v1~~ done.
+2. Candidate v1 on the real match (`scripts/run_candidate.py`, `make candidate`): rules.yaml
+   end to end, output CSV to `submissions/candidates/`, bands (§6.3) and the public bug check
+   through the airlock, a LOG.md row with config hash, git SHA and sha256; then the early Form
+   upload (human).
+3. Cut the D over-prediction (restart placement, gap-in-play filter); gap policy and the sparse
+   Viterbi decoder; latency residuals on the sim.
+4. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), to test
+   tag-anchored restarts.

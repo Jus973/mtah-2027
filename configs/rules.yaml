@@ -26,3 +26,24 @@ owner:
   n_c: 2                    # H2 only: controlled if the ball stays close >= n_c frames,
   v_c_mps: 1.0              #     or is slower than this after the touch,
   t_c_s: 0.25               #     or the next touch is the same team's within t_c seconds
+
+# Tuned by make sim-dead on the 5 fit matches (31 Oct), owner rule H1, end-to-end spellF1.
+# Held-out: 0.541 with detected D (oracle D 0.606; official baseline 0.286). Ablation on held-out:
+# gap alone 0.534, oob alone 0.445, still alone 0.435, oob+still 0.454. Stillness adds nothing on
+# the sim even without gaps (v_still sits at its grid's low end: effectively off).
+deadball:
+  oob_margin_m: 0.5         # observed ball this far beyond a line = out of play
+  oob_min_frames: 15
+  gap_min_frames: 25        # ball missing at least this long = a stoppage (real gaps: < 26 or > 100)
+  gap_offset_frames: 0
+  speed_window_frames: 25
+  v_still_mps: 0.05         # ball slower than this ...
+  v_players_mps: 1.0        # ... and players' mean speed below this ...
+  still_min_frames: 75      # ... for at least this long = a stoppage
+  merge_frames: 50          # evidence runs this close are one stoppage
+
+# Smart Tagging <-> tracking alignment (PLAN.md M1), label-free: make airlock T=dead-stats on the
+# real match, 31 Oct. Set-piece tags are fixed 35 s windows; the predicted restart (dead-ball v1
+# D run end) falls 9.48 s after the tag start (IQR 6.0-13.2 s, 57 tags). Not used by v1 yet.
+tags:
+  set_piece_restart_after_start_s: 9.48
