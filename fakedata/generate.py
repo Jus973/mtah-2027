@@ -28,6 +28,8 @@ import sys
 
 import numpy as np
 
+from mtah.io.atd_write import write_gt, write_meta, write_raw
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -318,97 +320,6 @@ class Sim:
         self.ball_obs = ball_obs
 
 
-def speeds(xy, fps=FPS):
-    """(T, S) m/s from consecutive positions, NaN where either side is missing."""
-    m = xy * np.array(PITCH)
-    v = np.full(xy.shape[:2], np.nan)
-    d = np.linalg.norm(np.diff(m, axis=0), axis=-1) * fps
-    v[1:] = d
-    return v
-
-
-def fmt_group(x, y, s):
-    if np.isnan(x):
-        return "NaN,NaN,NaN"
-    return "{:.5f},{:.5f},{:.2f}".format(x, y, 0.0 if np.isnan(s) else s)
-
-
-def write_raw(path, slots, ball):
-    v = speeds(slots)
-    bv = speeds(ball[:, None, :])[:, 0]
-    with open(path, "w") as handle:
-        for t in range(slots.shape[0]):
-            groups = ";".join(fmt_group(slots[t, s, 0], slots[t, s, 1], v[t, s])
-                              for s in range(slots.shape[1]))
-            handle.write("{}:{}:{}\n".format(t + 1, groups, fmt_group(ball[t, 0], ball[t, 1], bv[t])))
-
-
-def write_meta(path, tl, home_dir1):
-    """EPTS metadata, structured the way kloppy's metrica_epts reader expects it."""
-    players = []
-    pchan = []
-    refs = []
-    for s in range(N_SLOTS):
-        team = "T1" if s < HOME_SLOTS else "T2"
-        pid = "P{}".format(s + 1)
-        players.append(
-            '<Player id="{0}" teamId="{1}"><Name>Track {2}</Name><ShirtNumber>{2}</ShirtNumber>'
-            '<ProviderPlayerParameters/></Player>'.format(pid, team, s + 1))
-        for ch in ("x", "y", "speed"):
-            pchan.append('<PlayerChannel id="{0}_{1}" playerId="{0}" channelId="{1}"/>'.format(pid, ch))
-        refs.append('<SplitRegister separator=","><PlayerChannelRef playerChannelId="{0}_x"/>'
-                    '<PlayerChannelRef playerChannelId="{0}_y"/>'
-                    '<PlayerChannelRef playerChannelId="{0}_speed"/></SplitRegister>'.format(pid))
-    params = [("first_half_start", tl.k1 + 1), ("first_half_end", tl.h1[1] + 1),
-              ("second_half_start", tl.k2 + 1), ("second_half_end", tl.h2[1] + 1)]
-    gp = "".join("<ProviderParameter><Name>{}</Name><Value>{}</Value></ProviderParameter>".format(k, v)
-                 for k, v in params)
-    direction = "left_to_right" if home_dir1 > 0 else "right_to_left"
-    xml = """<?xml version="1.0" encoding="utf-8"?>
-<main>
-<Metadata>
-<GlobalConfig><FileDate>2026-10-30</FileDate><TrackingType>Optical</TrackingType>
-<ProviderName>Metrica Sports</ProviderName><FrameRate>{fps}</FrameRate>
-<ProviderGlobalParameters>{gp}</ProviderGlobalParameters></GlobalConfig>
-<Sessions><Session id="S1"><SessionType>Match</SessionType><Start>2026-10-30T00:00:00</Start>
-<FieldSize><Width>{L}</Width><Height>{W}</Height></FieldSize>
-<MatchParameters><Score idLocalTeam="T1" idVisitingTeam="T2"><LocalTeamScore>0</LocalTeamScore><VisitingTeamScore>0</VisitingTeamScore></Score></MatchParameters>
-</Session></Sessions>
-<Teams>
-<Team id="T1"><Name>{home}</Name><ProviderTeamsParameters><ProviderParameter><Name>attack_direction_first_half</Name><Value>{dir}</Value></ProviderParameter></ProviderTeamsParameters></Team>
-<Team id="T2"><Name>{away}</Name><ProviderTeamsParameters/></Team>
-</Teams>
-<Players>
-{players}
-</Players>
-<Devices><Device id="D1"><Name>Device 1</Name><Sensors>
-<Sensor id="position"><Name>Position</Name><Channels>
-<Channel id="x"><Name>position_x</Name><Unit>normalized</Unit></Channel>
-<Channel id="y"><Name>position_y</Name><Unit>normalized</Unit></Channel>
-</Channels></Sensor>
-<Sensor id="distance"><Name>Distance</Name><Channels>
-<Channel id="speed"><Name>speed</Name><Unit>meters per second</Unit></Channel>
-</Channels></Sensor>
-</Sensors></Device></Devices>
-<PlayerChannels>
-{pchan}
-</PlayerChannels>
-</Metadata>
-<DataFormatSpecifications>
-<DataFormatSpecification id="DFS1" startFrame="1" endFrame="{n}" separator=":">
-<StringRegister id="frameCount" name="frameCount"/>
-<SplitRegister separator=";">{refs}</SplitRegister>
-<SplitRegister separator=","><BallChannelRef channelId="x"/><BallChannelRef channelId="y"/><BallChannelRef channelId="speed"/></SplitRegister>
-</DataFormatSpecification>
-</DataFormatSpecifications>
-</main>
-""".format(fps=FPS, gp=gp, L=int(PITCH[0]), W=int(PITCH[1]), home=HOME_NAME, away=AWAY_NAME,
-           dir=direction, players="\n".join(players), pchan="\n".join(pchan), n=tl.n,
-           refs="".join(refs))
-    with open(path, "w") as handle:
-        handle.write(xml)
-
-
 def write_homography(path, n):
     """Constant tactical camera: normalised pitch -> 1920x1080 pixels. Valid everywhere."""
     h = [1800.0, 0.0, 60.0, 0.0, 950.0, 65.0, 0.0, 0.0, 1.0]
@@ -431,12 +342,6 @@ def write_tags(path, tags):
         handle.write('<?xml version="1.0" encoding="utf-8"?>\n<file><ALL_INSTANCES>\n')
         handle.write("\n".join(rows))
         handle.write("\n</ALL_INSTANCES></file>\n")
-
-
-def write_gt(path, labels):
-    with open(path, "w") as handle:
-        handle.write("frame,label\n")
-        handle.writelines("{},{}\n".format(i, l) for i, l in enumerate(labels))
 
 
 def spell_stats(labels, blocks):
@@ -469,8 +374,12 @@ def generate(game="BAR-FAKE", seed=0, half_s=900.0, out_root=None):
     sim.observe()
 
     stem = os.path.join(tac, game + "_tactical")
-    write_meta(stem + "_atd.xml", tl, sim.home_dir[1])
-    write_raw(stem + "_atd.txt", sim.slots, sim.ball_obs)
+    team_of_slot = np.array([H] * HOME_SLOTS + [A] * (N_SLOTS - HOME_SLOTS))
+    params = [("first_half_start", tl.k1 + 1), ("first_half_end", tl.h1[1] + 1),
+              ("second_half_start", tl.k2 + 1), ("second_half_end", tl.h2[1] + 1)]
+    write_meta(stem + "_atd.xml", tl.n, FPS, PITCH, team_of_slot, (HOME_NAME, AWAY_NAME), params,
+               sim.home_dir[1])
+    write_raw(stem + "_atd.txt", sim.slots, sim.ball_obs, PITCH, FPS)
     write_homography(stem + "_homography.csv", tl.n)
     write_tags(stem + "_smart_tagging.xml", sim.tags)
     write_gt(os.path.join(out, "gt.csv"), sim.label)
