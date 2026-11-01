@@ -1,9 +1,9 @@
 # The final candidate (PLAN.md §6.4, M4): make submission runs exactly this config.
-# Selected 1 Nov 2026: v5 (configs/rules_v5.yaml), by the paired §6.4 rule: better than the
-# previous final (v3 without stillness) on all 7 sim matches, +0.030, sign test p = 0.0078.
-# Before: v3, selected 31 Oct over v1 by the same rule (7/7). Change the parent only by the
-# decision rule, and record it in submissions/LOG.md.
-inherit: rules_v5.yaml
+# Selected 1 Nov 2026: v6 (configs/rules_v6.yaml), by the paired §6.4 rule (make paired): better
+# than v5 on all 7 sim matches, +0.014, sign test p = 0.0078. Before: v5 (over v3, +0.030, 7/7)
+# and v3 (over v1, 7/7). Change the parent only by the decision rule, and record it in
+# submissions/LOG.md.
+inherit: rules_v6.yaml
 
 # M3 simplification (make sim-ablate): stillness evidence removed. It is inert on this match
 # (the output without it is byte-identical) and worth -0.003 on the held-out sim (< 0.01).
