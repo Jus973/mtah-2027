@@ -52,7 +52,8 @@ def run(game, cfg, data_dir=None, atd=None):
     ev = evidence(ball_raw, ball, observed, players, graded, atd.pitch, cfg["deadball"], fps)
     dead = np.zeros(sp["n_frames"], dtype=bool)
     restarts = []                       # releases that ended a stoppage: the taker's touch
-    runs = dead_runs(ev, touches, graded, cfg["deadball"], out_restarts=restarts)
+    runs = dead_runs(ev, touches, graded, cfg["deadball"], tuple(cfg["deadball"]["kinds"]),
+                     out_restarts=restarts)
     for a, b, _ in runs:
         dead[a:b + 1] = True
     kicks = kickoffs(game, atd, cfg, data_dir)

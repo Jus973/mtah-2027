@@ -47,7 +47,7 @@ players = atd.players_m()[..., :2].astype(float)
 d, _ = team_distances(players, ball, atd.team_of_slot)
 touches = touch_events(ball, d, cfg["touch"], fps)
 ev = evidence(ball_raw, ball, observed, players, graded, atd.pitch, cfg["deadball"], fps)
-dr = dead_runs(ev, touches, graded, cfg["deadball"])
+dr = dead_runs(ev, touches, graded, cfg["deadball"], tuple(cfg["deadball"]["kinds"]))
 dead = np.zeros(len(graded), dtype=bool)
 for a, b, _ in dr:
     dead[a:b + 1] = True

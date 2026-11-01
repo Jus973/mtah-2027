@@ -398,6 +398,32 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
     (PANNs/YAMNet) would need downloaded weights and has no sim analogue, so by M3 it would
     default off anyway.
   - *Commentary ASR* (optional, "only if sync works"): skipped. The sync fails acceptance.
+- **M3 ablations** (`make sim-ablate`, held-out, bootstrap 1000; Δ vs final):
+
+  | change | held-out Δ | note |
+  |---|---|---|
+  | rules only (v1) | −0.043 | |
+  | without long-gap evidence | −0.110 | |
+  | without out-of-bounds evidence | −0.005 | |
+  | without stillness | −0.003 | |
+  | α 1 instead of 3 | +0.004 | not re-tuned on held-out: α is tuned out of fold |
+
+  Real-match checks for the two small ones:
+  - *Stillness* is inert on this match: the output without it is byte-identical. **Dropped from
+    `configs/final.yaml`** (`deadball.kinds: [oob, gap]`). Re-tuning out of fold on the final
+    config keeps α 3.0, the retrained model is byte-identical, and `make submission` reproduces
+    the same sha256.
+  - *Out of bounds* is **kept**, as an exception to M3's < 0.01 drop rule. Without it,
+    consistency is 0.742 (vs 0.740), but set-piece alignment falls (D near the aligned restart:
+    25% vs 32%) and there are 119 D runs instead of 133. It is the one D evidence that does not
+    lean on the sim's stoppage-gap assumption (sim bias 3), so the sim understates it.
+- **Video ball recovery go/no-go (M3): no-go by default.**
+  - (a) Rules + learned below 0.65 on sim: yes (0.584).
+  - (b) ≥ 25% of missed or split spells lie in ball gaps: yes, just (J03WQQ 25.3% of 194,
+    J03WR9 27.2% of 162).
+  - (c) P3 has ≥ 4 free days: a human call (TODO 10).
+  - PLAN's prior is 0.3, and detector weights trained on bundle frames cannot be committed (they
+    would need deterministic retraining). Default no-go.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 
@@ -444,6 +470,11 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
    ```
    pandoc is not installed, so the output is Markdown, which the Form accepts. Install pandoc
    (`brew install pandoc` plus a LaTeX engine) if you want the PDF and an exact page count.
+
+10. **Optional go/no-go, video ball recovery (M3).** Conditions (a) and (b) are met; (c), P3
+    having ≥ 4 free days, is yours. Default no-go (prior 0.3). If go, see PLAN M3 for the method;
+    any detector must retrain deterministically from the repo, since weights trained on bundle
+    frames cannot be committed.
 
 ## Blocked / known limitations
 

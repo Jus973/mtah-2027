@@ -42,7 +42,8 @@ LAUNCH_GRID = {"min_launch_mps": [1.0, 2.0, 3.0, 5.0, 8.0, 12.0, 99.0],   # 99 =
                "rest_mps": [0.25, 0.5, 1.0, 2.0, 4.0]}
 
 
-def labels(m, params, kinds=KINDS, dead=None):
+def labels(m, params, kinds=None, dead=None):
+    kinds = kinds or tuple(params["deadball"]["kinds"])
     touches = m.touches(params["touch"])
     if dead is None:
         ev = evidence(m.ball_raw, m.ball, m.observed, m.players, m.graded, m.atd.pitch,
@@ -54,7 +55,8 @@ def labels(m, params, kinds=KINDS, dead=None):
                         m.fps)
 
 
-def d_quality(m, params, kinds=KINDS):
+def d_quality(m, params, kinds=None):
+    kinds = kinds or tuple(params["deadball"]["kinds"])
     ev = evidence(m.ball_raw, m.ball, m.observed, m.players, m.graded, m.atd.pitch,
                   params["deadball"], m.fps)
     dm = dead_mask(ev, m.touches(params["touch"]), m.graded, params["deadball"], kinds)

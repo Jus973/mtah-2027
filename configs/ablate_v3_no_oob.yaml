@@ -1,0 +1,4 @@
+# M3 ablation (not a submission candidate): v3 without out-of-bounds dead-ball evidence.
+inherit: rules_v3.yaml
+deadball:
+  oob_min_frames: 1000000000

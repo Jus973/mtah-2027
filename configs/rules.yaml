@@ -47,6 +47,7 @@ deadball:
   v_players_mps: 1.0        # ... and players' mean speed below this ...
   still_min_frames: 75      # ... for at least this long = a stoppage
   merge_frames: 50          # evidence runs this close are one stoppage
+  kinds: [oob, gap, still]  # evidence kinds that make D (events/deadball.py)
   restart_window_frames: null  # release restarts: a touch started inside the evidence, ending
                             #   at most this many frames before it ends (v1: off)
   restart_flight_mps: 99.0  # flight restarts: the ball reappears this fast after a gap (v1: off)

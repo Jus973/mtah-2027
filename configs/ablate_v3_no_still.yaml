@@ -1,0 +1,4 @@
+# M3 ablation (not a submission candidate): v3 without stillness dead-ball evidence.
+inherit: rules_v3.yaml
+deadball:
+  still_min_frames: 1000000000

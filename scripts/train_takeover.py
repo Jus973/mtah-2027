@@ -36,7 +36,8 @@ class Prepared:
                                                    oc["label_lag_frames"])
         ev = evidence(m.ball_raw, m.ball, m.observed, m.players, m.graded, m.atd.pitch,
                       cfg["deadball"], m.fps)
-        self.dead = dead_mask(ev, m.touches(cfg["touch"]), m.graded, cfg["deadball"])
+        self.dead = dead_mask(ev, m.touches(cfg["touch"]), m.graded, cfg["deadball"],
+                              tuple(cfg["deadball"]["kinds"]))
 
     def labels(self, p, alpha, penalty, dead=None):
         return decode_viterbi(self.events, p, self.m.graded, self.dead if dead is None else dead,
