@@ -12,9 +12,10 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 21:13 | ablate-v3-no_oob | 2ad4fc1b4402 | 158d253 | 09352f5c76797526 | pass | 0.5784 | pass | consistency 0.742; M3 ablation, not a submission | no |
 | 2026-10-31 21:13 | ablate-v3-no_still | cb4e3815f479 | 158d253 | 00f4551f83d84c89 | pass | 0.5808 | pass | consistency 0.740; M3 ablation (= v3 output: stillness inert) | no |
 | 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | FINAL until 1 Nov, superseded by v5 (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 | no |
-| 2026-11-01 00:43 | v5 | 82ab56b08fbc | 53938f3 | c1abb6e5e46d78ab | pass | 0.6087 | pass | consistency 0.746; SELECTED: paired §6.4, 7/7 sim matches beat the v3 final, +0.030, p = 0.0078 | no |
-| 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | **FINAL** (§6.4): configs/final.yaml = v5, same file as v5; consistency 0.746 | no |
-| 2026-11-01 10:16 | v6 | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | consistency 0.742 | no |
+| 2026-11-01 00:43 | v5 | 82ab56b08fbc | 53938f3 | c1abb6e5e46d78ab | pass | 0.6087 | pass | consistency 0.746; selected 1 Nov over the v3 final (paired §6.4, 7/7, +0.030, p = 0.0078); superseded by v6 | no |
+| 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | FINAL 1 Nov until v6 (§6.4): configs/final.yaml = v5, same file as v5; consistency 0.746 | no |
+| 2026-11-01 10:16 | v6 | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | consistency 0.742; SELECTED: make paired vs v5, 7/7, +0.014, p = 0.0078 | no |
+| 2026-11-01 10:16 | final | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | **FINAL** (§6.4): configs/final.yaml = v6, same file as v6; consistency 0.742 | no |
 
 
 ## Work log
@@ -107,3 +108,20 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 - 2026-11-01: v3 was restored as FINAL (66652fe) because the user had asked for v3; the user then
   set a new goal, to optimise the entry for winning the whole challenge. v5 is re-selected by the
   §6.4 paired rule (47d485f reverts the restore; same file, sha256 c1abb6e5e46d78ab…).
+- 2026-11-01: Optimising for the win (user goal). Oracles on v5 (held-out sim): the true owner on
+  alive frames is worth +0.23, the true `D` +0.085 (+0.058 of it outside long gaps), the true
+  labels in gaps +0.065. Of v5's missed turnovers outside gaps, two-thirds had a contact by the
+  new owner's team within 1 s: the takeover decision is the lever.
+  - **v6** (`configs/rules_v6.yaml`): ten team-shape signals at each contact join the takeover
+    model (`models/takeover_v2.txt`, AUC 0.915). `make paired` vs v5: +0.014, 7/7, p = 0.0078;
+    held-out 0.609 → 0.627. Real match: all checks pass; consistency 0.742 (v5 0.746); stability
+    min 0.867. **Selected (FINAL)**, sha256 fe4b6878b3a22d6a…: twice, and from a fresh clean
+    clone (cold, twice).
+  - Tried and dropped (paired vs v6 unless stated): all 88 shape features (+0.0145, 6/7: a tie);
+    ball direction at contacts +0.001; label lag 12 / 25 frames −0.011 / −0.038; capacity
+    variants ≤ 0; a 5-seed average −0.002; gap models with 5 s context −0.002; gap penalties
+    re-tuned on v6: unchanged.
+  - Learned per-frame `D` (shape + ball): +0.034 (7/7), but it reads the DFL data's frozen
+    dead-time ball. On the sim 20.5–22.0% of seen ball frames do not move; on the real ATD
+    0.08% (airlock atd-stats). Without ball kinematics +0.018 (6/7, a tie); players only −0.030.
+    Dropped: no learned part that decides `D` reads ball kinematics.

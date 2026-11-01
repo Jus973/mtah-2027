@@ -18,11 +18,11 @@ make cache                                  # parse the ATD into an npz cache ou
 make submission                             # -> "submissions/final/Berkeley Sports Research Group.csv"
 ```
 
-`make submission` runs `configs/final.yaml` (the selected candidate, v5), the official validator
+`make submission` runs `configs/final.yaml` (the selected candidate, v6), the official validator
 and the structural bands on the exact file. It records the file's sha256 in
 `submissions/final/<team>.sha256`, or checks it against that file when it exists. The team name
 (`team` in `configs/base.yaml`; override with `TEAM="..."`) is the file name. The
-submitted file has sha256 `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`
+submitted file has sha256 `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc`
 (`submissions/final/Berkeley Sports Research Group.sha256`). Runs are deterministic: CPU only, no randomness at
 inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 13 s once the cache exists.
 
@@ -37,8 +37,8 @@ docker run -t -v /path/to/mtah2027:/data -v "$PWD/out":/out mtah
 ## How it works
 
 Every contact between the ball and a player is a candidate possession change. A LightGBM model
-trained only on degraded open data (`models/takeover_v1.txt`) gives each contact by the
-non-owning team a takeover probability. A two-state Viterbi over the contacts
+trained only on degraded open data (`models/takeover_v2.txt`) gives each contact by the
+non-owning team a takeover probability, from the contact's kinematics and both teams' shape. A two-state Viterbi over the contacts
 (`src/mtah/decode/viterbi.py`) picks the owner path. Dead-ball stretches come from the tracking:
 the ball out of bounds or lost by the tracker, up to the restart (`src/mtah/events/deadball.py`).
 Inside long ball gaps, two more sim-trained models read the players alone (team shape and motion,
@@ -54,7 +54,8 @@ make sim-check                              # sim acceptance test: official base
 make train-takeover                         # retrain models/takeover_v1.txt (byte-identical)
 make train-gaps                             # retrain the gap models (byte-identical) + paired test
 make sim-ablate                             # held-out ablations of the final config
-make candidate NAME=v5 CFG=configs/rules_v5.yaml   # a candidate + bands, consistency, public check
+make candidate NAME=v6 CFG=configs/rules_v6.yaml   # a candidate + bands, consistency, public check
+make paired A=configs/rules_v5.yaml B=configs/rules_v6.yaml   # §6.4 paired test, cross-fitted
 ```
 
 Agents run real-data targets only through the airlock, which releases policy-checked aggregates:

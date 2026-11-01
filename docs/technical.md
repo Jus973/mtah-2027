@@ -3,13 +3,13 @@ Source of the technical document (PLAN.md §8). `make doc REPO=<url>` writes doc
 .pdf when pandoc is installed), <team> from configs/base.yaml. HTML comments like this
 one are notes for the team and do not render. Every number below comes from a make target;
 real-match numbers are label-free aggregates or verdicts (make airlock T=...).
-Version of 1 Nov 2026: final candidate v5 (configs/final.yaml). Re-check numbers at M4 freeze.
+Version of 1 Nov 2026: final candidate v6 (configs/final.yaml). Re-check numbers at M4 freeze.
 -->
 
 # Ball possession from automatic tracking: <TEAM_NAME>
 
 More Than A Hack 2027, Phase 1: FC Barcelona (H) vs Athletic Club (A). The submitted file is
-produced by `make submission` from `configs/final.yaml` (candidate **v5**). Code: <REPO_URL>.
+produced by `make submission` from `configs/final.yaml` (candidate **v6**). Code: <REPO_URL>.
 
 ## 1. Approach
 
@@ -19,7 +19,7 @@ steps:
 1. Every contact is a candidate change.
 2. A gradient-boosted model, trained only on *other* matches (open DFL data degraded to look
    like this match's tracking), gives each contact by the team without the ball a probability of
-   taking it.
+   taking it, from the contact's kinematics and both teams' shape around it.
 3. A two-state Viterbi over the contacts picks the most likely owner sequence.
 4. A `D` stretch starts where the ball is beyond a line or lost by the tracker, and ends at the
    restart.
@@ -60,16 +60,13 @@ smoothing baseline levels off near 0.24.
 tolerance, uncorrected. Before the derived second-half kick-off, the graded block is `D`.
 
 **Tried and dropped, with the measured reason** (held-out sim spellF1 unless stated; §5):
-- *Smoothing baseline:* 0.286.
-- *Hard owner rules* (v1: any opponent touch flips): 0.541. *H2* (controlled touch) 0.522;
-  *H3* (two touches) 0.504 with the true `D`.
+- *Other owner rules:* *H2* (controlled touch) 0.522; *H3* (two touches) 0.504 with the true `D`.
 - *Logistic regression* for takeovers (0.63 vs 0.65 with the true `D`); *pressure features*
   (players within 3 / 8 m: held-out AUC unchanged).
 - *Stillness as `D` evidence:* inert on this match; the output is byte-identical without it.
 - *Four extra `D` rules* (calm-gap filter, release and in-flight restarts, kicks from rest):
   +0.004 / +0.009, ties under the paired rule (§5.3), with consistency down to 0.728 / 0.726.
-- *Latency corrections:* moving `D` onsets earlier costs −0.003; moving takeovers into a
-  preceding ball gap tunes to a no-op.
+- *Latency corrections:* earlier `D` onsets −0.003; takeovers moved into a gap: a no-op.
 - *Tag-anchored restarts:* set-piece tags are fixed 35 s windows (restart IQR 7 s).
 - *Broadcast ball:* audio gives no consistent offset; ball-track sync finds the half offsets, but
   only 6 of 93 live segments pass PLAN's acceptance, recovering 0.6% of missing frames (falsifier
@@ -77,9 +74,13 @@ tolerance, uncorrected. Before the derived second-half kick-off, the graded bloc
 - *Whistles* (2–4.5 kHz tonal heuristic): 0.8% of `D` onsets have one within 1 s vs 0.6% by
   chance (gate 70%).
 - *Gap timing and contacts as gap-model features:* +0.003, dropped. They would tie the model to
-  where the sim places its gaps.
-- *Video ball detection:* no-go. With v5, only 18–22% of the missed held-out spells lie in ball
-  gaps, under PLAN's 25% go condition (prior success 0.3).
+  where the sim places its gaps. A 5 s context: −0.002.
+- *Learned per-frame `D`:* +0.034, but only by reading the sim's frozen dead-time ball (§5.5);
+  without ball kinematics +0.018 (a tie), from players alone −0.030.
+- *Takeover variants:* ball direction +0.001, a 5-seed average −0.002, other capacities ≤ 0,
+  labels 0.5 s / 1 s after the contact −0.011 / −0.038.
+- *Video ball detection:* no-go. Only 18–22% of the missed held-out spells lie in ball gaps,
+  under PLAN's 25% go condition (prior success 0.3).
 
 **External data.** Bassek, Rein, Weber et al., *An integrated dataset of spatiotemporal and event
 data in elite soccer*, Scientific Data 12, 195 (2025), CC BY 4.0: 25 Hz positions from seven
@@ -111,20 +112,15 @@ frame up to the restart, the first touch after the evidence ends. Long gaps are 
 (§3.5).
 
 **3.4 Owner decoder.** Inside each alive stretch, the state is the owner after each contact:
-- a contact by the owner's team keeps it at no cost;
-- a contact by the other team either takes the ball (score log p) or does not (log(1 − p)), with
-  p from §4 sharpened by α = 3 on the log-odds scale;
-- the Viterbi path is the best owner sequence, and each change lands on the contact's first
-  frame;
-- the stretch starts in whichever state scores best, which after a stoppage is normally the
-  first contact's team;
-- a gap shorter than 25 frames holds the owner (no contact, no change).
+a contact by the owner's team keeps it at no cost; one by the other team takes the ball (score
+log p) or not (log(1 − p)), with p from §4 sharpened by α = 3 on the log-odds scale. The Viterbi
+path is the best owner sequence; each change lands on the contact's first frame, and a stretch
+starts in whichever state scores best. A gap under 25 frames holds the owner.
 
 **3.5 Long ball gaps.** Long gaps cover 40% of this match's graded frames. On the sim a fifth of
 long-gap frames are alive, and the owner changes inside them with no contact. Per gap frame, two
-models (§4) give P(dead) and P(`H` owns | alive). Each gap is decoded in steps of 5 frames over
-the states `H`, `A` and `D`, with emissions log((1 − p_dead) p_home), log((1 − p_dead)(1 − p_home))
-and log p_dead. Each change into or out of `D` costs 30, and each owner change costs 15,
+models (§4) give P(dead) and P(`H` owns | alive), and a three-state Viterbi over `H`, `A`, `D` in
+5-frame steps decodes each gap. A change into or out of `D` costs 30, an owner change 15,
 including where the gap meets the labels around it. Before a kick-off, the ball stays dead.
 
 **3.6 Timing.** Residual offsets of matched transitions on the sim, as median frames (predicted
@@ -134,23 +130,24 @@ corrections we tested made things worse (§2), so none is applied.
 ## 4. Learned components
 
 Three LightGBM models, single-threaded and seeded, all trained on the sim only. The first is the
-**takeover probability** (`models/takeover_v1.txt`, 300 trees of 15 leaves, learning rate 0.03).
+**takeover probability** (`models/takeover_v2.txt`, 300 trees of 15 leaves, rate 0.03).
 - *Training data:* the five fit sim matches only. A row is a contact by the team that does not
   own the ball in the sim GT just before it (2,237 contacts, 51% takeovers). Its label is whether
   the GT owner 5 frames after the contact is the toucher's team. Nothing is trained on this
   match.
-- *Features:* 15, relative to the toucher's team (team-symmetric): the contact's duration and
-  closest distances, the ball's speeds, speed change and turn (with missing flags), and the
-  rhythm of the previous and next contacts.
+- *Features:* 25, relative to the toucher's team (team-symmetric): the contact's duration and
+  closest distances, the ball's speeds, speed change and turn (with missing flags), the rhythm
+  of the previous and next contacts, and, since v6, ten team-shape signals: both teams' widths,
+  the centroid and speed gaps, both teams' forward drift 1 s and 2 s after the contact, and
+  both centroids' change across it. A team that wins the ball spreads and moves forward.
 - *Tuning:* out of fold, each fit match scored by a model trained on the other four, end to end
   with the detected `D`: α = 3 and flip penalty 0, inside their grids. Retraining is
   byte-identical.
-- *Held-out:* contact AUC 0.913.
+- *Held-out:* contact AUC 0.915 (0.913 without the shape signals).
 
-The other two are the **gap models** (`models/gap_dead_v1.txt`, `models/gap_owner_v1.txt`: 300 trees
-of 31 leaves, learning rate 0.05).
-- *Training data:* every 5th long-gap frame of the five fit matches, from both teams'
-  perspectives: 118,540 rows for P(dead), and 23,036 alive rows for the owner.
+The other two are the **gap models** (`models/gap_dead_v1.txt`, `models/gap_owner_v1.txt`: 300
+trees of 31 leaves, rate 0.05).
+- *Training data:* every 5th long-gap frame of the fit matches, from both teams' perspectives.
 - *Features:* 44, from the players only, in each team's attacking direction: per team centroid,
   length, width, deepest and highest player, players in the opponent half, visible players, mean
   speed and forward drift, plus centroid, drift and speed 1 s and 2 s either side.
@@ -159,8 +156,7 @@ of 31 leaves, learning rate 0.05).
   the owner on 0.813 / 0.872 of alive gap frames (last contact's team 0.72 / 0.69). Team widths
   and forward drift matter most.
 
-The touch and dead-ball thresholds were fitted by coordinate descent over fixed grids, also on
-the fit matches only.
+Touch and dead-ball thresholds were fitted by coordinate descent on the fit matches only.
 
 ## 5. Validation protocol
 
@@ -196,7 +192,8 @@ are the official scorer's bootstrap (1,000 resamples):
 | v2: v1 + extra `D` rules | 0.522 | 0.568 | 0.545 | tie, not selected |
 | v3: contacts + takeover model + Viterbi | 0.559 [0.519, 0.600] | 0.609 [0.572, 0.645] | 0.584 | selected 31 Oct |
 | v4: v3 + extra `D` rules | 0.563 | 0.623 | 0.593 | tie, consistency regression |
-| **v5: v3 + ball-free gap decoder** | **0.585 [0.544, 0.623]** | **0.633 [0.596, 0.671]** | **0.609** | **selected 1 Nov** |
+| v5: v3 + ball-free gap decoder | 0.585 [0.544, 0.623] | 0.633 [0.596, 0.671] | 0.609 | selected 1 Nov |
+| **v6: v5 + team shape at contacts** | **0.610 [0.571, 0.649]** | **0.644 [0.606, 0.682]** | **0.627** | **selected 1 Nov** |
 
 Decision rule (PLAN.md §6.4, amended 31 Oct before v3 was selected):
 1. Discard any candidate that fails the validator, the bands or the public check.
@@ -205,15 +202,16 @@ Decision rule (PLAN.md §6.4, amended 31 Oct before v3 was selected):
    are out of fold. It needs a positive mean difference and a one-sided sign test at p ≤ 0.05.
    Otherwise it is a tie, decided by fewer components, then consistency, then macroF1.
 
-v3 beat v1 on all seven matches (v3 out of fold, v1 in-sample), p ≈ 0.008; the earlier
-interval-overlap rule cannot resolve less than about 0.07 with two matches. v4's extra `D`
-thresholds are in-sample, so only its held-out pair counts: a tie. v5 beats the v3 final (v3
-without stillness, 0.581) on all seven matches, with both sides out of fold: +0.038, +0.033,
-+0.014, +0.038 and +0.031 on the fit matches, and +0.028 and +0.028 held-out, so p ≈ 0.008.
+`make paired` runs this with every learned part cross-fitted. Each selection won all seven
+matches (p ≈ 0.008): v3 over v1; v5 over the v3 final (v3 without stillness, 0.581) by +0.030;
+v6 over v5 by +0.014 (+0.002, +0.004, +0.013, +0.004, +0.038 fit; +0.026, +0.011 held-out). The
+earlier interval-overlap rule cannot resolve less than about 0.07 with two matches. v4's extra
+`D` thresholds are in-sample, so only its held-out pair counts: a tie.
 
 *Ablations of the final config* (held-out mean, change on removal): back to the hard rules
-−0.068; long-gap evidence −0.055; the gap decoder −0.028; out-of-bounds evidence −0.006;
-stillness 0 (dropped from v3, where it was −0.003).
+−0.086; long-gap evidence −0.055; the gap decoder −0.029; team shape at contacts −0.018;
+out-of-bounds evidence −0.007; stillness 0 (dropped). α = 1 instead of the out-of-fold α = 3
+would be +0.002 held-out; held-out matches never tune.
 Out-of-bounds stays despite PLAN's 0.01 simplicity bar, because it is the one `D` evidence that
 does not lean on the sim's built-in stoppage gaps. On this match, without it fewer `D` runs end
 near set-piece restarts (25% vs 32%).
@@ -221,56 +219,54 @@ near set-piece restarts (25% vs 32%).
 **5.4 Label-free checks on the real match.** *Structural bands* were set in PLAN.md before any
 candidate existed. They filter out catastrophic errors and never rank.
 
-| Band (graded frames) | allowed | v5 (final) | v3 | v1 |
+| Band (graded frames) | allowed | v6 (final) | v3 | v1 |
 |---|---|---|---|---|
-| spells | 280–550 | 319 | 312 | 354 |
-| spells < 2 s / < 6 s | 10–30% / 35–60% | 16.3% / 48.0% | 18.3% / 51.3% | 22.9% / 55.1% |
-| mean spell | 7–16 s | 10.3 s | 10.0 s | 8.8 s |
+| spells | 280–550 | 328 | 312 | 354 |
+| spells < 2 s / < 6 s | 10–30% / 35–60% | 15.9% / 48.5% | 18.3% / 51.3% | 22.9% / 55.1% |
+| mean spell | 7–16 s | 10.1 s | 10.0 s | 8.8 s |
 | `D` runs | 60–150 | 135 | 133 | 133 |
 | home share of alive frames | 0.55–0.72 | 0.61 | 0.62 | 0.61 |
 | `X` on graded frames; kick-off team; `D` before the 2nd-half kick-off | 0; yes; yes | pass | pass | pass |
 
 The short-spell shares sit close to the ≈ 20% / ≈ 50% inferred from the official lag figures.
 
-- *Smart-Tagging consistency:* team-tagged phases imply who has the ball (the tagged team for
-  attacking phases, its opponent for defending ones). The share of tagged alive frames that
-  agree is **0.746 for v5** (v3 and v1 0.740, v2 0.728, v4 0.726). It flags regressions; it is
-  not a target; paired attack/defend phases agree identically, which confirms the mapping.
-- *Gap frames:* v5 decodes 6.8% of long-gap frames alive (sim 17–20%), and there the tags agree
-  with its owner on 0.847 of 12,548 frames. Team-tagged phases cover 51% of the gap frames it
+- *Smart-Tagging consistency:* the share of alive frames inside team-tagged phases whose owner
+  is the team the phase implies (attacking: the tag's team; defending: the other) is **0.742
+  for v6** (v5 0.746, v3 and v1 0.740, v2 0.728, v4 0.726). It flags
+  regressions and is not a target.
+- *Gap frames:* v6 decodes 6.9% of long-gap frames alive (sim 17–20%), and there the tags agree
+  with its owner on 0.814 of 12,759 frames. Team-tagged phases cover 51% of the gap frames it
   keeps `D`, like other `D` (59%), not alive frames (83%): real dead time, not missed play.
 - *Set pieces:* 32% of the 57 set-piece tags have a predicted `D` ending within 2 s of the
   tag-aligned restart (chance ≈ 9%).
 - *Stability:* 18 thresholds were moved ±10% one at a time, and each model was retrained with
-  two other seeds. The worst variant keeps 0.861 spell agreement with the final output (median
-  1.000; takeover seeds 0.968 / 0.969, gap-model seeds 1.000 / 0.999). Not fragile.
-- *Disagreement:* v1 / v2 / v3 / v5 differ on 9.5% of graded frames, v3 and v5 on 2.7% (PLAN
-  expects < 10%). Humans
-  inspect those clips in the clip viewer to find bugs, never to label.
+  two other seeds. The worst variant keeps 0.867 spell agreement with the final output (median
+  1.000; takeover seeds 0.965 / 0.967, gap-model seeds 0.999 / 0.996). Not fragile.
+- *Disagreement:* v1 / v3 / v5 / v6 differ on 6.2% of graded frames (< 10%); humans watch those
+  clips to find bugs, never to label.
 - *Public window:* **pass**, team sign right.
 
 **5.5 Known sim biases.**
 1. DFL possession flips more often than the mechanical GT: 25–37% of sim spells are under 2 s,
-   vs about 20% inferred here. v5 predicts 0.85× the sim GT's spell count, so it does not chase
-   that fragmentation.
-2. Sim tracks are cleaner near the ball.
-3. The real ball is lost in stoppages even more than the sim reproduces.
-4. The sim has no Smart Tagging.
-5. The sim's alive share inside long gaps is a consequence of the fitted ball-loss model; this
-   match's own appears lower (§5.4).
-
-Touches transfer: the ball is within 1.0 m of a player on 28.7% of real ball-seen frames vs
-28.0–29.7% on the sim.
+   vs about 20% inferred here. v3 and v5 predict 0.81× and 0.85× the sim GT's spell count, so
+   they do not chase that fragmentation.
+2. Sim tracks are cleaner near the ball; the real ball is lost in stoppages even more; the sim
+   has no Smart Tagging.
+3. The sim's alive share inside long gaps comes from the fitted ball-loss model; this match's
+   own appears lower (§5.4).
+4. The DFL data freezes the ball in dead time: 21% of seen sim ball frames do not move, against
+   0.08% here (`make airlock T=atd-stats`). No learned part that decides `D` reads ball
+   kinematics.
 
 ## 6. Limitations and next steps
 
 - **Changes inside ball gaps:** the gap decoder recovers part of them from the players alone.
-  18–22% of v5's missed held-out spells still lie in gaps. With the true labels inside long gaps,
-  the sim ceiling is +0.10 over v3, against v5's +0.03.
+  18–22% of v6's missed held-out spells still lie in gaps. With the true labels inside long gaps,
+  the sim ceiling is +0.10 over v3, against the gap decoder's +0.03.
 - **`D` is over-predicted:** 48.1% of graded frames here (v3 50.8%), and 42–45% vs 41% true on
   the held-out sim.
-- **Restart owner:** after tagged corners, the first spell is the corner team's 5 times in 11.
-- **Fouls and offsides** with the ball still tracked produce no evidence.
+- **Restarts:** after tagged corners, the first spell is the corner team's 5 times in 11; fouls
+  and offsides with the ball still tracked produce no evidence.
 - **Semantics:** the labels are DFL's notion of possession; a systematic mismatch with this
   match's GT is a bias the sim cannot measure, checked only by the bands and consistency.
 - **Phase 2:** the pipeline is match-agnostic (matches in `games.py`, thresholds in `configs/`).
@@ -279,27 +275,23 @@ Touches transfer: the ball is within 1.0 m of a player on 28.7% of real ball-see
 
 ```bash
 make setup                          # Python 3.11.14 venv, pinned requirements.txt
-make test                           # 94 tests, no match data needed
+make test                           # 96 tests, no match data needed
 export MTAH_DATA_DIR=/path/to/bundle
 make cache                          # parse the ATD into an npz cache outside the repo
 make submission                    # -> submissions/final/<team>.csv, validator, bands, sha256
 # optional, to retrain and re-check on the sim:
-make open-data && make sim && make train-takeover && make train-gaps && make sim-ablate
+make open-data && make sim && make train-takeover CFG=configs/rules_v6.yaml && make train-gaps
+make sim-ablate && make paired B=configs/rules_v6.yaml A=configs/rules_v5.yaml
 ```
 
 - **Submitted file:** sha256
-  `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`
-  (`submissions/final/Berkeley Sports Research Group.sha256`; the FINAL row of `submissions/LOG.md`).
-- **Determinism:** inference has no randomness. It runs on the CPU, with single-threaded
-  LightGBM and `PYTHONHASHSEED=0`. Each of these produced the same file, equal to the committed
-  sha256:
-  - a fresh clone with an empty cache, run twice;
-  - the Docker image, on linux/arm64 and on linux/amd64.
-
-  The Dockerfile reproduces the file from a mounted bundle.
-- **Runtime:** about 13 s for `make submission` with the parse cache warm, on an Apple M4 (10
-  cores, 16 GB). Training takes 33 s (takeover) and 2.5 min (gap models, with the out-of-fold
-  tuning) on the sim.
+  `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc`
+  (`submissions/final/Berkeley Sports Research Group.sha256`; FINAL row of `submissions/LOG.md`).
+- **Determinism:** CPU only, single-threaded LightGBM, `PYTHONHASHSEED=0`. A fresh clone with
+  an empty cache (twice) and the Docker image (linux/arm64 and amd64, from a mounted bundle) all
+  produce the committed sha256.
+- **Runtime:** about 13 s for `make submission` with the parse cache warm (Apple M4); training
+  on the sim takes about 3 min.
 - **Tooling:** the code was written with an AI coding assistant. It never received match data,
   video, raw tracking lines or per-frame labels. Real-data runs released only aggregate
   statistics and pass/fail verdicts, filtered by a mechanical policy and logged

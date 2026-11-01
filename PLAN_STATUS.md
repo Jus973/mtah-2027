@@ -4,13 +4,14 @@ Last updated: Sun 1 Nov 2026, agent session 3. **Every agent-side item of PLAN.m
 or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
 reproductions, and the public repo (https://github.com/Jus973/mtah-2027). What is left is human:
 register the team name, and upload when the Form arrives (a daily Gmail watch will flag it;
-none by 1 Nov).** The final file is `make submission` from `configs/final.yaml` (candidate v5:
-learned takeovers + Viterbi, plus a ball-free decode inside long ball gaps), sha256
-`c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`. A cold clean clone (twice)
-and Docker on arm64 and amd64 give the same file.
-- Held-out sim: 0.609 (v3 0.581, v1 0.541); v5 beats v3 on 7/7 sim matches (p = 0.0078).
-- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.746;
-  stable under ±10% threshold changes.
+none by 1 Nov).** The final file is `make submission` from `configs/final.yaml` (candidate v6:
+learned takeovers with team shape + Viterbi, plus a ball-free decode inside long ball gaps),
+sha256 `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc`. A cold clean clone
+(twice) and Docker on arm64 and amd64 give the same file.
+- Held-out sim: 0.627 (v5 0.609, v3 0.581, v1 0.541). Each step won all 7 sim matches under the
+  paired §6.4 rule (`make paired`, every learned part cross-fitted).
+- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.742;
+  stable under ±10% threshold changes (min 0.867).
 - Technical document: `docs/technical.md` (≈ 6 pages; `make doc`).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
@@ -328,6 +329,41 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   (sim bias 1). v3 predicts 0.8× the sim GT's spells and sits inside the real bands, but a
   semantic mismatch is a bias the sim cannot measure.
 
+## v6: team shape at contacts; what else was tried (1 Nov, agent; goal: optimise to win)
+
+- **Where v5 lost** (held-out sim oracles): the true owner on alive frames +0.23; the true `D`
+  +0.085, of which +0.058 outside long gaps; the true labels in gaps +0.065. Of v5's missed
+  turnovers outside gaps, 146 of 215 had a contact by the new owner's team within 1 s; it also
+  placed 100 spurious flips in 420. So the takeover decision is the lever.
+- **v6** (`configs/rules_v6.yaml`, `learn/takeover.py` shape_features): ten team-shape signals
+  from the toucher's perspective at each contact (widths, centroid and speed gaps, forward drift
+  1 s and 2 s after, centroid change across the contact). `models/takeover_v2.txt`, sim fit
+  matches only: held-out AUC 0.915 (v5 0.913), byte-identical retrain, α 3 / penalty 0 still best
+  out of fold. `make paired A=configs/rules_v5.yaml B=configs/rules_v6.yaml`: +0.002, +0.004,
+  +0.013, +0.004, +0.038 (fit, out of fold), +0.026, +0.011 (held-out): mean +0.014, 7/7,
+  p = 0.0078; held-out 0.609 → 0.627. `make sim-ablate`: CIs [0.571, 0.649] / [0.606, 0.682];
+  macroF1 0.878; gap decoder −0.029, long gaps −0.055, out of bounds −0.007, rules only −0.086.
+- **Real match** (airlock): candidate checks pass (328 spells, 15.9% < 2 s, 135 `D` runs, home
+  share 0.61); consistency 0.742 (v5 0.746, v3 0.740: within noise); set-piece alignment 32%;
+  gap frames 6.9% alive, tag agreement there 0.814; stability min 0.867 (takeover seeds 0.965 /
+  0.967, gap seeds 0.999 / 0.996); disagreement v1/v3/v5/v6 6.2% (v2, rejected, left out).
+- **FINAL: v6.** sha256 `fe4b6878…01c7cc`, twice, from a fresh clean clone (cold, twice; 96 tests
+  pass there) and in Docker (see the log). To go back to v5: `inherit: rules_v5.yaml` in
+  `configs/final.yaml` with its sha256 `c1abb6e5…618d`.
+- **Tried and dropped** (paired, cross-fitted):
+  - all 88 shape features at contact start and end: +0.0145, 6/7 (a tie);
+  - ball direction at contacts (position along the attack, forward ball speed): +0.0007, 4/7;
+  - takeover label lag 12 / 25 frames: −0.011 / −0.038; capacity (7 or 31 leaves, 150 or 600
+    rounds, 20 or 80 per leaf): all ≤ 0; a 5-seed average: −0.002;
+  - gap models with 5 s context: −0.002; gap penalties re-tuned on v6: unchanged (30 / 15).
+- **Learned per-frame `D`: dropped, a sim artifact.** Team shape + ball features over all graded
+  frames, decoded as a 2-state path: frame accuracy 0.978 vs 0.86–0.88 for the evidence `D`, and
+  +0.034 (7/7). But the DFL data freezes the ball in dead time: on the sim 99.5% of seen dead
+  frames have a ball that does not move, and 20.5–22.0% of all seen ball frames; on the real ATD
+  0.08% (`make airlock T=atd-stats`, new statistic). Without ball kinematics: +0.018 (6/7, a tie);
+  players only: −0.030. Fixing the sim (a realistic dead-time ball) would let a learned `D` be
+  tested honestly; it is the main next step.
+
 ## v5: ball-free decode inside long ball gaps (1 Nov, agent)
 
 - **Diagnosis** (v3, out of fold, 7 sim matches). Of 1,282 missed GT turnovers (±1 s), 328 are
@@ -364,10 +400,8 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - stability: min spell agreement 0.861 over 18 perturbed thresholds; gap-model seeds 1.000 /
     0.999; disagreement v3 vs v5 2.7% of graded frames, any two of v1/v2/v3/v5 9.5% (< 10%);
   - `D` share 48.1% (v3 50.8%; held-out sim 42–45% vs GT 41–42%).
-- **FINAL: v5.** `configs/final.yaml` inherits `rules_v5.yaml`. sha256 `c1abb6e5…618d`, twice,
-  cold, from a fresh clean clone (cold, twice; 94 tests pass there) and in Docker on linux/arm64
-  and linux/amd64. To go back to v3: `inherit: rules_v3.yaml` with `deadball.kinds: [oob, gap]`
-  in `configs/final.yaml`, and restore the old sha256 (`00f4551f…bc499a`).
+- **Selected 1 Nov, then superseded by v6.** v5's file (sha256 `c1abb6e5…618d`) reproduced twice,
+  cold, from a fresh clean clone and in Docker on linux/arm64 and linux/amd64.
 
 ## M2–M4 progress (31 Oct, agent; goal: finish the plan)
 
@@ -543,7 +577,7 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
 4. **When the Form arrives (by 14 Nov): upload, after you say go.**
    - CSV: `submissions/final/Berkeley Sports Research Group.csv`. Rebuild it right before
      uploading with `make submission`; its sha256 must be
-     `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d` (v5, since 1 Nov).
+     `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc` (v6, since 1 Nov).
    - Repo URL: https://github.com/Jus973/mtah-2027.
    - Document: `docs/Berkeley Sports Research Group.md`. Rebuild it with
      `make doc REPO=https://github.com/Jus973/mtah-2027` after any change to `docs/technical.md`.
@@ -556,8 +590,9 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
      `tools/clipviewer/index.html`; `make autopsy`.
    - *PDF of the document:* install pandoc plus a LaTeX engine, then `make doc` writes it.
 6. Review the revised PLAN.md (§1, §5, §6, the amended §6.4) and object to anything you
-   disagree with. **New on 1 Nov:** the final moved from v3 to v5 by the §6.4 paired rule (v5
-   section above). Say so if you want v3 back; the switch is one line in `configs/final.yaml`.
+   disagree with. **New on 1 Nov:** under your goal to optimise for the win, the final moved
+   from v3 to v5 to v6, each by the §6.4 paired rule (sections above). Any earlier one is one
+   line in `configs/final.yaml` away.
 7. After the competition, delete every bundle copy and the caches (T&C).
 
 Done earlier (kept for the record):
@@ -606,5 +641,8 @@ above). The human steps are the TODO list. If there is time before the freeze, o
 2. Restart owner after corners (5/11 corner team): a restart-specific feature for the takeover
    model, judged by the paired rule and the set-piece check.
 3. Decode D in the same Viterbi path, using the v2 rules as soft evidence instead of hard rules.
-Re-check every change with `make sim-ablate`, the paired §6.4 rule, `make airlock
+4. **Make the sim's dead-time ball realistic** (the DFL data freezes it; see the v6 section),
+   then re-fit the `D` rules and re-test a learned per-frame `D`: the sim says the true `D`
+   outside long gaps is worth +0.058 held-out, and v6's `D` is still rule-based.
+Re-check every change with `make sim-ablate`, `make paired`, `make airlock
 T=candidate|stability`, and `make submission` (sha256 changes need a new FINAL row).
