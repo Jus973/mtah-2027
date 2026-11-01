@@ -61,10 +61,11 @@ stability:  # PLAN.md §6.2c, scripts/stability.py: label-free self-consistency 
   params: [ball.max_interp_gap, ball.outside_m, ball.v_max_mps, touch.r_touch_m, touch.min_frames,
            touch.min_turn_deg, touch.min_dv_mps, owner.contact_r_m, owner.alpha,
            deadball.oob_margin_m, deadball.oob_min_frames, deadball.gap_min_frames,
-           deadball.merge_frames, kickoff.tolerance_frames]
+           deadball.merge_frames, kickoff.tolerance_frames, gaps.min_frames, gaps.step_frames,
+           gaps.lam_dead, gaps.lam_owner]
 
 disagreement:  # PLAN.md §6.5, scripts/disagreement.py (debugging only)
-  candidates: [v1, v2, v3]
+  candidates: [v1, v2, v3, v5]
   min_frames: 5             # shorter disagreement runs are not worth a clip
 
 sync:  # PLAN.md M2 T3, scripts/sync_stats.py: broadcast -> tactical from audio
@@ -94,7 +95,7 @@ whistle:  # PLAN.md M2 T3, audio/whistle.py and scripts/whistle_stats.py
   gate: 0.7                 # ... of >= 70% of the anchors, else no whistle cue
 
 clipviewer:  # PLAN.md §6.5, scripts/clip_export.py + tools/clipviewer/ (humans, debugging only)
-  configs: {v1: rules.yaml, v2: rules_v2.yaml, v3: final.yaml}
+  configs: {v1: rules.yaml, v2: rules_v2.yaml, v3: final.yaml, v5: rules_v5.yaml}
   min_frames: 5
   pad_s: 2.0
   max_clips: 300

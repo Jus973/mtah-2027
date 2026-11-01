@@ -54,9 +54,14 @@ digest = sha256(out)
 put("candidate", {"name": args.name, "config": os.path.relpath(os.path.abspath(args.config),
                                                                registry.ROOT),
                   "config_hash": config.config_hash(cfg), "git": git_sha(), "sha256": digest[:16]})
+graded = registry.graded_mask(sp)
 put("pipeline", {"touches": info["touches"], "d_runs_from_evidence": info["d_runs_evidence"],
                  "d_share_graded": info["d_share_graded"],
                  "kickoffs_found": sorted(info["kickoffs"])})
+if "gap_frames" in info:
+    put("gap decoder", {"long_gap_share_graded": info["gap_frames"] / int(graded.sum()),
+                        "alive_share_in_gaps": info["gap_alive_share"],
+                        "d_share_graded_after": float(np.mean(labels[graded] == "D"))})
 
 ok = check("official validator", validate(out, sp["n_frames"]) is None)
 pub = cfg["published"]

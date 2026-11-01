@@ -3,7 +3,7 @@
 The config's output is the reference. Each numeric threshold in stability.params is moved by
 -/+ stability.perturb_frac (integers by at least 1), one at a time, and the pipeline is re-run.
 With owner.decoder viterbi, the takeover model is also retrained on the sim's fit matches with
-other seeds. Each variant is compared with the reference on graded frames:
+other seeds, and so are the gap models with gaps.enabled. Each variant is compared with the reference on graded frames:
   agree  share of frames with the same label;
   spell  official spellF1 of the variant scored against the reference as if it were the GT.
 A candidate whose spells shift wholesale (spell < stability.min_spell) under a 10% change is
@@ -56,6 +56,22 @@ def seed_models(cfg, seeds, folder):
     return out
 
 
+def seed_gap_models(cfg, seeds, folder):
+    """{seed: {"dead": path, "owner": path}}: gap models retrained on the sim's fit matches."""
+    import train_gaps as tg
+    import train_takeover as tt
+    from mtah.learn import gapstate
+    gs = [tg.Gaps(tt.Prepared("DFL-" + g, cfg), cfg["gaps"]) for g in cfg["matches"]["fit"]]
+    names = gapstate.feature_names(cfg["gaps"])
+    out = {}
+    for seed in seeds:
+        out[seed] = {}
+        for k, booster in tg.fit_gaps(gs, dict(cfg["gap_model"], seed=seed), names).items():
+            out[seed][k] = os.path.join(folder, "gap_{}_seed{}.txt".format(k, seed))
+            booster.save_model(out[seed][k])
+    return out
+
+
 args = game_args(add=add)
 cfg = config.load(os.path.abspath(args.config))
 st = cfg["stability"]
@@ -93,6 +109,19 @@ if cfg["owner"]["decoder"] == "viterbi" and st["seeds"]:
             seeds["seed {}".format(seed)] = [agree, spell]
             spells.append(spell)
     put("takeover model retrained with other seeds: [agree, spell]", seeds)
+
+if cfg.get("gaps", {}).get("enabled") and st["seeds"]:
+    with tempfile.TemporaryDirectory() as folder:
+        seeds = {}
+        for seed, paths in seed_gap_models(cfg, st["seeds"], folder).items():
+            variant = copy.deepcopy(cfg)
+            for k, path in paths.items():
+                variant["gaps"][k + "_model"] = path
+            labels, _ = pipeline.run(args.game, variant, args.data_dir, atd=atd)
+            agree, spell = compare(ref, labels, graded)
+            seeds["seed {}".format(seed)] = [agree, spell]
+            spells.append(spell)
+    put("gap models retrained with other seeds: [agree, spell]", seeds)
 
 put("spell agreement over all variants (min, median)",
     [float(np.min(spells)), float(np.median(spells))])
