@@ -35,6 +35,9 @@ JOBS = {
     "submission": "make_submission.py",
     "stability": "stability.py",
     "disagreement": "disagreement.py",
+    "audio": "audio_stats.py",
+    "sync": "sync_stats.py",
+    "whistle": "whistle_stats.py",
 }
 # Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
 JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"},

@@ -370,6 +370,34 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - Real match: consistency 0.726 (v3 0.740, a regression); D ending near the aligned restart
     19% (v3 32%); corner restart owner 3/10.
   - v3 stays selected.
+- **Tag-anchored restarts (M1 d, M2 boundaries, M3 "+tag anchors"): dropped.**
+  - Set-piece tags are fixed 35 s windows. The tracking restart sits 9.5 s after the tag start
+    with IQR 6.0–13.2 s, much coarser than the tracking restart itself.
+  - On the real match, a tag-anchored rule could only be judged against those same tags
+    (circular). There is no sim analogue either: sim tags would need the tagger's timing noise,
+    which cannot be measured without labels.
+- **T3 audio and broadcast** (`audio/features.py`, `sync/audio_xcorr.py`, `sync/pointset.py`,
+  `audio/whistle.py`; `make airlock T=audio|sync|whistle`). Audio is decoded locally with PyAV
+  (tactical 7,973 s, broadcast 6,580 s, 49 s to decode), with features cached outside the repo.
+  - *Audio sync fails.* 60 s windows of high-passed loudness or whistle-band energy reach a
+    median peak correlation of 0.23–0.25 and no confident windows. Without gates the offsets
+    scatter, with ≈ 0% ball agreement.
+  - *Tracking sync works* (PLAN fallback). The broadcast ATD is in the same pitch coordinates.
+    90.5% of windows sync, with a median ball distance of 0.8 m at the best lag. There are two
+    offsets: tactical = broadcast + 4,014 frames in half 1 and + 26,920 in half 2 (the broadcast
+    skips half-time). But within a half the balls agree within 2 m on only 71–75% of frames.
+  - *Per live segment* (runs of valid broadcast homography), only 6 of the 93 judgeable segments
+    meet PLAN's acceptance (≥ 90% within 2 m).
+  - **T3-broadcast falsifier: FAIL.** The synced broadcast ball recovers 0.6% of tactical-missing
+    graded frames (all in predicted D) vs the 10% required. **Dropped.**
+  - *Whistle detector.* A spectral heuristic (2–4.5 kHz tonality ≥ 40 and band ≥ median + 10 dB
+    for ≥ 120 ms) finds 20 whistles in the match. 0.8% of D onsets have one within 1 s (chance
+    0.6%), and neither derived kick-off does. Looser thresholds find up to 19 per minute, but
+    only 40% of D onsets have one (chance 24%), and restarts sit below chance. **Gate (≥ 70%):
+    FAIL. Dropped.** Whistles are faint in the tactical camera audio. A learned detector
+    (PANNs/YAMNet) would need downloaded weights and has no sim analogue, so by M3 it would
+    default off anyway.
+  - *Commentary ASR* (optional, "only if sync works"): skipped. The sync fails acceptance.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 

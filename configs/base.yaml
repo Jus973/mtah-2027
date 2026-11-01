@@ -63,3 +63,29 @@ stability:  # PLAN.md §6.2c, scripts/stability.py: label-free self-consistency 
 disagreement:  # PLAN.md §6.5, scripts/disagreement.py (debugging only)
   candidates: [v1, v2, v3]
   min_frames: 5             # shorter disagreement runs are not worth a clip
+
+sync:  # PLAN.md M2 T3, scripts/sync_stats.py: broadcast -> tactical from audio
+  features: [band_db, log_rms]   # whistle-band energy (sharp shared events) and loudness
+  highpass_frames: 125      # remove the slow loudness trend (5 s)
+  window_frames: 1500       # 60 s broadcast windows ...
+  hop_frames: 750           # ... every 30 s
+  exclude_frames: 50        # the second peak must be this far from the first
+  min_score: 0.3            # confident window: peak correlation ...
+  min_ratio: 1.5            # ... and peak / second peak
+  cluster_tol_frames: 2     # windows within this offset are one live segment
+  min_cluster_windows: 2
+  tol_m: 2.0                # PLAN.md acceptance: balls agree within 2 m ...
+  accept: 0.9               # ... on >= 90% of the frames where both feeds see it
+  pointset:                 # fallback: sync on the two feeds' ball tracks (sync/pointset.py)
+    step_frames: 25         # coarse search over every lag at 1 fps, then refined
+    min_frames: 250         # a window needs this many frames with both balls seen
+    max_median_m: 2.0       # synced window: median ball distance at the best lag
+    main_offsets: 2         # live segments are tested at the largest clusters' offsets
+    min_both: 25            # a segment needs this many frames with both balls to be judged
+
+whistle:  # PLAN.md M2 T3, audio/whistle.py and scripts/whistle_stats.py
+  min_tonality: 40.0        # 2-4.5 kHz peak-to-mean power (match q95 ~ 27; a pure tone ~ 100)
+  min_band_db_over_median: 10.0
+  min_frames: 3             # >= 120 ms
+  window_s: 1.0             # PLAN.md: a whistle within 1 s ...
+  gate: 0.7                 # ... of >= 70% of the anchors, else no whistle cue
