@@ -14,6 +14,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | FINAL until 1 Nov, superseded by v5 (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 | no |
 | 2026-11-01 00:43 | v5 | 82ab56b08fbc | 53938f3 | c1abb6e5e46d78ab | pass | 0.6087 | pass | consistency 0.746; SELECTED: paired §6.4, 7/7 sim matches beat the v3 final, +0.030, p = 0.0078 | no |
 | 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | **FINAL** (§6.4): configs/final.yaml = v5, same file as v5; consistency 0.746 | no |
+| 2026-11-01 10:16 | v6 | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | consistency 0.742 | no |
 
 
 ## Work log
