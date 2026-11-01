@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy candidate sync submission doc check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -102,5 +102,14 @@ doc:
 submission: check-data
 	$(PY) scripts/make_submission.py --game $(GAME) --config $(or $(CFG),configs/final.yaml) --name $(or $(TEAM),TEAM_NAME)
 
-autopsy sync:
-	@echo "make $@: not implemented yet (PLAN.md M1+). See PLAN_STATUS.md." && exit 1
+# Humans only (refuses the airlock): per-transition public-window diagnostics, debugging only
+autopsy: check-data
+	$(PY) scripts/run_autopsy.py --game $(GAME)
+
+# Humans only: disagreement clips for tools/clipviewer/ (written to the cache, never the repo)
+clips: check-data
+	$(PY) scripts/clip_export.py --game $(GAME)
+
+# Broadcast -> tactical sync and the T3 falsifier (agents: make airlock T=sync)
+sync: check-data
+	$(PY) scripts/sync_stats.py --game $(GAME)

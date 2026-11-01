@@ -424,6 +424,18 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - (c) P3 has ≥ 4 free days: a human call (TODO 10).
   - PLAN's prior is 0.3, and detector weights trained on bundle frames cannot be committed (they
     would need deterministic retraining). Default no-go.
+- **Debugging tools (humans only; both refuse the airlock).**
+  - `make autopsy` (`scripts/run_autopsy.py`) prints one row of derived scalars per
+    public-window GT transition, then summary rates. Per row: whether the ball is seen, the gap
+    around it, the losing team's distance, ball speeds, when the new owner's team is first within
+    1.0 / 1.5 / 2.5 m, its first contact, the final candidate's offset, and the overlapping tags.
+    It is for bug-finding only: nothing from it may become a threshold. The agent never sees it.
+  - `make clips` (`scripts/clip_export.py`) writes the clips where v1 / v2 / v3 disagree to
+    `<cache>/clipviewer/clips.json`, with players and ball projected through the tactical
+    homography (`io/homography.py`).
+  - `tools/clipviewer/index.html` plays the tactical video with that overlay and every
+    candidate's label per frame, and writes nothing.
+  - Tested on the synthetic match: 90 clips, overlay and stepping checked in the browser.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 
@@ -471,6 +483,13 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
    pandoc is not installed, so the output is Markdown, which the Form accepts. Install pandoc
    (`brew install pandoc` plus a LaTeX engine) if you want the PDF and an exact page count.
 
+11. **Clip viewer (§6.5, optional).**
+    1. `make clips`.
+    2. Open `tools/clipviewer/index.html` in a browser.
+    3. Pick the tactical mp4 and `<cache>/clipviewer/clips.json`.
+
+    File bugs against the algorithm; never labels or frame-specific rules. `make autopsy` is
+    for the same purpose.
 10. **Optional go/no-go, video ball recovery (M3).** Conditions (a) and (b) are met; (c), P3
     having ≥ 4 free days, is yours. Default no-go (prior 0.3). If go, see PLAN M3 for the method;
     any detector must retrain deterministically from the repo, since weights trained on bundle

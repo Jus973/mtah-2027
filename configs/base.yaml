@@ -89,3 +89,9 @@ whistle:  # PLAN.md M2 T3, audio/whistle.py and scripts/whistle_stats.py
   min_frames: 3             # >= 120 ms
   window_s: 1.0             # PLAN.md: a whistle within 1 s ...
   gate: 0.7                 # ... of >= 70% of the anchors, else no whistle cue
+
+clipviewer:  # PLAN.md §6.5, scripts/clip_export.py + tools/clipviewer/ (humans, debugging only)
+  configs: {v1: rules.yaml, v2: rules_v2.yaml, v3: final.yaml}
+  min_frames: 5
+  pad_s: 2.0
+  max_clips: 300

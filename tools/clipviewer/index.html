@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clip Viewer</title>
+<!--
+  MTAH clip viewer (PLAN.md §6.5): watch the clips where candidates disagree, with the tracking
+  overlaid on the tactical video. DEBUGGING ONLY: file bugs against the algorithm; never write
+  labels, corrections or rules tied to specific frames (RULES.md). This page stores nothing.
+
+  Open it locally, then pick the tactical .mp4 and <cache>/clipviewer/clips.json (from `make clips`)
+  with the two file buttons. Or serve a folder and pass ?clips=clips.json&video=video.mp4.
+  Without a video, the scrubber drives the overlay alone.
+-->
+<style>
+  :root { --bg: #f6f6f4; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #dcdcd6;
+          --home: #c0392b; --away: #1f5fbf; --ball: #f1c40f; --dead: #7f7f7f; --accent: #2d7d46; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #161615; --panel: #1f1f1d; --ink: #ececea;
+      --muted: #9a9a94; --line: #34342f; --home: #e06454; --away: #5b8fe0; --ball: #f5d33d;
+      --dead: #9a9a9a; --accent: #4fae6c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px;
+           border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  header .note { color: var(--muted); font-size: 12px; }
+  main { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 54px); }
+  #list { border-right: 1px solid var(--line); overflow-y: auto; max-height: calc(100vh - 54px);
+          background: var(--panel); }
+  #list button { display: block; width: 100%; text-align: left; padding: 8px 12px; border: 0;
+                 border-bottom: 1px solid var(--line); background: none; color: inherit; cursor: pointer;
+                 font: inherit; }
+  #list button.on { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  #list small { color: var(--muted); display: block; }
+  #stage { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  #view { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+  #view video, #view canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  #controls button, label.file { border: 1px solid var(--line); background: var(--panel); color: inherit;
+                                 padding: 5px 10px; border-radius: 6px; cursor: pointer; font: inherit; }
+  label.file input { display: none; }
+  #scrub { flex: 1; min-width: 160px; }
+  #labels { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 3px 10px; border-radius: 12px; font-weight: 600; color: #fff; }
+  .H { background: var(--home); } .A { background: var(--away); } .D { background: var(--dead); }
+  .X { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+  #status { color: var(--muted); font-size: 12px; }
+  @media (max-width: 720px) { main { grid-template-columns: 1fr; } #list { max-height: 30vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Clip viewer</h1>
+  <label class="file">Tactical video<input type="file" id="videoFile" accept="video/*"></label>
+  <label class="file">clips.json<input type="file" id="clipsFile" accept=".json,application/json"></label>
+  <span class="note">Debugging only: file bugs against the algorithm, never labels or frame rules.</span>
+</header>
+<main>
+  <nav id="list" aria-label="Clips"></nav>
+  <section id="stage">
+    <div id="view"><video id="video" muted playsinline></video><canvas id="overlay" width="1920" height="1080"></canvas></div>
+    <div id="controls">
+      <button id="play">Play clip</button>
+      <button id="back" title="Previous frame (Left)">−1 frame</button>
+      <button id="fwd" title="Next frame (Right)">+1 frame</button>
+      <label>Speed <select id="rate"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select></label>
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Frame within clip">
+    </div>
+    <div id="labels"></div>
+    <div id="status">Load clips.json to start.</div>
+  </section>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const video = $("video"), canvas = $("overlay"), ctx = canvas.getContext("2d");
+let data = null, clip = null, index = 0, timer = null;
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function frameAt(i) { return clip ? clip.frames[Math.max(0, Math.min(clip.frames.length - 1, i))] : null; }
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const fr = frameAt(index);
+  if (!fr) return;
+  for (const [x, y, team] of fr.players) {
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, 2 * Math.PI);
+    ctx.fillStyle = team === 0 ? css("--home") : css("--away"); ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+  }
+  if (fr.ball) {
+    ctx.beginPath(); ctx.arc(fr.ball[0], fr.ball[1], 7, 0, 2 * Math.PI);
+    ctx.fillStyle = css("--ball"); ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  $("labels").innerHTML = data.candidates.map((c) =>
+    `<span class="chip ${fr.labels[c]}">${c}: ${fr.labels[c]}</span>`).join("");
+  $("scrub").value = index;
+  $("status").textContent = `frame ${fr.f}  (clip ${clip.start}–${clip.end}, ${clip.frames.length} frames with padding)`;
+}
+
+function seek(i) {
+  index = Math.max(0, Math.min(clip.frames.length - 1, i));
+  if (video.src) video.currentTime = (frameAt(index).f + 0.5) / data.fps;
+  draw();
+}
+
+function select(k) {
+  clip = data.clips[k];
+  document.querySelectorAll("#list button").forEach((b, j) => b.classList.toggle("on", j === k));
+  $("scrub").max = clip.frames.length - 1;
+  stop(); seek(0);
+}
+
+function list() {
+  $("list").innerHTML = "";
+  data.clips.forEach((c, k) => {
+    const mid = c.frames[Math.floor(c.frames.length / 2)];
+    const b = document.createElement("button");
+    b.innerHTML = `Frames ${c.start}–${c.end}<small>${data.candidates.map((n) => n + " " + mid.labels[n]).join(" · ")}</small>`;
+    b.onclick = () => select(k);
+    $("list").appendChild(b);
+  });
+  if (data.clips.length) select(0);
+  $("status").textContent = `${data.clips.length} clips, candidates ${data.candidates.join(", ")}.`;
+}
+
+function stop() { if (timer) cancelAnimationFrame(timer); timer = null; video.pause(); $("play").textContent = "Play clip"; }
+
+function play() {
+  if (timer) { stop(); return; }
+  $("play").textContent = "Pause";
+  const rate = parseFloat($("rate").value);
+  if (video.src) {
+    video.playbackRate = rate; video.play();
+    const tick = () => {
+      const f = Math.floor(video.currentTime * data.fps + 1e-6);
+      index = f - clip.frames[0].f;
+      if (index >= clip.frames.length - 1) { stop(); seek(clip.frames.length - 1); return; }
+      draw(); timer = requestAnimationFrame(tick);
+    };
+    timer = requestAnimationFrame(tick);
+  } else {
+    let last = performance.now();
+    const tick = (now) => {
+      if (now - last >= 1000 / (data.fps * rate)) { last = now; if (index >= clip.frames.length - 1) { stop(); return; } index++; draw(); }
+      timer = requestAnimationFrame(tick);
+    };
+    timer = requestAnimationFrame(tick);
+  }
+}
+
+function loadClips(text) { data = JSON.parse(text); list(); }
+
+$("clipsFile").onchange = (e) => { const f = e.target.files[0]; if (f) f.text().then(loadClips); };
+$("videoFile").onchange = (e) => { const f = e.target.files[0]; if (f) { video.src = URL.createObjectURL(f); if (clip) seek(index); } };
+$("play").onclick = play;
+$("back").onclick = () => { stop(); seek(index - 1); };
+$("fwd").onclick = () => { stop(); seek(index + 1); };
+$("scrub").oninput = (e) => { stop(); seek(parseInt(e.target.value, 10)); };
+document.addEventListener("keydown", (e) => {
+  if (!clip) return;
+  if (e.key === "ArrowLeft") { stop(); seek(index - 1); }
+  if (e.key === "ArrowRight") { stop(); seek(index + 1); }
+  if (e.key === " ") { e.preventDefault(); play(); }
+});
+
+const params = new URLSearchParams(location.search);
+if (params.get("video")) video.src = params.get("video");
+if (params.get("clips")) fetch(params.get("clips")).then((r) => r.text()).then(loadClips)
+  .catch((err) => { $("status").textContent = "Could not load clips: " + err; });
+</script>
+</body>
+</html>

@@ -46,8 +46,9 @@ pub = cfg["published"]
 kicks = {int(k): v for k, v in pub["kickoff_frames"].items()} if real else None
 team = {int(k): v for k, v in pub["kickoff_team"].items()} if real else None
 b = bands(labels, sp, cfg["bands"], kicks, team, tol=cfg["kickoff"]["tolerance_frames"])
-ok &= check("structural bands (PLAN.md 6.3)", b["pass"],
-            failed=",".join(k for k, v in b["checks"].items() if not v) or "none")
+passed = check("structural bands (PLAN.md 6.3)", b["pass"],
+               failed=",".join(k for k, v in b["checks"].items() if not v) or "none")
+ok &= passed or not real          # the bands describe the real match, not a short synthetic one
 
 hash_file = os.path.join(FINAL, args.name + ".sha256")
 line = "{}  {}.csv\n".format(digest, args.name)
