@@ -32,6 +32,10 @@ def variants(cfg):
     c = copy.deepcopy(cfg)
     c["owner"]["alpha"] = 1.0
     rows.append(("no log-odds sharpening (alpha 1)", c))
+    if cfg.get("gaps", {}).get("enabled"):
+        c = copy.deepcopy(cfg)
+        c["gaps"]["enabled"] = False
+        rows.append(("without the gap decoder (v3)", c))
     return rows
 
 
