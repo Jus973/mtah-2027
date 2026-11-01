@@ -365,7 +365,10 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
     the DFL ball as is and with 1 cm noise (never trained on), +0.029-0.040 on the training
     conditions, +0.012 (6/7) with 5 cm noise; held-out 0.652. **The real match rejects it:**
     set-piece alignment 12% (v6 32%, chance about 9%), consistency 0.722 (v6 0.742). Not
-    selected; the label-free checks did their job.
+    selected; the label-free checks did their job;
+  - final models trained on more sim matches: the held-out curve rises (3 / 4 / 5 matches:
+    0.6145 / 0.6188 / 0.6270), but leave-one-out models on 6 matches score −0.0031 vs v6 (3/7).
+    Not adopted.
 - **Learned per-frame `D`: dropped, a sim artifact.** Team shape + ball features over all graded
   frames, decoded as a 2-state path: frame accuracy 0.978 vs 0.86–0.88 for the evidence `D`, and
   +0.034 (7/7). But the DFL data freezes the ball in dead time: on the sim 99.5% of seen dead

@@ -145,3 +145,6 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     (v6 0.742), tag agreement on gap frames decoded alive 0.726 (v6 0.814). Its `D` boundaries do
     not meet real restarts, so the realistic-ball variants still miss something about the real
     tracker. Not selected (PLAN M3: no consistency regression). **v6 stays FINAL.**
+  - Final models on more sim matches: the held-out learning curve rises (3 / 4 / 5 training
+    matches: 0.6145 / 0.6188 / 0.6270), but leave-one-out models trained on the other 6 matches
+    score −0.0031 vs v6 (3/7; J03WR9 −0.027). Not adopted: v6 keeps its 5-match models.
