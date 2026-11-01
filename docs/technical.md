@@ -208,8 +208,8 @@ Decision rule (PLAN.md §6.4, amended 31 Oct before v3 was selected):
 v3 beat v1 on all seven matches (v3 out of fold, v1 in-sample), p ≈ 0.008; the earlier
 interval-overlap rule cannot resolve less than about 0.07 with two matches. v4's extra `D`
 thresholds are in-sample, so only its held-out pair counts: a tie. v5 beats the v3 final (v3
-without stillness, 0.581) on all seven matches, with both sides out of fold: +0.038, +0.033, +0.014, +0.038 and +0.031 on the fit
-matches, and +0.028 and +0.028 held-out, so p ≈ 0.008.
+without stillness, 0.581) on all seven matches, with both sides out of fold: +0.038, +0.033,
++0.014, +0.038 and +0.031 on the fit matches, and +0.028 and +0.028 held-out, so p ≈ 0.008.
 
 *Ablations of the final config* (held-out mean, change on removal): back to the hard rules
 −0.068; long-gap evidence −0.055; the gap decoder −0.028; out-of-bounds evidence −0.006;
