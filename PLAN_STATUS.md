@@ -2,7 +2,8 @@
 
 Last updated: Sat 31 Oct 2026, agent session 2. **Every agent-side item of PLAN.md M0–M4 is done
 or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
-reproductions. What is left is human: the public repo, the upload and the emails.** The final file is `make submission` from `configs/final.yaml` (candidate v3:
+reproductions, and the public repo (https://github.com/Jus973/mtah-2027). What is left is human:
+register the team name, send the two drafted emails, and upload when the Form arrives.** The final file is `make submission` from `configs/final.yaml` (candidate v3:
 learned takeovers + Viterbi), sha256
 `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. A cold clean clone (twice)
 and Docker on arm64 and amd64 give the same file.
@@ -474,49 +475,39 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
 
 ## TODO for humans
 
-Open, in order:
+Open, in order. Facts from the organisers' "Initial Challenge" email (20 Oct, read 31 Oct):
+- the **deadline is 17 Nov, 11:59 PM CET** (this answers Appendix D email 3);
+- the **submission instructions and Form link arrive by email by 14 Nov**;
+- **all members must register with the same team name before 10 Nov.**
 
-1. **Public repo** (needed by the Form). Create a public GitHub repo and push `main`.
-   - Before it goes public, run `make audit` and review its two WARN lines: absolute home paths
-     in `.claude/settings.json` (deny rules) and `.cursorignore`.
-   - Decide whether to commit the final CSV. PLAN §7 says commit it; CLAUDE.md forbids committing
-     bundle-derived files. It is gitignored now; `git add -f` it if you decide to.
-2. **Final file:**
-   ```bash
-   export MTAH_DATA_DIR=/path/to/mtah2027
-   make submission
-   shasum -a 256 "submissions/final/Berkeley Sports Research Group.csv"
-   ```
-   The sha256 must be `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`.
-   The team name lives in `configs/base.yaml` (`team`); its `.sha256` is committed.
-3. **Document:** review `docs/technical.md`, including the team notes in its last HTML comment.
-   ```bash
-   make doc REPO=https://github.com/Jus973/mtah-2027   # -> "docs/Berkeley Sports Research Group.md"
-   ```
-   The Form accepts .md. For a PDF, install pandoc plus a LaTeX engine; `make doc` then writes
-   10 pt A4 with 2 cm margins (≈ 5.5 pages).
-4. **Upload** the CSV, the repo URL and the document to the Google Form. Re-open the response and
-   verify all three. Then set `uploaded? = yes` on the FINAL row of `submissions/LOG.md`. The
-   earlier early-upload plan (v1) is superseded: upload the final file.
-5. **Emails** (Appendix D): 1 (cloud assistants and aggregates; the §7 "Tooling" paragraph
-   depends on the answer), the new 2 (Smart Tagging as a label-free selection signal) and 3
-   (deadline hour).
-6. ~~Docker~~ done by the agent (31 Oct): built and run for arm64 and amd64, same sha256. The
-   agent started Docker Desktop for this. The `mtah` image left behind is the amd64 build;
-   `make docker-build` rebuilds it natively.
-7. ~~Fully cold clean-clone run~~ done by the agent (31 Oct, `make airlock T=submission-cold`
-   in a fresh clone): same sha256 twice.
-8. **Optional:**
+The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yaml`).
+
+1. **Register the team name** with every member (same spelling) before 10 Nov.
+2. ~~Public repo~~ done 31 Oct: **https://github.com/Jus973/mtah-2027** (public, `main`). The final
+   CSV stays out of git, per CLAUDE.md; `git add -f` it only if you decide PLAN §7 wins. `make
+   audit` warns about one local home path in `.cursorignore`.
+3. **Emails.** Drafts 1 (cloud assistants) and 2 (Smart Tagging as a selection signal) are in
+   your Gmail, to hackathon.talentarena@mobileworldcapital.com, **not sent**. Email 1 asks about
+   aggregates prospectively; the airlock has already released aggregates to an assistant, so
+   consider saying so before you send. Email 3 is not needed.
+4. **When the Form arrives (by 14 Nov): upload, after you say go.**
+   - CSV: `submissions/final/Berkeley Sports Research Group.csv`. Rebuild it right before
+     uploading with `make submission`; its sha256 must be
+     `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`.
+   - Repo URL: https://github.com/Jus973/mtah-2027.
+   - Document: `docs/Berkeley Sports Research Group.md`. Rebuild it with
+     `make doc REPO=https://github.com/Jus973/mtah-2027` after any change to `docs/technical.md`.
+   - Re-open the response and verify all fields; then set `uploaded? = yes` on the FINAL row of
+     `submissions/LOG.md`.
+5. **Optional:**
    - *Video ball recovery go/no-go (M3).* Conditions (a) and (b) are met; (c), P3 having ≥ 4
-     free days, is yours. Default no-go (prior 0.3). Any detector must retrain deterministically
-     from the repo.
+     free days, is yours. Default no-go.
    - *Clip viewer and autopsy (§6.5, debugging only).* `make clips`, then open
-     `tools/clipviewer/index.html` and pick the tactical mp4 and `<cache>/clipviewer/clips.json`.
-     `make autopsy` prints the public-window per-transition table. File bugs against the
-     algorithm, never labels or frame-specific rules.
-9. Review the revised PLAN.md (§1, §5, §6, and the amended §6.4) and object to anything you
+     `tools/clipviewer/index.html`; `make autopsy`.
+   - *PDF of the document:* install pandoc plus a LaTeX engine, then `make doc` writes it.
+6. Review the revised PLAN.md (§1, §5, §6, the amended §6.4) and object to anything you
    disagree with.
-10. After the competition, delete every bundle copy and the caches (T&C).
+7. After the competition, delete every bundle copy and the caches (T&C).
 
 Done earlier (kept for the record):
 

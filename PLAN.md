@@ -364,7 +364,7 @@ Frames where v1/v2/v3 disagree are < 10% of the match; humans watch those clips 
 | Sim semantics/degradation differ from the real GT → selection bias | 0.4 | pick a worse candidate | prefer simple components; require no §6.2 consistency regression; disclose |
 | Video ball detector not ready/accurate | 0.7 | none (default no-go) | gated at M3 |
 | Non-reproducible final file | 0.2 with ML parts | invalid entry | CPU determinism, frozen seeds, clean-clone test, Docker |
-| Deadline hour ambiguity (11:00 CET?) | 0.5 | late = ignored | submit Mon 16 Nov; ask by email |
+| Deadline hour ambiguity (11:00 CET?) | resolved | late = ignored | organisers' email (20 Oct): 17 Nov 11:59 PM CET; Form link by 14 Nov. Still submit Mon 16 Nov |
 | Rule grey zone (open-data weights, pseudo-labels, Smart Tagging as a selection signal) | 0.2 | post-hoc dispute | ask now (email 2 / GitHub issue); disclose in the doc |
 
 Expected outcome with this plan: rules v1 ≈ 0.45–0.6 on the full match; v2/v3 ≈ 0.55–0.75. Top-20 cut estimated ≈ 0.55 (80% CI 0.40–0.70). Aim for a ≥ 0.10 margin above the cut, not for first place.
