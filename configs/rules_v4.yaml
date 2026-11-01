@@ -1,0 +1,20 @@
+# Rules v4: v3's decoder with v2's dead-ball rules (calm gaps, release and flight restarts,
+# launch touches), so a corner or throw-in ends D at the taker's release and the taker's team
+# owns the restart. Motivation (label-free, real match): after 11 tagged corners v3's restart owner
+# is the corner team only 5 times; v3's D ends at the next touch, whoever makes it.
+inherit: rules_v3.yaml
+
+touch:
+  min_launch_mps: 5.0
+  rest_mps: 1.0
+
+deadball:
+  oob_margin_m: 0.0
+  oob_min_frames: 5
+  gap_v_players_mps: 2.0
+  gap_speed_window_frames: 25
+  gap_calm_min_frames: 25
+  still_min_frames: 50
+  merge_frames: 25
+  restart_window_frames: 6
+  restart_flight_mps: 6.0

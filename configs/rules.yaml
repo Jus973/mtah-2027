@@ -56,3 +56,5 @@ deadball:
 # D run end) falls 9.48 s after the tag start (IQR 6.0-13.2 s, 57 tags). Not used by v1 yet.
 tags:
   set_piece_restart_after_start_s: 9.48
+  set_piece_window_s: 2.0     # PLAN.md M2 T2 (b): a D run ends within this of the tag-aligned restart
+  set_piece_match_s: 5.0      # ... and the restart owner is read after the nearest D run within this

@@ -67,6 +67,8 @@ def run(game, cfg, data_dir=None, atd=None):
         events = takeover.contacts(ball, d, cfg["touch"], oc["contact_r_m"], fps)
         X = takeover.features(events, d, fps)
         p = takeover.predict(takeover.load(cfg), X)
+        if restarts:                     # a release restart is the taker's: a certain takeover
+            events, p = takeover.with_restarts(events, p, restarts)
         labels = decode_viterbi(events, p, graded, dead, oc["alpha"], oc["flip_penalty"])
         n_contacts = len(events)
     else:

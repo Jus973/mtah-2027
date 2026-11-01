@@ -357,6 +357,19 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   candidates disagree: v1 vs v3 2.2%, v1 vs v2 6.0%, v2 vs v3 8.1%; any two 8.1% (< 10% PASS).
   There are 202 segments (median 1.7 s), written to `<cache>/disagreement/segments.csv` for the
   clip viewer.
+- **Set-piece checks (M2 T2 b, c)** (`eval/consistency.set_piece_checks`, printed by
+  `run_candidate`). Restarts are aligned to tag start + 9.48 s.
+  - v3: 32% of the 57 set-piece tags have a predicted D ending within 2 s of the aligned restart
+    (chance ≈ 9%). 43% of D runs overlap no set-piece tag; the tagger misses most free kicks.
+  - The restart owner matches the tag team in 9 of 16 matched team-tagged restarts: corners 5/11,
+    free kicks 3/3, goal kicks 1/2.
+- **v4 tried and rejected** (`configs/rules_v4.yaml`: v3's decoder plus v2's dead-ball rules, with
+  the taker's release as a forced restart contact).
+  - Sim: better on all 7 matches (held-out 0.593 vs 0.584), but its dead-ball parameters are
+    in-sample on the fit matches, so the paired rule counts only the held-out pair: a tie.
+  - Real match: consistency 0.726 (v3 0.740, a regression); D ending near the aligned restart
+    19% (v3 32%); corner restart owner 3/10.
+  - v3 stays selected.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 

@@ -55,3 +55,15 @@ def test_bands_kickoff_tolerance(fake):
     loose = bands(late, sp, CFG["bands"], kick, team, tol=25)["checks"]
     assert not strict["kickoff_team_half2"] and loose["kickoff_team_half2"]
     assert loose["pre_kickoff_D_half2"]
+
+
+def test_set_piece_checks():
+    from mtah.eval.consistency import set_piece_checks
+    labels = np.array(list("HHHHDDDDDAAAAHHHDDDHHHH"))
+    graded = np.ones(len(labels), bool)
+    corner = Tag(code="SET PIECES", start=4, end=12, tags={"Team": "Atletic Club",
+                                                            "Type": "Corner Kick"})
+    out = set_piece_checks(labels, [corner], CFG["tag_team_map"], graded, restart_after_s=0.2,
+                           window_s=0.08, match_s=0.2, fps=25)  # restart at 9 = D run end + 1
+    assert out["restart_within_window"] == 1.0 and out["next_spell_is_tag_team"] == 1.0
+    assert out["d_runs"] == 2 and out["d_runs_without_set_piece_tag"] == 0.5

@@ -21,7 +21,7 @@ from _guard import check, game_args, put  # noqa: E402
 
 from mtah import config, pipeline, registry  # noqa: E402
 from mtah.eval.bands import bands  # noqa: E402
-from mtah.eval.consistency import tag_consistency  # noqa: E402
+from mtah.eval.consistency import set_piece_checks, tag_consistency  # noqa: E402
 from mtah.eval.score import public_check, score  # noqa: E402
 from mtah.io.tags import load_tags  # noqa: E402
 from mtah.submit.write import sha256, validate, write_csv  # noqa: E402
@@ -72,11 +72,16 @@ for name, passed in b["checks"].items():
 tag_path = registry.asset_paths(args.game, args.data_dir)["smart_tagging"]
 consistency = None
 if os.path.isfile(tag_path):
-    c = tag_consistency(labels, load_tags(tag_path, sp["fps"]), cfg["tag_team_map"],
-                        registry.graded_mask(sp))
+    tags = load_tags(tag_path, sp["fps"])
+    c = tag_consistency(labels, tags, cfg["tag_team_map"], registry.graded_mask(sp))
     consistency = c["agree"]
     put("smart-tagging consistency", {"agree": c["agree"], "frames": c["frames"]})
     put("smart-tagging consistency by code [agree, frames]", c["by_code"])
+    tc = cfg["tags"]
+    put("set-piece checks (PLAN.md M2 T2 b, c)",
+        set_piece_checks(labels, tags, cfg["tag_team_map"], registry.graded_mask(sp),
+                         tc["set_piece_restart_after_start_s"], tc["set_piece_window_s"],
+                         tc["set_piece_match_s"], sp["fps"]))
 
 verdict = None
 if real:

@@ -90,3 +90,10 @@ def predict(booster, X):
     if len(X) == 0:
         return np.zeros(0)
     return booster.predict(X, num_threads=1)
+
+
+def with_restarts(events, p, restarts):
+    """Contacts plus release restarts (events/deadball.py), which take the ball for certain."""
+    merged = sorted([(e.start, 0, e, q) for e, q in zip(events, p)]
+                    + [(r.start, 1, r, 1.0) for r in restarts], key=lambda x: (x[0], x[1]))
+    return [m[2] for m in merged], np.array([m[3] for m in merged])
