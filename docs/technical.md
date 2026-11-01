@@ -73,12 +73,12 @@ tolerance, uncorrected. Before the derived second-half kick-off, the graded bloc
   10%).
 - *Whistles* (2–4.5 kHz tonal heuristic): 0.8% of `D` onsets have one within 1 s vs 0.6% by
   chance (gate 70%).
-- *Gap timing and contacts as gap-model features:* +0.003, dropped. They would tie the model to
-  where the sim places its gaps. A 5 s context: −0.002.
-- *Learned per-frame `D`:* +0.034, but only by reading the sim's frozen dead-time ball (§5.5);
-  without ball kinematics +0.018 (a tie), from players alone −0.030.
-- *Restart must launch the ball* (≥ 4 m/s, v7): a tie on the sim, −0.004 when the dead ball is
-  fetched and carried; consistency here 0.755.
+- *Gap timing and contacts as gap-model features:* +0.003, tied to where the sim places gaps.
+- *Learned per-frame `D`:* +0.034, but only by reading the sim's frozen dead-time ball (§5.5).
+  Trained on a realistic dead-time ball (noise, carried, lost; v8): +0.022 on all 7 matches, but
+  on this match its `D` ends meet only 12% of set-piece restarts (v6 32%) and consistency falls
+  to 0.722, so it is not used.
+- *Restart must launch the ball* (≥ 4 m/s, v7): a tie on the sim, −0.004 with a carried ball.
 - *Takeover variants:* ball direction +0.001, a 5-seed average −0.002, other capacities ≤ 0,
   labels 0.5 s / 1 s after the contact −0.011 / −0.038.
 - *Video ball detection:* no-go. Only 18–22% of the missed held-out spells lie in ball gaps,

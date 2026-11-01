@@ -359,7 +359,13 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - **v7**, a restart must send the ball away (≥ 4 m/s): vs v6 −0.0006 (5/7) on the sim, −0.0036
     (0/7) with the dead ball fetched and carried by a player, −0.0048 (1/7) with it lost; real
     consistency 0.755 (v6 0.742). Not selected. The stress tests also show v6 holds when the
-    dead ball is carried (0.625 held-out) or lost (0.626).
+    dead ball is carried (0.625 held-out) or lost (0.626);
+  - **v8**, a learned per-frame `D` trained on sim matches with a realistic dead-time ball
+    (`learn/deadstate.py`, `make train-dead`, `models/dead_v1.txt`): on the sim +0.022 (7/7) on
+    the DFL ball as is and with 1 cm noise (never trained on), +0.029-0.040 on the training
+    conditions, +0.012 (6/7) with 5 cm noise; held-out 0.652. **The real match rejects it:**
+    set-piece alignment 12% (v6 32%, chance about 9%), consistency 0.722 (v6 0.742). Not
+    selected; the label-free checks did their job.
 - **Learned per-frame `D`: dropped, a sim artifact.** Team shape + ball features over all graded
   frames, decoded as a 2-state path: frame accuracy 0.978 vs 0.86–0.88 for the evidence `D`, and
   +0.034 (7/7). But the DFL data freezes the ball in dead time: on the sim 99.5% of seen dead
@@ -645,8 +651,9 @@ above). The human steps are the TODO list. If there is time before the freeze, o
 2. Restart owner after corners (5/11 corner team): a restart-specific feature for the takeover
    model, judged by the paired rule and the set-piece check.
 3. Decode D in the same Viterbi path, using the v2 rules as soft evidence instead of hard rules.
-4. **Make the sim's dead-time ball realistic** (the DFL data freezes it; see the v6 section),
-   then re-fit the `D` rules and re-test a learned per-frame `D`: the sim says the true `D`
-   outside long gaps is worth +0.058 held-out, and v6's `D` is still rule-based.
+4. **A learned `D` that transfers.** v8 (trained with a realistic dead-time ball) gains +0.022
+   on the sim but breaks set-piece alignment on the real match (12% vs 32%). Next: find what
+   differs (e.g. the real ball around restarts, measured label-free through the airlock), add it
+   to `realistic_dead_ball`, and require set-piece alignment ≥ v6's before any selection.
 Re-check every change with `make sim-ablate`, `make paired`, `make airlock
 T=candidate|stability`, and `make submission` (sha256 changes need a new FINAL row).

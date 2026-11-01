@@ -17,6 +17,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-01 10:16 | v6 | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | consistency 0.742; SELECTED: make paired vs v5, 7/7, +0.014, p = 0.0078 | no |
 | 2026-11-01 10:16 | final | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | **FINAL** (§6.4): configs/final.yaml = v6, same file as v6; consistency 0.742 | no |
 | 2026-11-01 10:40 | v7 | 47162a982152 | f75a82f | 75605ff5d364235b | pass | 0.6254 | pass | consistency 0.755; tie with v6 on the sim, worse on both dead-ball stress tests: not selected | no |
+| 2026-11-01 11:42 | v8 | c649ed11eaac | e3f13ee | 4e8c9387b1781a99 | pass | 0.6523 | pass | consistency 0.722; rejected: set-piece alignment 12% (v6 32%), consistency regression | no |
 
 
 ## Work log
@@ -134,3 +135,13 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     −0.0048 (1/7). Real match: all checks pass, consistency 0.755 (v6 0.742), 121 `D` runs, `D`
     share 0.518. A tie on the sim, worse on both stress tests: **not selected, v6 stays FINAL**
     (Docker linux/arm64 and amd64 reproduce v6's sha256 too).
+  - **v8** (`configs/rules_v8.yaml`, `learn/deadstate.py`, `make train-dead`): a learned per-frame
+    `D` (team shape + ball position and speed), trained after making the sim's frozen dead-time
+    ball realistic (tracker noise 2 cm, fetched and carried, or lost). Sim, paired vs v6 with
+    every learned part cross-fitted: +0.022 (7/7) on the DFL sim as is and with 1 cm noise, both
+    never trained on; +0.029-0.040 (7/7) on the training conditions; +0.012 (6/7) with 5 cm
+    noise. Held-out 0.627 → 0.652, `D` share 0.38-0.41 vs GT 0.41-0.42. **Real match rejects it**
+    (airlock, label-free): set-piece alignment 12% (v6 32%, chance about 9%), consistency 0.722
+    (v6 0.742), tag agreement on gap frames decoded alive 0.726 (v6 0.814). Its `D` boundaries do
+    not meet real restarts, so the realistic-ball variants still miss something about the real
+    tracker. Not selected (PLAN M3: no consistency regression). **v6 stays FINAL.**
