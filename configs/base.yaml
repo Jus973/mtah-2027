@@ -95,7 +95,7 @@ whistle:  # PLAN.md M2 T3, audio/whistle.py and scripts/whistle_stats.py
   gate: 0.7                 # ... of >= 70% of the anchors, else no whistle cue
 
 clipviewer:  # PLAN.md §6.5, scripts/clip_export.py + tools/clipviewer/ (humans, debugging only)
-  configs: {v1: rules.yaml, v2: rules_v2.yaml, v3: rules_v3.yaml, v5: final.yaml}
+  configs: {v1: rules.yaml, v2: rules_v2.yaml, v3: final.yaml, v5: rules_v5.yaml}
   min_frames: 5
   pad_s: 2.0
   max_clips: 300

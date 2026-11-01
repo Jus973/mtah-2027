@@ -11,9 +11,9 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 21:01 | v4 | 1b26d03d65f2 | 65493ac | 66da042216912ab0 | pass | 0.5930 | pass | consistency 0.726; rejected: sim tie (paired rule), consistency regression | no |
 | 2026-10-31 21:13 | ablate-v3-no_oob | 2ad4fc1b4402 | 158d253 | 09352f5c76797526 | pass | 0.5784 | pass | consistency 0.742; M3 ablation, not a submission | no |
 | 2026-10-31 21:13 | ablate-v3-no_still | cb4e3815f479 | 158d253 | 00f4551f83d84c89 | pass | 0.5808 | pass | consistency 0.740; M3 ablation (= v3 output: stillness inert) | no |
-| 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | FINAL until 1 Nov, superseded by v5 (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 | no |
-| 2026-11-01 00:43 | v5 | 82ab56b08fbc | 53938f3 | c1abb6e5e46d78ab | pass | 0.6087 | pass | consistency 0.746; SELECTED: paired §6.4, 7/7 sim matches beat the v3 final, +0.030, p = 0.0078 | no |
-| 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | **FINAL** (§6.4): configs/final.yaml = v5, same file as v5; consistency 0.746 | no |
+| 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | **FINAL** (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 (re-confirmed 1 Nov on the user's instruction) | no |
+| 2026-11-01 00:43 | v5 | 82ab56b08fbc | 53938f3 | c1abb6e5e46d78ab | pass | 0.6087 | pass | consistency 0.746; passes paired §6.4 vs the v3 final (7/7, +0.030, p = 0.0078); challenger, not selected: v3 stays FINAL on the user's instruction | no |
+| 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | final = v5 for 1 Nov 00:44 to the revert the same day (v3 restored on the user's instruction) | no |
 
 
 ## Work log
@@ -101,5 +101,9 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     the gap frames v5 decodes alive; 6.8% of gap frames decoded alive (sim 17–20%), with
     tag-phase coverage of its gap `D` (51%) close to other `D` (59%). Stability min 0.861; v3 vs
     v5 differ on 2.7% of graded frames.
-  - **v5 selected (FINAL).** sha256 c1abb6e5e46d78ab…, identical twice, from a cold cache, from a
-    fresh clean clone (cold, twice) and in Docker on linux/arm64 and linux/amd64. Not uploaded.
+  - v5's file (sha256 c1abb6e5e46d78ab…) is identical twice, from a cold cache, from a fresh
+    clean clone (cold, twice) and in Docker on linux/arm64 and linux/amd64. Not uploaded.
+  - v5 was briefly FINAL by the §6.4 rule; then **v3 was restored as FINAL**: the user had asked
+    for v3 to be the selected candidate. v5 is a ready challenger; selecting it is the team's call
+    (`inherit: rules_v5.yaml` in configs/final.yaml, its sha256, and the v5 doc at commit
+    9da125a).
