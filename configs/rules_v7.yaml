@@ -1,0 +1,11 @@
+# Rules v7: v6, with a restart that must send the ball away: a D stretch ends at the first touch
+# after the evidence whose ball speed after it is >= restart_min_speed_mps (or the ball is not
+# seen after it), not at any touch. A player walking the ball to the spot (1-2 m/s) is not a
+# restart; a throw-in or a kick (passing speed) is. The value is physical, not tuned.
+# Why: the DFL data freezes the dead-time ball (21% of seen sim ball frames do not move, 0.08%
+# on the real ATD), so on the sim nobody ever carries the ball in a stoppage. With the dead-time
+# ball carried by the nearest player instead, v6 falls from 0.627 to 0.556 held-out.
+inherit: rules_v6.yaml
+
+deadball:
+  restart_min_speed_mps: 4.0

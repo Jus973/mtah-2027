@@ -13,7 +13,10 @@ Evidence that the ball is dead, each a mask of frames:
          the ball keeps the other players moving, which separates it from a stoppage.
 Evidence runs closer than merge_frames merge. Each merged run is D from its first frame up to the
 restart, the earliest of:
-  - the first touch that starts after the evidence ends (the half's end if none);
+  - the first touch that starts after the evidence ends (the half's end if none); with
+    restart_min_speed_mps > 0 (v7), the first such touch that sends the ball away at least that
+    fast, or into a gap. A player carrying the ball to the spot is not a restart; a kick or a
+    throw is. (The DFL source data freezes the dead-time ball, so the sim hides this case.);
   - a release: the ball leaves a player whose touch started inside the evidence and ended at most
     restart_window_frames before it ends (null = off). A throw-in or a corner is taken while the
     ball is still beyond the line, so the taker's touch starts inside the oob evidence; the
@@ -119,8 +122,13 @@ def dead_runs(ev, touches, graded, cfg, kinds=KINDS, out_restarts=None):
                 merged.append([a, b])
         W = cfg["restart_window_frames"]
         flight = ev.get("flight")
+        v_go = cfg.get("restart_min_speed_mps", 0.0)
         for a, b in merged:
             i = np.searchsorted(starts, b + 1)
+            if v_go > 0:                       # a restart sends the ball away (kick or throw)
+                while i < len(starts) and starts[i] <= half_end and \
+                        touches[i].speed_after < v_go:
+                    i += 1
             restart = starts[i] if i < len(starts) and starts[i] <= half_end else half_end + 1
             if flight is not None and flight[b]:
                 g = b
