@@ -1,14 +1,15 @@
 # PLAN_STATUS: running state
 
-Last updated: Sat 31 Oct 2026, agent session 2. M0 done. M1: sim v0 accepted (smooth50 0.261 vs
-reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-ball v1 (held-out
-sim spellF1 0.541; official baseline 0.286). **Candidate v1 built on the real match: validator,
-all bands and the public bug check pass; regenerates byte-identically. Ready to upload (human).**
-Draft technical document: `docs/technical.md` (≈5 pages estimated), built by `make doc`.
-Dead-ball v2 (`configs/rules_v2.yaml`) cuts D over-prediction but ties v1 on the sim.
-**Owner decoder v3** (`configs/rules_v3.yaml`, learned takeovers + Viterbi): held-out sim 0.584
-vs v1 0.541, better on all 7 sim matches, every real-match check passes. **v3 is selected**
-(31 Oct, after the team approved amending §6.4 to a paired per-match test).
+Last updated: Sat 31 Oct 2026, agent session 2. **Every agent-side item of PLAN.md M0–M4 is done
+or closed with a measured reason. What is left is human: the upload, the emails, the public repo
+and Docker.** The final file is `make submission` from `configs/final.yaml` (candidate v3:
+learned takeovers + Viterbi), sha256
+`00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. Two runs from a clean clone
+give the same file.
+- Held-out sim: 0.584 (v1 0.541), better on 7/7 sim matches.
+- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.740;
+  stable under ±10% threshold changes.
+- Technical document: `docs/technical.md` (≈ 5.5 pages; `make doc`).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -437,7 +438,70 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
     candidate's label per frame, and writes nothing.
   - Tested on the synthetic match: 90 clips, overlay and stepping checked in the browser.
 
-## TODO for humans (run locally; paste back only the printed lines)
+- **M4 reproducibility and audit.**
+  - *Clean clone* (`git clone` → `make setup` → 86 tests pass with no match data → `make airlock
+    T=submission` twice): the same sha256 both times, equal to the committed hash. The clone was
+    deleted afterwards, as it held a bundle-derived CSV. It reused the parsed-ATD cache (human
+    TODO 7 covers a fully cold run).
+  - *Dockerfile:* runs `make cache submission` for `TEAM` and copies the file to `/out`;
+    `.dockerignore` keeps local, derived and secret files out. Not built here: the Docker daemon
+    was not running (human TODO 6).
+  - *`make audit`:* PASS. No bundle files or derivatives, nothing over 5 MB, no secrets,
+    `.mtah.local` untracked, LICENSE and README present. It warns about absolute home paths in
+    `.claude/settings.json` and `.cursorignore`.
+  - *Document:* `docs/technical.md` is rewritten for the final file (v3), ≈ 5.5 pages.
+
+## TODO for humans
+
+Open, in order:
+
+1. **Public repo** (needed by the Form). Create a public GitHub repo and push `main`.
+   - Before it goes public, run `make audit` and review its two WARN lines: absolute home paths
+     in `.claude/settings.json` (deny rules) and `.cursorignore`.
+   - Decide whether to commit the final CSV. PLAN §7 says commit it; CLAUDE.md forbids committing
+     bundle-derived files. It is gitignored now; `git add -f` it if you decide to.
+2. **Final file:**
+   ```bash
+   export MTAH_DATA_DIR=/path/to/mtah2027
+   make submission TEAM=<TEAM_NAME>
+   shasum -a 256 submissions/final/<TEAM_NAME>.csv
+   ```
+   The sha256 must be `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`.
+   With a team name other than `TEAM_NAME`, the first run records `<TEAM_NAME>.sha256`; commit
+   it.
+3. **Document:** review `docs/technical.md`, including the team notes in its last HTML comment.
+   ```bash
+   make doc TEAM=<TEAM_NAME> REPO=<url>   # -> docs/<TEAM_NAME>.md
+   ```
+   The Form accepts .md. For a PDF, install pandoc plus a LaTeX engine; `make doc` then writes
+   10 pt A4 with 2 cm margins (≈ 5.5 pages).
+4. **Upload** the CSV, the repo URL and the document to the Google Form. Re-open the response and
+   verify all three. Then set `uploaded? = yes` on the FINAL row of `submissions/LOG.md`. The
+   earlier early-upload plan (v1) is superseded: upload the final file.
+5. **Emails** (Appendix D): 1 (cloud assistants and aggregates; the §7 "Tooling" paragraph
+   depends on the answer), the new 2 (Smart Tagging as a label-free selection signal) and 3
+   (deadline hour).
+6. **Docker** (M4; the daemon was not running here):
+   ```bash
+   docker build -t mtah .
+   docker run -t -e TEAM=<TEAM_NAME> -v /path/to/mtah2027:/data -v "$PWD/out":/out mtah
+   ```
+   `out/<TEAM_NAME>.csv` must have the sha256 above.
+7. **Fully cold clean-clone run** (M4). The agent's clean-clone run reused the parsed-ATD cache;
+   the code, setup and submission were fresh. Run it with an empty `MTAH_CACHE_DIR`.
+8. **Optional:**
+   - *Video ball recovery go/no-go (M3).* Conditions (a) and (b) are met; (c), P3 having ≥ 4
+     free days, is yours. Default no-go (prior 0.3). Any detector must retrain deterministically
+     from the repo.
+   - *Clip viewer and autopsy (§6.5, debugging only).* `make clips`, then open
+     `tools/clipviewer/index.html` and pick the tactical mp4 and `<cache>/clipviewer/clips.json`.
+     `make autopsy` prints the public-window per-transition table. File bugs against the
+     algorithm, never labels or frame-specific rules.
+9. Review the revised PLAN.md (§1, §5, §6, and the amended §6.4) and object to anything you
+   disagree with.
+10. After the competition, delete every bundle copy and the caches (T&C).
+
+Done earlier (kept for the record):
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
    ```bash
@@ -463,41 +527,8 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
 5. ~~Stray bundle copies~~ deleted 31 Oct. `~/Downloads/tactical/` and `~/Downloads/tactical 2/` each hold a copy
    of `BAR-ATH_tactical_smart_tagging.xml`. Consolidate into `~/mtah2027` and delete them, since
    the T&C require tracking and deleting all copies.
-6. Review the revised PLAN.md (§1, §5 M1–M3, §6) and object to anything you disagree with.
-9. **Upload the selected candidate (now v3, see below) to the Google Form now** (PLAN M1: a scored entry exists whatever happens
-   later). Needs: the CSV named `<TEAM_NAME>.csv`, a **public** repo URL and a draft document.
-   There is no git remote yet: create a public GitHub repo for this project and push `main`
-   first (your call; the pre-commit guard keeps bundle data out). Check the file before
-   uploading: `shasum -a 256 submissions/candidates/v3.csv` must start with `00f4551f83d84c89`
-   (v1, the earlier choice: `3c32c4758d117a6a`). Once `make submission` exists, upload its
-   output instead.
-   Then set `uploaded? = yes` on that row in submissions/LOG.md.
-   **Document:** review `docs/technical.md`, especially the team notes in the HTML comment at its end:
-   - the full sha256;
-   - the cold `make cache` time;
-   - whether to keep the "Tooling" paragraph before email 1 is answered.
-   Then build the Form file:
-   ```bash
-   make doc TEAM=<TEAM_NAME> REPO=https://github.com/<you>/mtah-2027   # -> docs/<TEAM_NAME>.md
-   ```
-   pandoc is not installed, so the output is Markdown, which the Form accepts. Install pandoc
-   (`brew install pandoc` plus a LaTeX engine) if you want the PDF and an exact page count.
-
-11. **Clip viewer (§6.5, optional).**
-    1. `make clips`.
-    2. Open `tools/clipviewer/index.html` in a browser.
-    3. Pick the tactical mp4 and `<cache>/clipviewer/clips.json`.
-
-    File bugs against the algorithm; never labels or frame-specific rules. `make autopsy` is
-    for the same purpose.
-10. **Optional go/no-go, video ball recovery (M3).** Conditions (a) and (b) are met; (c), P3
-    having ≥ 4 free days, is yours. Default no-go (prior 0.3). If go, see PLAN M3 for the method;
-    any detector must retrain deterministically from the repo, since weights trained on bundle
-    frames cannot be committed.
-
 ## Blocked / known limitations
 
-- `make autopsy sync submission` are stubs (M2+).
 - Fake data: the ball group's third field is written as speed (the real semantics are unverified;
   nothing reads it). No goals or after-goal kick-offs, no duplicate tracks, and home share ≈ 0.5,
   so the home-share band does not apply to fake GT.
@@ -509,15 +540,13 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
 
 ## Next steps
 
-M1 is done except the human upload (TODO 9). Next (M1 leftovers, then M2):
-1. ~~Draft technical document~~ done: `docs/technical.md`. Update it with every candidate change;
-   final version at M4.
-2. ~~Cut the D over-prediction~~ tried (v2, near-tie, not adopted). ~~Owner decoder~~ v3 built
-   (+0.043 held-out; selection pending). Next:
-   - decode D in the same path, with the v2 rules as soft evidence;
-   - candidate contacts the 1 m radius misses: 2/3 of missed changes have no contact nearby;
-   - latency residuals on the sim. Re-check every change with `make sim-dead`
-   (held-out) and `make airlock T=candidate` (bands, consistency, public verdict).
-3. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), then
-   tag-anchored restarts (`tags.set_piece_restart_after_start_s`).
-4. M2: learned emissions (LightGBM on the sim), broadcast/audio (both videos have audio).
+The agent-side plan is finished, with every component kept or dropped by its gate (sections
+above). The human steps are the TODO list. If there is time before the freeze, or for Phase 2:
+1. Contacts the 1 m radius misses: possession changes inside ball gaps make up ≈ 25% of v3's
+   missed spells on the sim. The candidates would be contacts reconstructed from the gap's
+   entry and exit, with the model retrained on the sim.
+2. Restart owner after corners (5/11 corner team): a restart-specific feature for the takeover
+   model, judged by the paired rule and the set-piece check.
+3. Decode D in the same Viterbi path, using the v2 rules as soft evidence instead of hard rules.
+Re-check every change with `make sim-ablate`, the paired §6.4 rule, `make airlock
+T=candidate|stability`, and `make submission` (sha256 changes need a new FINAL row).
