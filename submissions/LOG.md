@@ -11,6 +11,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 21:01 | v4 | 1b26d03d65f2 | 65493ac | 66da042216912ab0 | pass | 0.5930 | pass | consistency 0.726; rejected: sim tie (paired rule), consistency regression | no |
 | 2026-10-31 21:13 | ablate-v3-no_oob | 2ad4fc1b4402 | 158d253 | 09352f5c76797526 | pass | 0.5784 | pass | consistency 0.742; M3 ablation, not a submission | no |
 | 2026-10-31 21:13 | ablate-v3-no_still | cb4e3815f479 | 158d253 | 00f4551f83d84c89 | pass | 0.5808 | pass | consistency 0.740; M3 ablation (= v3 output: stillness inert) | no |
+| 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | **FINAL** (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 | no |
 
 
 ## Work log
@@ -67,3 +68,11 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   matches where the challenger is out of fold. **v3 selected over v1**: Δ +0.043 held-out, 7/7
   matches, p ≈ 0.008. v2 vs v1 stays a tie, since v2 is tuned in-sample and only the 2 held-out
   matches count.
+- 2026-10-31: Plan finished on the agent side (M2–M4).
+  - `make submission` (configs/final.yaml) reproduces sha256 00f4551f83d84c89… from a clean
+    clone, twice.
+  - Latency corrections, v4 and tag anchors were tried and dropped; T3 broadcast and whistles
+    failed their falsifiers.
+  - M3 ablations: stillness dropped as inert; out-of-bounds kept.
+  - Stability, disagreement and set-piece checks pass. `make audit` passes.
+  - FINAL row above. The remaining steps are human (PLAN_STATUS.md TODO).
