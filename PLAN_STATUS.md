@@ -534,7 +534,9 @@ Open, in order. Facts from the organisers' "Initial Challenge" email (20 Oct, re
 
 The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yaml`).
 
-1. **Register the team name** with every member (same spelling) before 10 Nov.
+1. **Register the team name** with every member (same spelling) before 10 Nov. Checked 1 Nov:
+   Gmail has the event-registration confirmation (19 Oct) but nothing naming a team, so this
+   step looks open.
 2. ~~Public repo~~ done 31 Oct: **https://github.com/Jus973/mtah-2027** (public, `main`). The final
    CSV stays out of git, per CLAUDE.md; `git add -f` it only if you decide PLAN §7 wins. `make
    audit` warns about one local home path in `.cursorignore`.
