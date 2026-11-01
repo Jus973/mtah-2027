@@ -9,6 +9,8 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 20:30 | v2 | 14177d87de60 | ef58ae0 | a5a8eb85099c74fb | pass | 0.5450 | pass | consistency 0.728; near-tie with v1, not selected (§6.4) | no |
 | 2026-10-31 20:46 | v3 | 2cb112d12c53 | 6dfcf31 | 00f4551f83d84c89 | pass | 0.5838 | pass | consistency 0.740; SELECTED: paired §6.4 (amended), 7/7 sim matches beat v1 | no |
 | 2026-10-31 21:01 | v4 | 1b26d03d65f2 | 65493ac | 66da042216912ab0 | pass | 0.5930 | pass | consistency 0.726; rejected: sim tie (paired rule), consistency regression | no |
+| 2026-10-31 21:13 | ablate-v3-no_oob | 2ad4fc1b4402 | 158d253 | 09352f5c76797526 | pass | 0.5784 | pass | consistency 0.742; M3 ablation, not a submission | no |
+| 2026-10-31 21:13 | ablate-v3-no_still | cb4e3815f479 | 158d253 | 00f4551f83d84c89 | pass | 0.5808 | pass | consistency 0.740; M3 ablation (= v3 output: stillness inert) | no |
 
 
 ## Work log
