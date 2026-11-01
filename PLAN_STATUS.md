@@ -451,6 +451,20 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
     `.claude/settings.json` and `.cursorignore`.
   - *Document:* `docs/technical.md` is rewritten for the final file (v3), ≈ 5.5 pages.
 
+- **Plan items closed without building them** (reasons):
+  - *M1 dead-ball (c), formation reset after a goal:* no separate rule. There are 3 goals (4
+    tags), and the only gain would be the after-goal restart time. Gap and out-of-bounds evidence
+    already make those stretches D, and the sim has no tags to test it.
+    `events/restarts.detect_kickoffs` could be pointed at the `Kick Off (After Goal)` tags if
+    wanted.
+  - *M2 optional hand labels on another match:* skipped, as PLAN allows. DFL's own possession
+    labels cover other-game ground truth.
+  - *M2 T4 per-frame 3-class emission model:* superseded by the event-level takeover model,
+    PLAN's "turnover-at-candidate classifier". The changes it would decide happen at contacts,
+    and the per-frame D side is worth ≤ +0.04 even when perfect.
+  - *M1/M2 frame-level {H, A, D} Viterbi:* the decoder is event-level over {H, A}, with D from
+    the dead-ball rules. Decoding D in the same path is Next step 3.
+
 ## TODO for humans
 
 Open, in order:
