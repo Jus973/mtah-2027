@@ -16,6 +16,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | FINAL 1 Nov until v6 (§6.4): configs/final.yaml = v5, same file as v5; consistency 0.746 | no |
 | 2026-11-01 10:16 | v6 | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | consistency 0.742; SELECTED: make paired vs v5, 7/7, +0.014, p = 0.0078 | no |
 | 2026-11-01 10:16 | final | 85a3d741a110 | 9e6206d | fe4b6878b3a22d6a | pass | 0.6270 | pass | **FINAL** (§6.4): configs/final.yaml = v6, same file as v6; consistency 0.742 | no |
+| 2026-11-01 10:40 | v7 | 47162a982152 | f75a82f | 75605ff5d364235b | pass | 0.6254 | pass | consistency 0.755; tie with v6 on the sim, worse on both dead-ball stress tests: not selected | no |
 
 
 ## Work log
@@ -125,3 +126,11 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     dead-time ball. On the sim 20.5–22.0% of seen ball frames do not move; on the real ATD
     0.08% (airlock atd-stats). Without ball kinematics +0.018 (6/7, a tie); players only −0.030.
     Dropped: no learned part that decides `D` reads ball kinematics.
+  - **v7** (`configs/rules_v7.yaml`): a restart must send the ball away (>= 4 m/s, physical). Why:
+    with the frozen sim ball replaced by one carried by the nearest player, v6 fell 0.627 → 0.556
+    held-out. But that stress test teleported out-of-bounds balls back onto the pitch. With the
+    ball left in place until a player comes within 1 m and then carried, v6 holds (0.625). v7 vs
+    v6 (all 7 matches, same models): frozen −0.0006 (5/7), picked up −0.0036 (0/7), lost
+    −0.0048 (1/7). Real match: all checks pass, consistency 0.755 (v6 0.742), 121 `D` runs, `D`
+    share 0.518. A tie on the sim, worse on both stress tests: **not selected, v6 stays FINAL**
+    (Docker linux/arm64 and amd64 reproduce v6's sha256 too).

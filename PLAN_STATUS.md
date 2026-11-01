@@ -355,7 +355,11 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - ball direction at contacts (position along the attack, forward ball speed): +0.0007, 4/7;
   - takeover label lag 12 / 25 frames: −0.011 / −0.038; capacity (7 or 31 leaves, 150 or 600
     rounds, 20 or 80 per leaf): all ≤ 0; a 5-seed average: −0.002;
-  - gap models with 5 s context: −0.002; gap penalties re-tuned on v6: unchanged (30 / 15).
+  - gap models with 5 s context: −0.002; gap penalties re-tuned on v6: unchanged (30 / 15);
+  - **v7**, a restart must send the ball away (≥ 4 m/s): vs v6 −0.0006 (5/7) on the sim, −0.0036
+    (0/7) with the dead ball fetched and carried by a player, −0.0048 (1/7) with it lost; real
+    consistency 0.755 (v6 0.742). Not selected. The stress tests also show v6 holds when the
+    dead ball is carried (0.625 held-out) or lost (0.626).
 - **Learned per-frame `D`: dropped, a sim artifact.** Team shape + ball features over all graded
   frames, decoded as a 2-state path: frame accuracy 0.978 vs 0.86–0.88 for the evidence `D`, and
   +0.034 (7/7). But the DFL data freezes the ball in dead time: on the sim 99.5% of seen dead

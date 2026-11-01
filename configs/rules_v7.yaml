@@ -5,6 +5,9 @@
 # Why: the DFL data freezes the dead-time ball (21% of seen sim ball frames do not move, 0.08%
 # on the real ATD), so on the sim nobody ever carries the ball in a stoppage. With the dead-time
 # ball carried by the nearest player instead, v6 falls from 0.627 to 0.556 held-out.
+# Tried 1 Nov, NOT selected: vs v6 on the sim -0.0006 (5/7, a tie) with the frozen ball, -0.0036
+# (0/7) with the dead ball fetched and carried by the nearest player, -0.0048 (1/7) with it lost.
+# Real match: consistency 0.755 (v6 0.742), D share 0.518 (v6 0.481), 121 D runs. v6 stays.
 inherit: rules_v6.yaml
 
 deadball:
