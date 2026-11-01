@@ -25,10 +25,11 @@ submitted file has sha256 `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722eda
 (`submissions/final/TEAM_NAME.sha256`). Runs are deterministic: CPU only, no randomness at
 inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 4 s once the cache exists.
 
-With Docker (the real bundle opens only at a terminal, hence `-t`):
+With Docker (the real bundle opens only at a terminal, hence `-t`). The image gives the same
+file on linux/arm64 and linux/amd64:
 
 ```bash
-docker build -t mtah .
+make docker-build                           # docker build -t mtah . (PLATFORM=linux/amd64 for x86)
 docker run -t -e TEAM=<TEAM_NAME> -v /path/to/mtah2027:/data -v "$PWD/out":/out mtah
 ```
 

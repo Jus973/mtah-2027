@@ -76,3 +76,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   - M3 ablations: stillness dropped as inert; out-of-bounds kept.
   - Stability, disagreement and set-piece checks pass. `make audit` passes.
   - FINAL row above. The remaining steps are human (PLAN_STATUS.md TODO).
+- 2026-10-31: M4 reproducibility closed. All of these produce sha256 00f4551f83d84c89…, the
+  FINAL row, with validator and bands passing:
+  - a fresh clone and venv with an empty cache (`make airlock T=submission-cold`), twice;
+  - the Docker image on linux/arm64 and linux/amd64 (`make airlock T=submission-docker`).

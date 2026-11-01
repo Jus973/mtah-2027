@@ -441,11 +441,18 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
 - **M4 reproducibility and audit.**
   - *Clean clone* (`git clone` → `make setup` → 86 tests pass with no match data → `make airlock
     T=submission` twice): the same sha256 both times, equal to the committed hash. The clone was
-    deleted afterwards, as it held a bundle-derived CSV. It reused the parsed-ATD cache (human
-    TODO 7 covers a fully cold run).
+    deleted afterwards, as it held a bundle-derived CSV.
+  - *Fully cold clean clone* (`make airlock T=submission-cold`): a fresh clone and venv, with an
+    empty temporary cache that the airlock creates and deletes, so the ATD is parsed from
+    scratch. Two runs give the same sha256, equal to the committed hash, in 18 s each including
+    the parse.
   - *Dockerfile:* runs `make cache submission` for `TEAM` and copies the file to `/out`;
-    `.dockerignore` keeps local, derived and secret files out. Not built here: the Docker daemon
-    was not running (human TODO 6).
+    `.dockerignore` keeps local, derived and secret files out (checked inside the image).
+    `make docker-build` builds it (1 min 42 s, 910 MB). `make airlock T=submission-docker` runs
+    it with the bundle mounted read-only and the container's report under the release policy.
+    - Linux aarch64: same sha256, 22 s.
+    - Linux x86_64 (`PLATFORM=linux/amd64`, emulated): same sha256, 49 s.
+    - **The file is identical on macOS arm64, Linux arm64 and Linux x86_64.**
   - *`make audit`:* PASS. No bundle files or derivatives, nothing over 5 MB, no secrets,
     `.mtah.local` untracked, LICENSE and README present. It warns about absolute home paths in
     `.claude/settings.json` and `.cursorignore`.
@@ -495,14 +502,11 @@ Open, in order:
 5. **Emails** (Appendix D): 1 (cloud assistants and aggregates; the §7 "Tooling" paragraph
    depends on the answer), the new 2 (Smart Tagging as a label-free selection signal) and 3
    (deadline hour).
-6. **Docker** (M4; the daemon was not running here):
-   ```bash
-   docker build -t mtah .
-   docker run -t -e TEAM=<TEAM_NAME> -v /path/to/mtah2027:/data -v "$PWD/out":/out mtah
-   ```
-   `out/<TEAM_NAME>.csv` must have the sha256 above.
-7. **Fully cold clean-clone run** (M4). The agent's clean-clone run reused the parsed-ATD cache;
-   the code, setup and submission were fresh. Run it with an empty `MTAH_CACHE_DIR`.
+6. ~~Docker~~ done by the agent (31 Oct): built and run for arm64 and amd64, same sha256. The
+   agent started Docker Desktop for this. The `mtah` image left behind is the amd64 build;
+   `make docker-build` rebuilds it natively.
+7. ~~Fully cold clean-clone run~~ done by the agent (31 Oct, `make airlock T=submission-cold`
+   in a fresh clone): same sha256 twice.
 8. **Optional:**
    - *Video ball recovery go/no-go (M3).* Conditions (a) and (b) are met; (c), P3 having ≥ 4
      free days, is yours. Default no-go (prior 0.3). Any detector must retrain deterministically

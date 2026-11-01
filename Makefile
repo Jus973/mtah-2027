@@ -94,9 +94,10 @@ score:
 candidate: check-data
 	$(PY) scripts/run_candidate.py --game $(GAME) --config $(or $(CFG),configs/rules.yaml) --name $(NAME)
 
-# The reproduction image (Dockerfile); agents then run it with make airlock T=submission-docker
+# The reproduction image (Dockerfile; PLATFORM=linux/amd64 for x86); agents then run it with
+# make airlock T=submission-docker
 docker-build:
-	docker build -t mtah .
+	docker build $(if $(PLATFORM),--platform $(PLATFORM)) -t mtah .
 
 # PLAN.md M4 repo audit over every tracked file (no match data)
 audit:

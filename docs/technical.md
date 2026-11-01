@@ -281,8 +281,12 @@ make open-data && make sim && make train-takeover && make sim-ablate
   `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`
   (`submissions/final/TEAM_NAME.sha256`; the FINAL row of `submissions/LOG.md`).
 - **Determinism:** inference has no randomness. It runs on the CPU, with single-threaded
-  LightGBM and `PYTHONHASHSEED=0`. Two runs from a clean clone produced the same file, equal to
-  the committed sha256. The Dockerfile reproduces it from a mounted bundle.
+  LightGBM and `PYTHONHASHSEED=0`. Each of these produced the same file, equal to the committed
+  sha256:
+  - a fresh clone with an empty cache, run twice;
+  - the Docker image, on linux/arm64 and on linux/amd64.
+
+  The Dockerfile reproduces the file from a mounted bundle.
 - **Runtime:** about 4 s for `make submission` with the parse cache warm, on an Apple M4 (10
   cores, 16 GB). Model training takes 33 s on the sim.
 - **Tooling:** the code was written with an AI coding assistant. It never received match data,
