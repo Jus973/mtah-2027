@@ -80,3 +80,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   FINAL row, with validator and bands passing:
   - a fresh clone and venv with an empty cache (`make airlock T=submission-cold`), twice;
   - the Docker image on linux/arm64 and linux/amd64 (`make airlock T=submission-docker`).
+- 2026-10-31: Public repo https://github.com/Jus973/mtah-2027. Final file named for the team
+  (Berkeley Sports Research Group), same sha256; Docker entry point re-verified. Emails 1 and 2
+  sent to the organisers (user-approved). The deadline is 17 Nov 11:59 PM CET and the Form link
+  arrives by 14 Nov; a daily Gmail watch flags it. Upload waits for the user's go.

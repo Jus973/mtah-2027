@@ -3,7 +3,7 @@
 Last updated: Sat 31 Oct 2026, agent session 2. **Every agent-side item of PLAN.md M0–M4 is done
 or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
 reproductions, and the public repo (https://github.com/Jus973/mtah-2027). What is left is human:
-register the team name, send the two drafted emails, and upload when the Form arrives.** The final file is `make submission` from `configs/final.yaml` (candidate v3:
+register the team name, and upload when the Form arrives (a daily Gmail watch will flag it).** The final file is `make submission` from `configs/final.yaml` (candidate v3:
 learned takeovers + Viterbi), sha256
 `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. A cold clean clone (twice)
 and Docker on arm64 and amd64 give the same file.
@@ -489,10 +489,12 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
 2. ~~Public repo~~ done 31 Oct: **https://github.com/Jus973/mtah-2027** (public, `main`). The final
    CSV stays out of git, per CLAUDE.md; `git add -f` it only if you decide PLAN §7 wins. `make
    audit` warns about one local home path in `.cursorignore`.
-3. **Emails.** Drafts 1 (cloud assistants) and 2 (Smart Tagging as a selection signal) are in
-   your Gmail, to hackathon.talentarena@mobileworldcapital.com, **not sent**. Email 1 asks about
-   aggregates prospectively; the airlock has already released aggregates to an assistant, so
-   consider saying so before you send. Email 3 is not needed.
+3. ~~Emails~~ **sent 31 Oct** (you approved it) from your Gmail to
+   hackathon.talentarena@mobileworldcapital.com: 1 (cloud assistants) and 2 (Smart Tagging as a
+   selection signal). Email 3 was not needed. Watch for the replies. The answer to 1 may change
+   the document's "Tooling" paragraph.
+   *Form watch:* a scheduled task (`mtah-form-watch`, daily at 9:13) searches Gmail for the
+   submission instructions until 15 Nov and notifies you with the Form link. It only reports.
 4. **When the Form arrives (by 14 Nov): upload, after you say go.**
    - CSV: `submissions/final/Berkeley Sports Research Group.csv`. Rebuild it right before
      uploading with `make submission`; its sha256 must be
