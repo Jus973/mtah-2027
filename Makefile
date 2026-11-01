@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit docker-build check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit docker-build check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -72,6 +72,9 @@ sim-dead:
 # Takeover model for the v3 decoder: trained on the sim's fit matches only -> models/ (committed)
 train-takeover:
 	$(PY) scripts/train_takeover.py --config $(or $(CFG),configs/rules_v3.yaml)
+
+train-gaps:
+	$(PY) scripts/train_gaps.py --config $(or $(CFG),configs/rules_v5.yaml)
 
 # Transition timing residuals and latency corrections, calibrated on fit, judged on held-out
 sim-latency:

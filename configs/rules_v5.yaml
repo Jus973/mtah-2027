@@ -1,0 +1,30 @@
+# Rules v5: the final v3 (configs/final.yaml: v3 without the inert stillness evidence) plus a
+# ball-free decode inside long ball gaps (learn/gapstate.py, decode/gaps.py). v3 calls every
+# gap of >= 25 frames dead; on the sim a fifth of those frames are alive and the owner changes
+# inside them with no contact to see. make train-gaps trains the two gap models on the 5 fit sim
+# matches only (open data), tunes the penalties out of fold, and prints the paired comparison.
+inherit: rules_v3.yaml
+
+deadball:
+  kinds: [oob, gap]
+
+gaps:
+  enabled: true
+  min_frames: 25            # a long gap: ball unseen this long (= deadball.gap_min_frames)
+  dead_model: models/gap_dead_v1.txt
+  owner_model: models/gap_owner_v1.txt
+  context_frames: [25, 50]  # features also read 1 s and 2 s either side (offline context)
+  velocity_frames: 12       # forward drift of a team's centroid over +/- this many frames
+  step_frames: 5            # the decoder's time step inside a gap
+  lam_dead: 30.0            # penalty per change into or out of D (tuned out of fold)
+  lam_owner: 15.0           # penalty per change of owner (tuned out of fold)
+
+gap_model:                  # LightGBM, single-threaded and seeded (learn/gapstate.py)
+  learning_rate: 0.05
+  num_leaves: 31
+  min_data_in_leaf: 100
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  feature_fraction: 0.8
+  seed: 0
+  num_boost_round: 300
