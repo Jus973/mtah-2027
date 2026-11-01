@@ -1,0 +1,17 @@
+# Nothing local, bundle-derived or secret goes into the image.
+.git
+.venv
+.mtah.local
+.env
+data/
+cache/
+fakedata/out/
+submissions/candidates/
+submissions/final/*.csv
+docs/*.pdf
+**/__pycache__
+*.npz
+*.mp4
+*.parquet
+.pytest_cache
+.claude

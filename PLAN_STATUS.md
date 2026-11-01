@@ -46,7 +46,7 @@ selection signal.
 
 ## Done (agent, M0)
 
-- `CLAUDE.md`, `.claude/settings.json` (deny rules include `/Users/justinzhang/mtah2027/**`),
+- `CLAUDE.md`, `.claude/settings.json` (deny rules include `/path/to/mtah2027/**`),
   `.gitignore`, `.cursorignore`, and a pre-commit guard (`scripts/check_no_data.py`) that blocks
   data dirs, bundle file types and files > 5 MB.
 - Official repo vendored unmodified @ `f8f2629` (`evaluation/`, `starter/`, `games.py`). sha256
@@ -441,7 +441,7 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
    ```bash
-   cd ~/Documents/github/mtah-2027 && export MTAH_DATA_DIR=/Users/justinzhang/mtah2027
+   cd ~/Documents/github/mtah-2027 && export MTAH_DATA_DIR=/path/to/mtah2027
    make cache            # expect 113,488 / 94,214 ball frames, ~20.5 objects, home = Barcelona
    make baseline-check   # expect 4× byte-identical; public smooth50 0.3256, smooth125 0.4242
    make anchors          # expect kick-offs 11185 and 113742; direction flips at half-time

@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -93,6 +93,10 @@ score:
 # make candidate CFG=configs/rules.yaml NAME=v1 (humans; agents use make airlock T=candidate ...)
 candidate: check-data
 	$(PY) scripts/run_candidate.py --game $(GAME) --config $(or $(CFG),configs/rules.yaml) --name $(NAME)
+
+# PLAN.md M4 repo audit over every tracked file (no match data)
+audit:
+	$(PY) scripts/audit_repo.py
 
 # make doc TEAM=<TEAM_NAME> REPO=<public repo URL> -> docs/<TEAM_NAME>.md (+ .pdf with pandoc)
 doc:
