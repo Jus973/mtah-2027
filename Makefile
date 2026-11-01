@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit docker-build check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps paired sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit docker-build check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -75,6 +75,10 @@ train-takeover:
 
 train-gaps:
 	$(PY) scripts/train_gaps.py --config $(or $(CFG),configs/rules_v5.yaml)
+
+# PLAN.md §6.4: paired per-match comparison on the sim, learned parts cross-fitted
+paired:
+	$(PY) scripts/paired.py --a $(or $(A),configs/final.yaml) --b $(B)
 
 # Transition timing residuals and latency corrections, calibrated on fit, judged on held-out
 sim-latency:

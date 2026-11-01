@@ -5,9 +5,14 @@ For a contact by the team that does not own the ball, the model gives P(takeover
 team owns the ball right after it. It is trained on the sim's fit matches (DFL possession, other
 games), never on the real match. Features are relative to the toucher's team (team-symmetric):
 the contact's kinematics and its rhythm (time to the previous and next contacts and whether they
-are the same team's). Pressure (players of each team within 3 m / 8 m) was tried and dropped: it
-left held-out AUC unchanged (0.913) and depends on track dropouts and duplicates. Gradient-boosted
-trees (LightGBM), single-threaded and seeded, so training and prediction are deterministic.
+are the same team's). With owner.shape_features (v6), ten team-shape signals from the toucher's
+perspective are added (learn/gapstate.py features): both teams' widths, the centroid and speed
+gaps, both teams' forward drift 1 s and 2 s after the contact, and both centroids' change from
+2 s before to 2 s after it. A team that wins the ball spreads and moves forward. On the sim
+they raised spellF1 by 0.014 with v5's gap decoder, on all 7 matches. Pressure (players of each
+team within 3 m / 8 m) was tried and dropped: it left held-out AUC unchanged (0.913) and depends on
+track dropouts and duplicates. Gradient-boosted trees (LightGBM), single-threaded and seeded, so
+training and prediction are deterministic.
 """
 
 import os
@@ -20,7 +25,13 @@ from mtah.events.touches import touch_events
 FEATURES = ("log_frames", "d_min", "opp_d_min", "speed_before", "speed_before_missing",
             "speed_after", "speed_after_missing", "dv", "turn", "turn_missing",
             "log_dt_prev", "prev_same_team", "log_dt_next", "next_same_team", "next2_same_team")
+SHAPE = ("x_sy", "y_sy", "dcu", "dspeed", "x_vu_+25", "x_vu_+50", "y_vu_+25", "y_vu_+50")
+SHAPE_FEATURES = SHAPE + ("x_cu_change", "y_cu_change")
 CAP_S = 10.0
+
+
+def feature_names(cfg):
+    return FEATURES + (SHAPE_FEATURES if cfg["owner"].get("shape_features") else ())
 
 
 def contacts(ball, d, touch_cfg, r, fps=25):
@@ -52,6 +63,18 @@ def features(events, d, fps=25):
     return X
 
 
+def shape_features(events, F, names):
+    """(n_events, len(SHAPE_FEATURES)): team shape from the toucher's perspective. F: the
+    (F_home, F_away) arrays of gapstate.features; names: their column names."""
+    col = {n: i for i, n in enumerate(names)}
+    out = np.zeros((len(events), len(SHAPE_FEATURES)))
+    for i, e in enumerate(events):
+        a, b = F[e.team][e.start], F[e.team][e.end]
+        out[i] = [b[col[n]] for n in SHAPE] + [b[col["x_cu_+50"]] - a[col["x_cu_-50"]],
+                                               b[col["y_cu_+50"]] - a[col["y_cu_-50"]]]
+    return out
+
+
 def training_rows(events, gt, graded, lag):
     """(indices, labels) of contacts by the team that does not own the ball in the GT just before
     it: label 1 if the GT owner lag frames after the contact ends is the toucher's team."""
@@ -68,12 +91,12 @@ def training_rows(events, gt, graded, lag):
     return np.array(idx, dtype=np.int64), np.array(y)
 
 
-def train(X, y, params):
+def train(X, y, params, names=FEATURES):
     """A LightGBM booster; params: the takeover_model section of the config."""
     import lightgbm as lgb
     p = {k: v for k, v in params.items() if k != "num_boost_round"}
     p.update(objective="binary", num_threads=1, deterministic=True, verbose=-1)
-    return lgb.train(p, lgb.Dataset(X, y, feature_name=list(FEATURES)),
+    return lgb.train(p, lgb.Dataset(X, y, feature_name=list(names)),
                      num_boost_round=params["num_boost_round"])
 
 

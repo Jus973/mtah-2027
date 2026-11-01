@@ -82,3 +82,30 @@ def test_v3_pipeline_on_the_fake_match(fake, fake_atd):
     graded = registry.graded_mask(sp)
     assert set(a[graded]) <= {"H", "A", "D"} and set(a[~graded]) == {"X"}
     assert info["contacts"] > info["touches"] > 0
+
+
+def test_shape_features_follow_the_toucher():
+    from mtah.learn import gapstate
+    gc = config.load("rules_v6.yaml")["gaps"]
+    names = gapstate.feature_names(gc)
+    rng = np.random.default_rng(1)
+    F = (rng.normal(size=(200, len(names))), rng.normal(size=(200, len(names))))
+    events = [contact(20, 0), contact(80, 1), contact(150, 0)]
+    swapped = [contact(20, 1), contact(80, 0), contact(150, 1)]
+    a = takeover.shape_features(events, F, names)
+    b = takeover.shape_features(swapped, (F[1], F[0]), names)
+    assert a.shape == (3, len(takeover.SHAPE_FEATURES))
+    np.testing.assert_array_equal(a, b)
+    col = {n: i for i, n in enumerate(names)}
+    assert a[1, -2] == F[1][82, col["x_cu_+50"]] - F[1][80, col["x_cu_-50"]]
+
+
+def test_v6_pipeline_on_the_fake_match(fake, fake_atd):
+    v6 = config.load("rules_v6.yaml")
+    assert os.path.isfile(takeover.model_path(v6))           # committed, trained on the sim only
+    atd, _ = fake_atd
+    sp = registry.spec(fake["game"], fake["data_dir"])
+    a, info = pipeline.run(fake["game"], v6, fake["data_dir"], atd=atd)
+    graded = registry.graded_mask(sp)
+    assert set(a[graded]) <= {"H", "A", "D"} and set(a[~graded]) == {"X"}
+    assert info["contacts"] > 0

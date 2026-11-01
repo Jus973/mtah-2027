@@ -103,3 +103,6 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     v5 differ on 2.7% of graded frames.
   - **v5 selected (FINAL).** sha256 c1abb6e5e46d78ab…, identical twice, from a cold cache, from a
     fresh clean clone (cold, twice) and in Docker on linux/arm64 and linux/amd64. Not uploaded.
+- 2026-11-01: v3 was restored as FINAL (66652fe) because the user had asked for v3; the user then
+  set a new goal, to optimise the entry for winning the whole challenge. v5 is re-selected by the
+  §6.4 paired rule (47d485f reverts the restore; same file, sha256 c1abb6e5e46d78ab…).

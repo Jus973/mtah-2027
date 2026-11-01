@@ -69,9 +69,16 @@ def run(game, cfg, data_dir=None, atd=None):
     dead |= pre_kick
     dead &= graded
     oc = cfg["owner"]
+    gc = cfg.get("gaps")
+    F = None
+    if (gc and gc["enabled"]) or oc.get("shape_features"):
+        F = gapstate.features(players, atd.team_of_slot, gapstate.home_direction(atd, sp, kicks),
+                              atd.pitch, gc, fps)
     if oc["decoder"] == "viterbi":
         events = takeover.contacts(ball, d, cfg["touch"], oc["contact_r_m"], fps)
         X = takeover.features(events, d, fps)
+        if oc.get("shape_features"):
+            X = np.hstack([X, takeover.shape_features(events, F, gapstate.feature_names(gc))])
         p = takeover.predict(takeover.load(cfg), X)
         if restarts:                     # a release restart is the taker's: a certain takeover
             events, p = takeover.with_restarts(events, p, restarts)
@@ -84,11 +91,8 @@ def run(game, cfg, data_dir=None, atd=None):
     info = {"touches": len(touches), "contacts": n_contacts, "release_restarts": len(restarts),
             "d_runs_evidence": len(runs),
             "d_share_graded": float(dead[graded].mean()), "kickoffs": kicks}
-    gc = cfg.get("gaps")
     if gc and gc["enabled"]:
         gap = gapstate.long_gaps(observed, graded, gc["min_frames"]) & ~pre_kick
-        F = gapstate.features(players, atd.team_of_slot, gapstate.home_direction(atd, sp, kicks),
-                              atd.pitch, gc, fps)
         idx = np.flatnonzero(gap)
         p_dead, p_home = np.full(sp["n_frames"], np.nan), np.full(sp["n_frames"], np.nan)
         p_dead[idx], p_home[idx] = gapstate.predict(gapstate.load(cfg), F, idx)

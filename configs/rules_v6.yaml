@@ -1,0 +1,11 @@
+# Rules v6: v5 plus team shape at each contact in the takeover model (learn/takeover.py
+# shape_features): both teams' widths, centroid and speed gaps, forward drift after the contact,
+# and the centroid change across it. make train-takeover CFG=configs/rules_v6.yaml trains
+# models/takeover_v2.txt on the 5 fit sim matches only; the gap models are v5's (players only, so
+# unchanged). alpha 3 and flip_penalty 0 stay: tuned out of fold with the gap decoder on, they
+# are still the best of alpha 1-4 x penalty -0.5-1.
+inherit: rules_v5.yaml
+
+owner:
+  model: models/takeover_v2.txt
+  shape_features: true
