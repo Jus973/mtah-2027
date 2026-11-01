@@ -94,6 +94,8 @@ def run(game, cfg, data_dir=None, atd=None):
         p_dead[idx], p_home[idx] = gapstate.predict(gapstate.load(cfg), F, idx)
         labels = decode_gaps(labels, gap, p_dead, p_home, gc["step_frames"], gc["lam_dead"],
                              gc["lam_owner"])
+        info["gap_mask"] = gap
         info["gap_frames"] = int(gap.sum())
-        info["gap_alive_share"] = float(np.isin(labels[gap], ["H", "A"]).mean()) if idx.size else 0.0
+        alive = np.isin(labels[gap], ["H", "A"])
+        info["gap_alive_share"] = float(alive.mean()) if idx.size else 0.0
     return labels, info

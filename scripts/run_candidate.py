@@ -21,7 +21,7 @@ from _guard import check, game_args, put  # noqa: E402
 
 from mtah import config, pipeline, registry  # noqa: E402
 from mtah.eval.bands import bands  # noqa: E402
-from mtah.eval.consistency import set_piece_checks, tag_consistency  # noqa: E402
+from mtah.eval.consistency import phase_cover, set_piece_checks, tag_consistency  # noqa: E402
 from mtah.eval.score import public_check, score  # noqa: E402
 from mtah.io.tags import load_tags  # noqa: E402
 from mtah.submit.write import sha256, validate, write_csv  # noqa: E402
@@ -87,6 +87,18 @@ if os.path.isfile(tag_path):
         set_piece_checks(labels, tags, cfg["tag_team_map"], registry.graded_mask(sp),
                          tc["set_piece_restart_after_start_s"], tc["set_piece_window_s"],
                          tc["set_piece_match_s"], sp["fps"]))
+    if "gap_mask" in info:
+        gap = info["gap_mask"]
+        put("smart-tagging consistency, gap frames decoded alive",
+            {k: v for k, v in tag_consistency(labels, tags, cfg["tag_team_map"], gap).items()
+             if k != "by_code"})
+        cover = phase_cover(tags, cfg["tag_team_map"], len(labels))
+        alive = np.isin(labels, ["H", "A"])
+        masks = (("alive outside gaps", graded & alive & ~gap),
+                 ("D outside gaps", graded & ~alive & ~gap),
+                 ("alive in gaps", gap & alive), ("D in gaps", gap & ~alive))
+        put("share inside a team-tagged phase, by predicted label and gap",
+            {name: float(cover[m].mean()) if m.any() else None for name, m in masks})
 
 verdict = None
 if real:

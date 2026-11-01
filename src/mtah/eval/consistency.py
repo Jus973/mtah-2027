@@ -48,6 +48,15 @@ def tag_consistency(labels, tags, team_map, graded):
             "by_code": {c: [a / t if t else None, t] for c, (a, t) in sorted(by_code.items())}}
 
 
+def phase_cover(tags, team_map, n_frames):
+    """(T,) bool: frames inside a phase that implies a team in possession (implied_side)."""
+    cover = np.zeros(n_frames, dtype=bool)
+    for tag in tags:
+        if implied_side(tag, team_map) is not None:
+            cover[max(0, tag.start):min(n_frames, tag.end + 1)] = True
+    return cover
+
+
 SET_PIECE_TYPES = ("Throw-in", "Corner Kick", "Goal Kick", "Free Kick", "Kick Off (After Goal)")
 
 
