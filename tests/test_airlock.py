@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 import pytest
@@ -145,3 +146,23 @@ def test_airlock_csv_only_where_declared(fake, tmp_path):
     assert run_airlock("anchors", fake["game"], fake["data_dir"], tmp_path,
                        "--csv", PUBLIC_GT).returncode != 0
     assert run_airlock("public-check", fake["game"], fake["data_dir"], tmp_path).returncode != 0
+
+
+def test_cold_submission_uses_and_removes_a_fresh_cache(fake, tmp_path):
+    import glob
+    before = set(glob.glob(os.path.join(tempfile.gettempdir(), "mtah_cold_cache_*")))
+    proc = run_airlock("submission-cold", fake["game"], fake["data_dir"], tmp_path,
+                       "--name", "TESTCOLD")
+    out = os.path.join(ROOT, "submissions", "final", "TESTCOLD.csv")
+    try:
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "[PASS] official validator on the exact file" in proc.stdout
+        assert set(glob.glob(os.path.join(tempfile.gettempdir(), "mtah_cold_cache_*"))) == before
+    finally:
+        if os.path.exists(out):
+            os.remove(out)
+
+
+def test_docker_submission_is_real_match_only(fake, tmp_path):
+    proc = run_airlock("submission-docker", fake["game"], fake["data_dir"], tmp_path)
+    assert proc.returncode != 0 and "real match" in (proc.stdout + proc.stderr)

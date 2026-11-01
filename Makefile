@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit docker-build check-data
 
 setup:
 	python3.11 -m venv .venv
@@ -93,6 +93,10 @@ score:
 # make candidate CFG=configs/rules.yaml NAME=v1 (humans; agents use make airlock T=candidate ...)
 candidate: check-data
 	$(PY) scripts/run_candidate.py --game $(GAME) --config $(or $(CFG),configs/rules.yaml) --name $(NAME)
+
+# The reproduction image (Dockerfile); agents then run it with make airlock T=submission-docker
+docker-build:
+	docker build -t mtah .
 
 # PLAN.md M4 repo audit over every tracked file (no match data)
 audit:

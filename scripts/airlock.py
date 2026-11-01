@@ -15,8 +15,10 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 from mtah import airlock, registry
@@ -38,10 +40,17 @@ JOBS = {
     "audio": "audio_stats.py",
     "sync": "sync_stats.py",
     "whistle": "whistle_stats.py",
+    # PLAN.md M4 reproducibility: the submission with an empty cache (the ATD is parsed afresh in
+    # a temporary cache the airlock creates and deletes), and inside the Docker image (bundle
+    # mounted read-only, the container's report collected under the same policy).
+    "submission-cold": "make_submission.py",
+    "submission-docker": "make_submission.py",
 }
+DOCKER_IMAGE = "mtah"
 # Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
 JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"},
-               "submission": {"config", "name"}, "stability": {"config"}}
+               "submission": {"config", "name"}, "stability": {"config"},
+               "submission-cold": {"config", "name"}, "submission-docker": {"name"}}
 REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
@@ -71,9 +80,10 @@ def git_sha():
         return None
 
 
-def release(job, game, rc, report_path, log_path):
+def release(job, game, rc, report_path, log_path, seconds=None):
     """(text the agent may see, blocked?)."""
-    lines = ["[airlock] {} on {}: exit {}".format(job, game, rc)]
+    took = " ({:.0f} s)".format(seconds) if seconds is not None else ""
+    lines = ["[airlock] {} on {}: exit {}{}".format(job, game, rc, took)]
     blocked = False
     report = None
     if os.path.isfile(report_path):
@@ -155,11 +165,28 @@ def main():
         cmd += ["--config", os.path.abspath(args.config)]
     if args.name:
         cmd += ["--name", args.name]
-    with open(log_path, "w") as log:
-        rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                            env=env, cwd=registry.ROOT).returncode
+    cold = None
+    if args.job == "submission-cold":
+        cold = tempfile.mkdtemp(prefix="mtah_cold_cache_")
+        env["MTAH_CACHE_DIR"] = cold
+    if args.job == "submission-docker":
+        if fake:
+            sys.exit("airlock: submission-docker is for the real match")
+        team = args.name or "TEAM_NAME"
+        cmd = ["docker", "run", "--rm", "-v", data_dir + ":/data:ro", "-v", log_dir + ":/airlock",
+               "-e", airlock.OUT_ENV + "=/airlock/" + os.path.basename(report_path),
+               DOCKER_IMAGE, "sh", "-c", "make PY=python submission TEAM=" + team]
+    t0 = time.time()
+    try:
+        with open(log_path, "w") as log:
+            rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT,
+                                stdin=subprocess.DEVNULL, env=env, cwd=registry.ROOT).returncode
+    finally:
+        if cold:
+            shutil.rmtree(cold, ignore_errors=True)
+    seconds = time.time() - t0
 
-    text, blocked = release(args.job, args.game, rc, report_path, log_path)
+    text, blocked = release(args.job, args.game, rc, report_path, log_path, seconds)
     print(text)
     entry = {"time": stamp, "job": args.job, "game": args.game, "git": git_sha(), "exit": rc,
              "blocked": blocked, "sha256": hashlib.sha256(text.encode()).hexdigest(),
