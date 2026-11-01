@@ -1,11 +1,13 @@
-"""Rules v1 end to end: one function from a match to its per-frame H / A / D / X labels.
+"""The pipeline end to end: one function from a match to its per-frame H / A / D / X labels.
 
 The same code runs on the real match, the sim and the fake match; only the config differs:
-clean ball -> per-team distances -> touches -> dead-ball evidence -> D runs -> owner decoder
-(owner.hypothesis). Before a half's kick-off the ball is dead: where the half's graded block
-starts more than kickoff.tolerance_frames before the derived kick-off (events/restarts.py: Kick Off
-(Start) tag + line-up break), the frames up to the kick-off are D. No published frame number is
-used. Frames outside the graded halves are X; graded frames never are.
+clean ball -> per-team distances -> touches -> dead-ball evidence -> D runs -> owner decoder.
+owner.decoder is "rules" (owner.hypothesis over touches, v1) or "viterbi" (every contact, with a
+learned takeover probability, decoded as a sparse-transition path, v3). Before a half's kick-off
+the ball is dead: where the half's graded block starts more than kickoff.tolerance_frames before
+the derived kick-off (events/restarts.py: Kick Off (Start) tag + line-up break), the frames up to
+the kick-off are D. No published frame number is used. Frames outside the graded halves are X;
+graded frames never are.
 """
 
 import os
@@ -14,6 +16,7 @@ import numpy as np
 
 from mtah import registry
 from mtah.decode.rules import decode_owner
+from mtah.decode.viterbi import decode_viterbi
 from mtah.events.deadball import dead_runs, evidence
 from mtah.events.restarts import detect_kickoffs
 from mtah.events.touches import touch_events
@@ -21,6 +24,7 @@ from mtah.features.ball import clean_ball
 from mtah.features.players import team_distances
 from mtah.io.atd import load_game
 from mtah.io.tags import load_tags
+from mtah.learn import takeover
 
 
 def kickoffs(game, atd, cfg, data_dir=None):
@@ -58,10 +62,18 @@ def run(game, cfg, data_dir=None, atd=None):
         if k is not None and k - first > tol:
             dead[first:min(k, last + 1)] = True
     dead &= graded
-    owner_touches = sorted(touches + restarts, key=lambda t: t.start)
-    labels = decode_owner(owner_touches, graded, dead, cfg["owner"]["hypothesis"], cfg["owner"],
-                          fps)
-    info = {"touches": len(touches), "release_restarts": len(restarts),
+    oc = cfg["owner"]
+    if oc["decoder"] == "viterbi":
+        events = takeover.contacts(ball, d, cfg["touch"], oc["contact_r_m"], fps)
+        X = takeover.features(events, d, fps)
+        p = takeover.predict(takeover.load(cfg), X)
+        labels = decode_viterbi(events, p, graded, dead, oc["alpha"], oc["flip_penalty"])
+        n_contacts = len(events)
+    else:
+        owner_touches = sorted(touches + restarts, key=lambda t: t.start)
+        labels = decode_owner(owner_touches, graded, dead, oc["hypothesis"], oc, fps)
+        n_contacts = None
+    info = {"touches": len(touches), "contacts": n_contacts, "release_restarts": len(restarts),
             "d_runs_evidence": len(runs),
             "d_share_graded": float(dead[graded].mean()), "kickoffs": kicks}
     return labels, info

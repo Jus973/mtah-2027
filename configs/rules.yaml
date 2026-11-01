@@ -24,6 +24,7 @@ owner:
   # H1 wins both held-out matches and is the simplest rule (PLAN.md §6.4). Caveat: DFL's
   # possession flips on touches more readily than the real GT, which favours H1; re-check H1 vs
   # H2 with label-free checks on the real match once dead-ball v1 exists.
+  decoder: rules            # rules (decode/rules.py, owner.hypothesis) or viterbi (rules_v3.yaml)
   hypothesis: H1
   n_c: 2                    # H2 only: controlled if the ball stays close >= n_c frames,
   v_c_mps: 1.0              #     or is slower than this after the touch,

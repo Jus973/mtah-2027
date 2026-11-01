@@ -118,9 +118,38 @@ None in v1: no model is trained, on this match or any other. About a dozen thres
 radius, duration, turn, speed change; dead ball: margins, durations, merge window) were fitted by
 coordinate descent over fixed grids. The objective was mean spellF1 with the official scorer on
 the five *fit* sim matches. Grids were widened until every tuned value sat inside them, except
-where a criterion tuned itself off (stillness; H2's control tests). Planned for M2:
-emission models (LightGBM on team-symmetric features) trained on the sim only, never on this
-match.
+where a criterion tuned itself off (stillness; H2's control tests).
+
+**Candidate v3: learned takeovers and a sparse-transition decoder** (`configs/rules_v3.yaml`,
+not yet the submitted file). With the true `D`, H1 finds only half of the sim's possession
+changes, and 38% of the changes it predicts are wrong. Perfect takeover decisions on all
+contacts would lift spellF1 from 0.58 to 0.76 on the fit matches. That is a much larger lever
+than `D`, which is worth at most +0.04.
+
+v3 keeps v1's touches and dead-ball rules and changes how possession moves between contacts:
+- **Candidates.** Every contact (ball within 1.0 m of a player) is a candidate, not only the
+  kinematically confirmed ones.
+- **Takeover model.** LightGBM gives a contact by the non-owning team its probability of taking
+  the ball. It is single-threaded, seeded and trained on the five fit sim matches only. Its 15
+  team-symmetric features cover the contact's kinematics and its rhythm (time to the previous
+  and next contacts, and whether they are by the same team). The training label is whether the
+  sim GT owner 5 frames after the contact is the toucher's team.
+- **Decoder.** A two-state Viterbi over contacts. A takeover scores log p, a contact that fails
+  to take the ball scores log(1 − p), and p is sharpened by α = 3.0 on the log-odds scale. A
+  change still lands on the contact's first frame.
+- **Tuning.** α and the flip penalty (0) were tuned on out-of-fold predictions for the fit
+  matches.
+
+On held-out contacts the model has AUC 0.913. End to end with v1's detected `D`, held-out
+spellF1 is 0.584 (J03WQQ 0.559 [0.519, 0.600]; J03WR9 0.609 [0.572, 0.645]) vs 0.541 for v1.
+v3 beats v1 on all seven sim matches, by +0.016 to +0.051. On the five fit matches that holds
+even with v3 out of fold and v1 in-sample.
+
+On this match, v3 passes the validator, all bands and the public check. Smart-Tagging
+consistency is unchanged (0.740). It predicts fewer, longer spells: 312, with 18% under 2 s and
+51% under 6 s (v1: 354, 23%, 55%). That is closer to the ≈ 20% / ≈ 50% inferred from the
+official lag figures. Pressure features (players within 3 / 8 m) were tried and dropped: they
+left the held-out AUC unchanged and depend on track dropouts and duplicates.
 
 ## 5. Validation protocol
 
@@ -233,9 +262,13 @@ has no Smart Tagging yet. Touch statistics do transfer: the ball is within 1.0 m
 - **Scrambles in the box and transitions** are where v1 and the tagger disagree most (§5.4).
 - **Stoppages with the ball still tracked and moving** (fouls, offside) produce no evidence.
   Next: whistle cues from the tactical audio.
-- **Decoder.** Next: replace the hard rules with a sparse-transition Viterbi over touch and
-  dead-ball evidence, with change probabilities calibrated on the sim and a change included
-  iff its probability ≥ 0.5.
+- **Decoder.** v3 decodes possession over contacts (§4). Next: let the same path decode `D`
+  from the dead-ball evidence instead of taking it as fixed. Also add contacts the 1 m radius
+  misses: two-thirds of the possession changes it misses have no contact nearby.
+- **Sim semantics.** The takeover labels come from DFL possession, which changes more often
+  than this match's mechanical GT. v3 predicts 20% fewer spells than the sim GT, and its
+  real-match structure sits inside the bands. A semantic mismatch would show up as a systematic
+  bias the sim cannot measure.
 - **Phase 2.** The pipeline is match-agnostic: matches are entries in `games.py`, thresholds
   live in `configs/`, and the sim builder works for any open dataset with ball status and
   possession.
@@ -250,6 +283,7 @@ make cache                          # parse the ATD into an npz cache outside th
 make candidate NAME=v1 CFG=configs/rules.yaml   # -> submissions/candidates/v1.csv
 # optional, for the held-out sim score it prints:
 make open-data && make sim          # DFL/IDSSE (2.63 GB, CC BY 4.0) -> ~/opendata/sim
+make train-takeover                 # v3 only: retrain models/takeover_v1.txt (committed) from the sim
 ```
 
 - **Determinism.** v1 has no randomness: it is pure rules on fixed inputs, run on the CPU. The

@@ -51,3 +51,10 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   - Real match: all checks pass; D 46.0%; consistency 0.728 (v1 0.740).
   - §6.4 tie-breaks favour v1, which stays selected.
   - Partial oracles on the fit matches: perfect D is worth only +0.04, mostly boundary timing.
+- 2026-10-31: Owner decoder v3 (`configs/rules_v3.yaml`): a learned takeover probability per
+  contact (LightGBM, sim fit matches only, `models/takeover_v1.txt`) decoded by a two-state
+  Viterbi over contacts.
+  - Held-out sim 0.584 vs v1 0.541; better on all 7 sim matches.
+  - Real match: all checks pass; consistency 0.740; 312 spells, 18% under 2 s.
+  - Selection v1 → v3 is pending a team decision: §6.4's interval-overlap rule says tie, the
+    paired test says v3.

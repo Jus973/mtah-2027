@@ -5,8 +5,10 @@ reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-b
 sim spellF1 0.541; official baseline 0.286). **Candidate v1 built on the real match: validator,
 all bands and the public bug check pass; regenerates byte-identically. Ready to upload (human).**
 Draft technical document: `docs/technical.md` (≈5 pages estimated), built by `make doc`.
-Dead-ball v2 (`configs/rules_v2.yaml`) cuts D over-prediction but ties v1 on the sim. **v1 stays
-selected.**
+Dead-ball v2 (`configs/rules_v2.yaml`) cuts D over-prediction but ties v1 on the sim.
+**Owner decoder v3** (`configs/rules_v3.yaml`, learned takeovers + Viterbi): held-out sim 0.584
+vs v1 0.541, better on all 7 sim matches, every real-match check passes. **Selection v1 → v3 is
+pending a team decision** (§6.4's interval-overlap rule calls it a tie).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -277,6 +279,52 @@ components, then consistency) both favour v1, so **v1 stays selected**. v2's rul
 code, off by default, for the decoder work: they are evidence, and a Viterbi can weigh them
 instead of applying them as hard rules.
 
+**Owner decoder v3 (31 Oct).** Diagnosis with the true D, fit matches, H1:
+- 1,771 GT possession changes in play, 1,431 predicted, 894 matched within 1 s: recall 0.50,
+  precision 0.62.
+- Of the 877 missed, 583 have no touch by the new team within 1 s.
+- 203 of the 537 spurious changes flip back within 2 s. They follow the previous touch by 0.12 s
+  (median) vs 1.08 s for real takeovers, and turn the ball less (72° vs 111°): duels and
+  rebounds.
+- **Ceiling:** perfect takeover decisions on all contacts within 1.0 / 1.5 / 2.0 m give fit
+  spellF1 0.764 / 0.769 / 0.756, vs 0.584 for H1. That is a +0.18 lever; D is worth +0.04.
+
+Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
+- Every contact at 1.0 m is a candidate.
+- LightGBM gives P(takeover) for a contact by the non-owning team. It has 15 team-symmetric
+  features (kinematics; time to the previous and next contacts and their teams). Training uses the
+  5 fit matches only, single-threaded and seeded; the label is the sim GT owner 5 frames after the
+  contact.
+- A two-state Viterbi over contacts, with the flip on the contact's first frame. α = 3.0 and
+  flip penalty 0 were tuned out of fold, both inside their grids.
+- The model is committed (`models/takeover_v1.txt`, 510 KB); retraining is byte-identical.
+- Logistic regression was much worse (held-out 0.627 vs 0.655 with the true D, prototype).
+- Radius chosen out of fold: 1.0 = 1.5 > 2.0 m.
+- Pressure features tried: AUC unchanged at 0.913, held-out 0.590 vs 0.584. Dropped (fewer
+  components on a tie).
+
+| held-out | J03WQQ | J03WR9 | mean | macroF1 |
+|---|---|---|---|---|
+| v1: H1 + detected D | 0.522 [0.484, 0.560] | 0.560 [0.526, 0.594] | 0.541 | 0.833 |
+| **v3: Viterbi + detected D** | **0.559 [0.519, 0.600]** | **0.609 [0.572, 0.645]** | **0.584** | 0.838 |
+| H1 + GT D | 0.579 | 0.632 | 0.606 | 0.913 |
+| Viterbi + GT D | 0.621 | 0.676 | 0.649 | 0.918 |
+
+- **Paired:** v3 beats v1 on all 7 sim matches. On the fit matches (v3 out of fold, v1 in-sample)
+  the gains are +0.017, +0.016, +0.051, +0.025, +0.047; on held-out +0.037 and +0.049. Sign test
+  p ≈ 0.008.
+- **Real match** (`make airlock T=candidate NAME=v3`):
+  - validator, all bands and the public bug check pass;
+  - Smart-Tagging consistency 0.740 (v1 0.740);
+  - 312 spells (v1 354), 18.3% under 2 s (v1 22.9%), 51.3% under 6 s (v1 55.1%), mean 10.0 s;
+    PLAN §2 infers ≈ 20% / ≈ 50% for the real GT.
+- **Decision needed:** §6.4 says overlapping bootstrap intervals → prefer fewer components (v1).
+  Both held-out intervals overlap, but the paired test is decisive. Recommendation: amend §6.4
+  to a paired per-match comparison and select v3.
+- **Risk:** the takeover labels come from DFL possession, which flips more often than the real GT
+  (sim bias 1). v3 predicts 0.8× the sim GT's spells and sits inside the real bands, but a
+  semantic mismatch is a bias the sim cannot measure.
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
@@ -338,10 +386,11 @@ instead of applying them as hard rules.
 M1 is done except the human upload (TODO 9). Next (M1 leftovers, then M2):
 1. ~~Draft technical document~~ done: `docs/technical.md`. Update it with every candidate change;
    final version at M4.
-2. ~~Cut the D over-prediction~~ tried (v2, near-tie, not adopted). D is worth ≤ +0.04 on the
-   sim; the owner rule is the bigger lever (H1 + perfect D 0.603). Next: the sparse Viterbi
-   decoder over touch and dead-ball evidence (with the v2 rules as soft evidence), deflection
-   handling in the owner rule, latency residuals on the sim. Re-check every change with `make sim-dead`
+2. ~~Cut the D over-prediction~~ tried (v2, near-tie, not adopted). ~~Owner decoder~~ v3 built
+   (+0.043 held-out; selection pending). Next:
+   - decode D in the same path, with the v2 rules as soft evidence;
+   - candidate contacts the 1 m radius misses: 2/3 of missed changes have no contact nearby;
+   - latency residuals on the sim. Re-check every change with `make sim-dead`
    (held-out) and `make airlock T=candidate` (bands, consistency, public verdict).
 3. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), then
    tag-anchored restarts (`tags.set_piece_restart_after_start_s`).

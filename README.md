@@ -23,6 +23,7 @@ make open-data                              # DFL/IDSSE open dataset, 2.63 GB, C
 make sim-fit                                # fit degradation parameters to the real ATD statistics
 make sim                                    # degraded open-data matches -> ~/opendata/sim/DFL-*
 make sim-check                              # sim acceptance test: official baseline ~0.24 on the sim
+make train-takeover                         # v3 takeover model from the sim fit matches -> models/
 
 make doc TEAM=<TEAM_NAME> REPO=<url>        # technical document -> docs/<TEAM_NAME>.md (+ .pdf)
 ```
@@ -30,7 +31,8 @@ make doc TEAM=<TEAM_NAME> REPO=<url>        # technical document -> docs/<TEAM_N
 Simulation data: Bassek, M., Rein, R., Weber, H. et al. *An integrated dataset of spatiotemporal
 and event data in elite soccer.* Scientific Data 12, 195 (2025),
 doi:10.6084/m9.figshare.28196177 (CC BY 4.0). Degraded copies are rebuilt by `make sim`, never
-committed.
+committed. `models/takeover_v1.txt` is a LightGBM model trained on the degraded sim only (no match
+data); `make train-takeover` regenerates it byte-identically.
 
 Layout: `src/mtah/` (pipeline), `configs/` (every threshold), `fakedata/` (synthetic generator),
 `scripts/` (make-target entry points), `evaluation/`, `starter/`, `games.py` (vendored official

@@ -1,0 +1,28 @@
+# Rules v3: v1's touches and dead-ball rules, with the owner decided by the sparse-transition
+# decoder over contacts (decode/viterbi.py) and a learned takeover probability per contact
+# (learn/takeover.py). make train-takeover trains the model on the 5 fit sim matches only (open
+# data), tunes alpha and flip_penalty on out-of-fold fit predictions, and prints the held-out
+# comparison; the held-out matches choose between candidates, never tune them.
+# 31 Oct: out-of-fold fit spellF1 0.568; held-out contacts AUC 0.913. Held-out spellF1 with
+# detected D 0.584 (J03WQQ 0.559 / J03WR9 0.609) vs v1 0.541; with the GT's D 0.649 vs H1 0.606.
+# Pressure features (players within 3 / 8 m) tried: AUC unchanged, 0.590 held-out; dropped
+# (fewer components on a tie, PLAN.md §6.4).
+inherit: rules.yaml
+
+owner:
+  decoder: viterbi
+  model: models/takeover_v1.txt
+  contact_r_m: 1.0          # every contact episode at this radius is a candidate (sim: 1.0 = 1.5 > 2.0)
+  label_lag_frames: 5       # training label: GT owner this long after the contact ends
+  alpha: 3.0                # log-odds sharpening of the takeover probability (tuned out of fold)
+  flip_penalty: 0.0         # extra cost per possession change (tuned out of fold)
+
+takeover_model:             # LightGBM, single-threaded and seeded (learn/takeover.py)
+  learning_rate: 0.03
+  num_leaves: 15
+  min_data_in_leaf: 40
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  feature_fraction: 0.8
+  seed: 0
+  num_boost_round: 300
