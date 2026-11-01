@@ -1,4 +1,5 @@
-"""make audit: the PLAN.md M4 repo audit over every tracked file (git ls-files). No match data.
+"""make audit [HISTORY=1]: the PLAN.md M4 repo audit over every tracked file (git ls-files), or
+with --history over every blob in the git history (what a public push publishes). No match data.
 
 FAIL on: a bundle file or derivative (BAR-ATH_* bundle names, *.mp4 *.npz *.parquet), a tracked
 .mtah.local, a file over 5 MB, a likely secret (private keys, cloud or API tokens, password
@@ -21,9 +22,47 @@ HOME = re.compile(r"/Users/[A-Za-z0-9._-]+/|/home/[A-Za-z0-9._-]+/")
 README_COMMANDS = ("make setup", "make test", "make submission", "make airlock")
 
 
+def history():
+    """FAIL lines for every blob ever committed: bundle names, size, secrets."""
+    objs = subprocess.run(["git", "rev-list", "--objects", "--all"], cwd=ROOT, capture_output=True,
+                          text=True, check=True).stdout.splitlines()
+    paths = {}
+    for line in objs:
+        sha, _, path = line.partition(" ")
+        if path:
+            paths.setdefault(sha, set()).add(path)
+    check = subprocess.run(["git", "cat-file", "--batch-check"], cwd=ROOT, input="\n".join(paths),
+                           capture_output=True, text=True, check=True).stdout.splitlines()
+    fails = []
+    for row in check:
+        sha, kind, size = row.split()
+        if kind != "blob":
+            continue
+        size = int(size)
+        for path in sorted(paths[sha]):
+            if BUNDLE.search(path) and not path.startswith(("evaluation/", "starter/")):
+                fails.append("history: bundle file or derivative {} ({})".format(path, sha[:10]))
+            if size > LIMIT:
+                fails.append("history: over 5 MB {} ({:.1f} MB)".format(path, size / 2 ** 20))
+        if size <= LIMIT and not any(p == "scripts/audit_repo.py" for p in paths[sha]):
+            blob = subprocess.run(["git", "cat-file", "blob", sha], cwd=ROOT, capture_output=True,
+                                  check=True).stdout
+            if SECRETS.search(blob.decode("utf-8", "replace")):
+                fails.append("history: possible secret in " + ", ".join(sorted(paths[sha])))
+    return fails, len(paths)
+
+
 def main():
+    if "--history" in sys.argv:
+        fails, n = history()
+        print("blobs in history: {}".format(n))
+        for line in fails:
+            print("  [FAIL] " + line)
+        print("  [{}] history audit".format("FAIL" if fails else "PASS"))
+        sys.exit(1 if fails else 0)
     files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True,
-                           check=True).stdout.split()
+                           check=True).stdout.split("\n")
+    files = [f for f in files if f]
     fails, warns = [], {}
     for f in files:
         path = os.path.join(ROOT, f)

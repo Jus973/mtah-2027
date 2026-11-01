@@ -24,7 +24,7 @@ test:
 # The bundle path comes from MTAH_DATA_DIR or .mtah.local; the full log stays beside the cache.
 T ?=
 airlock:
-	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv $(CSV)) $(if $(CFG),--config $(CFG)) $(if $(NAME),--name $(NAME))
+	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv $(CSV)) $(if $(CFG),--config $(CFG)) $(if $(NAME),--name "$(NAME)")
 
 check-data:
 	@test -n "$(MTAH_DATA_DIR)" || (echo "MTAH_DATA_DIR is not set" && exit 1)
@@ -101,15 +101,15 @@ docker-build:
 
 # PLAN.md M4 repo audit over every tracked file (no match data)
 audit:
-	$(PY) scripts/audit_repo.py
+	$(PY) scripts/audit_repo.py $(if $(HISTORY),--history)
 
-# make doc TEAM=<TEAM_NAME> REPO=<public repo URL> -> docs/<TEAM_NAME>.md (+ .pdf with pandoc)
+# make doc REPO=<public repo URL> [TEAM="<name>"] -> docs/<team>.md (+ .pdf with pandoc)
 doc:
-	$(PY) scripts/build_doc.py --team "$(TEAM)" --repo "$(REPO)"
+	$(PY) scripts/build_doc.py $(if $(TEAM),--team "$(TEAM)") --repo "$(REPO)"
 
-# make submission TEAM=<TEAM_NAME> (agents: make airlock T=submission NAME=<TEAM_NAME>)
+# make submission [TEAM="<name>"] (default: configs/base.yaml team; agents: make airlock T=submission)
 submission: check-data
-	$(PY) scripts/make_submission.py --game $(GAME) --config $(or $(CFG),configs/final.yaml) --name $(or $(TEAM),TEAM_NAME)
+	$(PY) scripts/make_submission.py --game $(GAME) --config $(or $(CFG),configs/final.yaml) $(if $(TEAM),--name "$(TEAM)")
 
 # Humans only (refuses the airlock): per-transition public-window diagnostics, debugging only
 autopsy: check-data

@@ -484,15 +484,14 @@ Open, in order:
 2. **Final file:**
    ```bash
    export MTAH_DATA_DIR=/path/to/mtah2027
-   make submission TEAM=<TEAM_NAME>
-   shasum -a 256 submissions/final/<TEAM_NAME>.csv
+   make submission
+   shasum -a 256 "submissions/final/Berkeley Sports Research Group.csv"
    ```
    The sha256 must be `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`.
-   With a team name other than `TEAM_NAME`, the first run records `<TEAM_NAME>.sha256`; commit
-   it.
+   The team name lives in `configs/base.yaml` (`team`); its `.sha256` is committed.
 3. **Document:** review `docs/technical.md`, including the team notes in its last HTML comment.
    ```bash
-   make doc TEAM=<TEAM_NAME> REPO=<url>   # -> docs/<TEAM_NAME>.md
+   make doc REPO=https://github.com/Jus973/mtah-2027   # -> "docs/Berkeley Sports Research Group.md"
    ```
    The Form accepts .md. For a PDF, install pandoc plus a LaTeX engine; `make doc` then writes
    10 pt A4 with 2 cm margins (≈ 5.5 pages).

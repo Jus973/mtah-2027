@@ -1,6 +1,6 @@
 <!--
-Source of the technical document (PLAN.md §8). `make doc TEAM=<TEAM_NAME> REPO=<url>` writes
-docs/<TEAM_NAME>.md (and docs/<TEAM_NAME>.pdf when pandoc is installed). HTML comments like this
+Source of the technical document (PLAN.md §8). `make doc REPO=<url>` writes docs/<team>.md (and
+.pdf when pandoc is installed), <team> from configs/base.yaml. HTML comments like this
 one are notes for the team and do not render. Every number below comes from a make target;
 real-match numbers are label-free aggregates or verdicts (make airlock T=...).
 Version of 31 Oct 2026: final candidate v3 (configs/final.yaml). Re-check numbers at M4 freeze.
@@ -272,14 +272,14 @@ make setup                          # Python 3.11.14 venv, pinned requirements.t
 make test                           # 86 tests, no match data needed
 export MTAH_DATA_DIR=/path/to/bundle
 make cache                          # parse the ATD into an npz cache outside the repo
-make submission TEAM=<TEAM_NAME>    # -> submissions/final/<TEAM_NAME>.csv, validator, bands, sha256
+make submission                    # -> submissions/final/<team>.csv, validator, bands, sha256
 # optional, to retrain and re-check on the sim:
 make open-data && make sim && make train-takeover && make sim-ablate
 ```
 
 - **Submitted file:** sha256
   `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`
-  (`submissions/final/TEAM_NAME.sha256`; the FINAL row of `submissions/LOG.md`).
+  (`submissions/final/Berkeley Sports Research Group.sha256`; the FINAL row of `submissions/LOG.md`).
 - **Determinism:** inference has no randomness. It runs on the CPU, with single-threaded
   LightGBM and `PYTHONHASHSEED=0`. Each of these produced the same file, equal to the committed
   sha256:
@@ -296,9 +296,7 @@ make open-data && make sim && make train-takeover && make sim-ablate
 
 <!--
 TEAM, before uploading:
-- Replace <REPO_URL> (needs a public repo) and run `make doc TEAM=<TEAM_NAME> REPO=<url>`.
-- If your team name is not TEAM_NAME: `make submission TEAM=<name>` records <name>.sha256 on its
-  first run; its sha256 is the same file content as above.
+- The repo URL is filled by `make doc REPO=https://github.com/Jus973/mtah-2027`.
 - Measure the cold ATD parse time (`time make cache` on an empty cache) for §7 if you want it.
 - §7 "Tooling": keep, edit or drop once the organisers answer email 1 (cloud assistants and
   aggregates).

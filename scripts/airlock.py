@@ -21,7 +21,7 @@ import sys
 import tempfile
 import time
 
-from mtah import airlock, registry
+from mtah import airlock, config, registry
 
 JOBS = {
     "cache": "run_cache.py",
@@ -136,8 +136,8 @@ def main():
                             == os.path.join(registry.ROOT, "configs")
                             and args.config.endswith(".yaml") and os.path.isfile(args.config)):
         sys.exit("airlock: CFG must be an existing configs/*.yaml")
-    if args.name and not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", args.name):
-        sys.exit("airlock: NAME: letters, digits, _ and - only")
+    if args.name and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _-]{0,59}", args.name):
+        sys.exit("airlock: NAME: letters, digits, spaces, _ and - only")
     fake = registry.is_fake(args.game, args.data_dir)
     if args.data_dir and not fake:
         sys.exit("airlock: --data-dir is for synthetic matches; the bundle path comes from "
@@ -172,10 +172,12 @@ def main():
     if args.job == "submission-docker":
         if fake:
             sys.exit("airlock: submission-docker is for the real match")
-        team = args.name or "TEAM_NAME"
+        team = args.name or config.load()["team"]
+        # The image's own entry point (scripts/docker_run.sh: make cache submission), as the
+        # organisers would run it; its report comes back through the mounted log folder.
         cmd = ["docker", "run", "--rm", "-v", data_dir + ":/data:ro", "-v", log_dir + ":/airlock",
                "-e", airlock.OUT_ENV + "=/airlock/" + os.path.basename(report_path),
-               DOCKER_IMAGE, "sh", "-c", "make PY=python submission TEAM=" + team]
+               "-e", "TEAM=" + team, DOCKER_IMAGE]
     t0 = time.time()
     try:
         with open(log_path, "w") as log:

@@ -43,3 +43,15 @@ def test_make_submission_on_a_synthetic_match(fake):
     assert r.returncode == 0, r.stdout + r.stderr
     assert "[PASS] official validator on the exact file" in r.stdout
     os.remove(os.path.join(registry.ROOT, "submissions", "final", "TEST.csv"))
+
+
+def test_make_submission_accepts_a_team_name_with_spaces(fake):
+    r = run("make_submission.py", fake, "--name", "Test Team Name")
+    out = os.path.join(registry.ROOT, "submissions", "final", "Test Team Name.csv")
+    try:
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert os.path.isfile(out)
+    finally:
+        if os.path.exists(out):
+            os.remove(out)
+    assert run("make_submission.py", fake, "--name", "bad;name").returncode != 0

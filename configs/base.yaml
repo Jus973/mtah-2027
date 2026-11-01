@@ -1,4 +1,7 @@
 # Shared constants and M0 thresholds. Every threshold lives here (CLAUDE.md).
+
+# The registered team name: the submission and document file names (SUBMISSION.md).
+team: Berkeley Sports Research Group
 # Candidate configs (v1_rules.yaml, ...) start with `inherit: base.yaml` and override keys.
 
 # Smart Tagging Team values -> side. Strings as published in DATA.md (sic: "Atletic").

@@ -15,14 +15,15 @@ make setup                                  # venv (Python 3.11), pinned deps, p
 make test                                   # runs with NO real data (synthetic match + public GT)
 export MTAH_DATA_DIR=/path/to/mtah2027      # the bundle: tactical/ and broadcast/
 make cache                                  # parse the ATD into an npz cache outside the repo
-make submission TEAM=<TEAM_NAME>            # -> submissions/final/<TEAM_NAME>.csv
+make submission                             # -> "submissions/final/Berkeley Sports Research Group.csv"
 ```
 
 `make submission` runs `configs/final.yaml` (the selected candidate, v3), the official validator
 and the structural bands on the exact file. It records the file's sha256 in
-`submissions/final/<TEAM_NAME>.sha256`, or checks it against that file when it exists. The
+`submissions/final/<team>.sha256`, or checks it against that file when it exists. The team name
+(`team` in `configs/base.yaml`; override with `TEAM="..."`) is the file name. The
 submitted file has sha256 `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`
-(`submissions/final/TEAM_NAME.sha256`). Runs are deterministic: CPU only, no randomness at
+(`submissions/final/Berkeley Sports Research Group.sha256`). Runs are deterministic: CPU only, no randomness at
 inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 4 s once the cache exists.
 
 With Docker (the real bundle opens only at a terminal, hence `-t`). The image gives the same
@@ -30,7 +31,7 @@ file on linux/arm64 and linux/amd64:
 
 ```bash
 make docker-build                           # docker build -t mtah . (PLATFORM=linux/amd64 for x86)
-docker run -t -e TEAM=<TEAM_NAME> -v /path/to/mtah2027:/data -v "$PWD/out":/out mtah
+docker run -t -v /path/to/mtah2027:/data -v "$PWD/out":/out mtah
 ```
 
 ## How it works
@@ -61,7 +62,7 @@ debugging; they never produce labels.
 
 ```bash
 make audit                                  # repo audit: no bundle files, sizes, secrets
-make doc TEAM=<TEAM_NAME> REPO=<url>        # technical document -> docs/<TEAM_NAME>.md (+ .pdf)
+make doc REPO=<url>                         # technical document -> "docs/<team>.md" (+ .pdf)
 ```
 
 ## Data and licences
