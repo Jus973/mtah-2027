@@ -35,7 +35,12 @@ def variants(cfg):
     if cfg.get("gaps", {}).get("enabled"):
         c = copy.deepcopy(cfg)
         c["gaps"]["enabled"] = False
-        rows.append(("without the gap decoder (v3)", c))
+        rows.append(("without the gap decoder", c))
+    if cfg["owner"].get("shape_features"):
+        c = copy.deepcopy(cfg)
+        v5 = config.load("rules_v5.yaml")["owner"]["model"]
+        c["owner"].update(shape_features=False, model=v5)
+        rows.append(("without team shape at contacts (v5)", c))
     return rows
 
 
