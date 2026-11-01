@@ -23,6 +23,8 @@ make open-data                              # DFL/IDSSE open dataset, 2.63 GB, C
 make sim-fit                                # fit degradation parameters to the real ATD statistics
 make sim                                    # degraded open-data matches -> ~/opendata/sim/DFL-*
 make sim-check                              # sim acceptance test: official baseline ~0.24 on the sim
+
+make doc TEAM=<TEAM_NAME> REPO=<url>        # technical document -> docs/<TEAM_NAME>.md (+ .pdf)
 ```
 
 Simulation data: Bassek, M., Rein, R., Weber, H. et al. *An integrated dataset of spatiotemporal

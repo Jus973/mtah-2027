@@ -82,5 +82,9 @@ score:
 candidate: check-data
 	$(PY) scripts/run_candidate.py --game $(GAME) --config $(or $(CFG),configs/rules.yaml) --name $(NAME)
 
-autopsy sync submission doc:
+# make doc TEAM=<TEAM_NAME> REPO=<public repo URL> -> docs/<TEAM_NAME>.md (+ .pdf with pandoc)
+doc:
+	$(PY) scripts/build_doc.py --team "$(TEAM)" --repo "$(REPO)"
+
+autopsy sync submission:
 	@echo "make $@: not implemented yet (PLAN.md M1+). See PLAN_STATUS.md." && exit 1

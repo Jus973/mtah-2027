@@ -4,6 +4,7 @@ Last updated: Sat 31 Oct 2026, agent session 2. M0 done. M1: sim v0 accepted (sm
 reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-ball v1 (held-out
 sim spellF1 0.541; official baseline 0.286). **Candidate v1 built on the real match: validator,
 all bands and the public bug check pass; regenerates byte-identically. Ready to upload (human).**
+Draft technical document: `docs/technical.md` (≈5 pages estimated), built by `make doc`.
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -257,10 +258,20 @@ agent). Everything below is label-free or verdict-only:
    first (your call; the pre-commit guard keeps bundle data out). Check the file before
    uploading: `shasum -a 256 submissions/candidates/v1.csv` must start with `3c32c4758d117a6a`.
    Then set `uploaded? = yes` on the v1 row in submissions/LOG.md.
+   **Document:** review `docs/technical.md`, especially the team notes in the HTML comment at its end:
+   - the full sha256;
+   - the cold `make cache` time;
+   - whether to keep the "Tooling" paragraph before email 1 is answered.
+   Then build the Form file:
+   ```bash
+   make doc TEAM=<TEAM_NAME> REPO=https://github.com/<you>/mtah-2027   # -> docs/<TEAM_NAME>.md
+   ```
+   pandoc is not installed, so the output is Markdown, which the Form accepts. Install pandoc
+   (`brew install pandoc` plus a LaTeX engine) if you want the PDF and an exact page count.
 
 ## Blocked / known limitations
 
-- `make autopsy candidate sync submission doc` are stubs (M1+).
+- `make autopsy sync submission` are stubs (M2+).
 - Fake data: the ball group's third field is written as speed (the real semantics are unverified;
   nothing reads it). No goals or after-goal kick-offs, no duplicate tracks, and home share ≈ 0.5,
   so the home-share band does not apply to fake GT.
@@ -273,7 +284,8 @@ agent). Everything below is label-free or verdict-only:
 ## Next steps
 
 M1 is done except the human upload (TODO 9). Next (M1 leftovers, then M2):
-1. Draft technical document (`docs/`, ≤ 6 pages, §8) so the early Form upload has one.
+1. ~~Draft technical document~~ done: `docs/technical.md`. Update it with every candidate change;
+   final version at M4.
 2. Cut the D over-prediction (restart placement, gap-in-play filter); gap policy and the sparse
    Viterbi decoder; latency residuals on the sim. Re-check every change with `make sim-dead`
    (held-out) and `make airlock T=candidate` (bands, consistency, public verdict).

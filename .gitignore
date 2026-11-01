@@ -14,3 +14,8 @@ __pycache__/
 .DS_Store
 .env
 .mtah.local
+
+# make doc output (docs/technical.md is the source)
+/docs/*.md
+!/docs/technical.md
+/docs/*.pdf

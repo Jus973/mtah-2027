@@ -36,3 +36,10 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   airlock: validator, all bands and the public bug check pass; Smart-Tagging consistency 0.740;
   held-out sim 0.541. v1-h2 (H2) logged for comparison: worse on every label-free check. v1
   regenerates byte-identically. Waiting for the human Form upload.
+- 2026-10-31: Draft technical document `docs/technical.md` (PLAN §8) for the early upload of v1.
+  `make doc TEAM=... REPO=...` fills the placeholders, drops the team notes and writes
+  docs/<TEAM>.md (plus a PDF with pandoc). New in the doc: held-out sim bootstrap 95% CIs from the
+  official scorer, 1,000 resamples (J03WQQ / J03WR9):
+  - v1: 0.522 [0.484, 0.560] / 0.560 [0.526, 0.594];
+  - smooth50: 0.287 [0.259, 0.314] / 0.284 [0.251, 0.315].
+  A timing re-run of v1 regenerated the same sha256 (4 s with a warm cache).
