@@ -90,5 +90,9 @@ candidate: check-data
 doc:
 	$(PY) scripts/build_doc.py --team "$(TEAM)" --repo "$(REPO)"
 
-autopsy sync submission:
+# make submission TEAM=<TEAM_NAME> (agents: make airlock T=submission NAME=<TEAM_NAME>)
+submission: check-data
+	$(PY) scripts/make_submission.py --game $(GAME) --config $(or $(CFG),configs/final.yaml) --name $(or $(TEAM),TEAM_NAME)
+
+autopsy sync:
 	@echo "make $@: not implemented yet (PLAN.md M1+). See PLAN_STATUS.md." && exit 1

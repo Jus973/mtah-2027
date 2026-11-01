@@ -19,3 +19,7 @@ __pycache__/
 /docs/*.md
 !/docs/technical.md
 /docs/*.pdf
+
+# The final CSV is bundle-derived: CLAUDE.md forbids committing it, PLAN.md §7 says commit it.
+# Humans decide (git add -f). Its sha256 file is committed.
+/submissions/final/*.csv

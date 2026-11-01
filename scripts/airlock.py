@@ -32,9 +32,11 @@ JOBS = {
     "touch-stats": "touch_stats.py",
     "dead-stats": "dead_stats.py",
     "candidate": "run_candidate.py",
+    "submission": "make_submission.py",
 }
 # Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
-JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"}}
+JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"},
+               "submission": {"config", "name"}}
 REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
@@ -106,7 +108,7 @@ def main():
     parser.add_argument("--data-dir", default=None, help="synthetic matches only")
     parser.add_argument("--csv", default=None, help="candidate CSV (public-check)")
     parser.add_argument("--config", default=None, help="configs/*.yaml (candidate, dead-stats)")
-    parser.add_argument("--name", default=None, help="candidate name (candidate)")
+    parser.add_argument("--name", default=None, help="candidate name (candidate) or team name (submission)")
     args = parser.parse_args()
     given = {k for k in ("csv", "config", "name") if getattr(args, k) is not None}
     allowed, needed = JOB_OPTIONS.get(args.job, set()), REQUIRED.get(args.job, set())
