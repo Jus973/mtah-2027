@@ -4,17 +4,14 @@ Last updated: Sun 1 Nov 2026, agent session 3. **Every agent-side item of PLAN.m
 or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
 reproductions, and the public repo (https://github.com/Jus973/mtah-2027). What is left is human:
 register the team name, and upload when the Form arrives (a daily Gmail watch will flag it;
-none by 1 Nov).** The final file is `make submission` from `configs/final.yaml` (candidate v3:
-learned takeovers + Viterbi, selected on the user's instruction), sha256
-`00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. A cold clean clone (twice)
+none by 1 Nov).** The final file is `make submission` from `configs/final.yaml` (candidate v5:
+learned takeovers + Viterbi, plus a ball-free decode inside long ball gaps), sha256
+`c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`. A cold clean clone (twice)
 and Docker on arm64 and amd64 give the same file.
-- Held-out sim: 0.584 (v1 0.541), better on 7/7 sim matches.
-- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.740;
+- Held-out sim: 0.609 (v3 0.581, v1 0.541); v5 beats v3 on 7/7 sim matches (p = 0.0078).
+- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.746;
   stable under ±10% threshold changes.
-- **Ready challenger v5** (1 Nov, section below): passes §6.4 against v3 (+0.030, 7/7,
-  p = 0.0078; held-out 0.609) and every real-match check, and reproduces everywhere. Not selected:
-  the user asked for v3. Switching is the team's call (TODO 6).
-- Technical document: `docs/technical.md` (≈ 5.5 pages, v3; `make doc`).
+- Technical document: `docs/technical.md` (≈ 6 pages; `make doc`).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -367,13 +364,10 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - stability: min spell agreement 0.861 over 18 perturbed thresholds; gap-model seeds 1.000 /
     0.999; disagreement v3 vs v5 2.7% of graded frames, any two of v1/v2/v3/v5 9.5% (< 10%);
   - `D` share 48.1% (v3 50.8%; held-out sim 42–45% vs GT 41–42%).
-- **Ready, not selected.** v5's file, sha256
-  `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`, is identical twice, cold,
-  from a fresh clean clone (cold, twice; 94 tests pass there) and in Docker on linux/arm64 and
-  linux/amd64. It was FINAL briefly on 1 Nov; v3 was restored because the user asked for v3.
-  To select v5: `inherit: rules_v5.yaml` in `configs/final.yaml`, its sha256 in
-  `submissions/final/Berkeley Sports Research Group.sha256`, and the v5 technical document from
-  commit 9da125a (`git show 9da125a:docs/technical.md`), plus a new FINAL row.
+- **FINAL: v5.** `configs/final.yaml` inherits `rules_v5.yaml`. sha256 `c1abb6e5…618d`, twice,
+  cold, from a fresh clean clone (cold, twice; 94 tests pass there) and in Docker on linux/arm64
+  and linux/amd64. To go back to v3: `inherit: rules_v3.yaml` with `deadball.kinds: [oob, gap]`
+  in `configs/final.yaml`, and restore the old sha256 (`00f4551f…bc499a`).
 
 ## M2–M4 progress (31 Oct, agent; goal: finish the plan)
 
@@ -549,8 +543,7 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
 4. **When the Form arrives (by 14 Nov): upload, after you say go.**
    - CSV: `submissions/final/Berkeley Sports Research Group.csv`. Rebuild it right before
      uploading with `make submission`; its sha256 must be
-     `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a` (v3; v5 would be
-     `c1abb6e5…618d`).
+     `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d` (v5, since 1 Nov).
    - Repo URL: https://github.com/Jus973/mtah-2027.
    - Document: `docs/Berkeley Sports Research Group.md`. Rebuild it with
      `make doc REPO=https://github.com/Jus973/mtah-2027` after any change to `docs/technical.md`.
@@ -563,8 +556,8 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
      `tools/clipviewer/index.html`; `make autopsy`.
    - *PDF of the document:* install pandoc plus a LaTeX engine, then `make doc` writes it.
 6. Review the revised PLAN.md (§1, §5, §6, the amended §6.4) and object to anything you
-   disagree with. **New on 1 Nov:** v5 beats v3 under the §6.4 paired rule (v5 section above),
-   but v3 stays FINAL as you asked. Say if you want v5 instead; the switch is listed there.
+   disagree with. **New on 1 Nov:** the final moved from v3 to v5 by the §6.4 paired rule (v5
+   section above). Say so if you want v3 back; the switch is one line in `configs/final.yaml`.
 7. After the competition, delete every bundle copy and the caches (T&C).
 
 Done earlier (kept for the record):
