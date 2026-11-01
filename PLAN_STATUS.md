@@ -325,6 +325,28 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   (sim bias 1). v3 predicts 0.8× the sim GT's spells and sits inside the real bands, but a
   semantic mismatch is a bias the sim cannot measure.
 
+## M2–M4 progress (31 Oct, agent; goal: finish the plan)
+
+- **§6.4 amended, v3 selected** (above). `configs/final.yaml` inherits `rules_v3.yaml`.
+- **`make submission`** (agents: `make airlock T=submission NAME=<team>`) writes
+  `submissions/final/<team>.csv`. That file is gitignored: CLAUDE.md forbids committing
+  bundle-derived files, while PLAN §7 says to commit it, so a human decides (`git add -f`). The
+  target then runs the official validator and the bands, and records or checks
+  `submissions/final/<team>.sha256` (committed). Two runs give the same file:
+  sha256 `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`, equal to v3.
+- **Latency** (`decode/latency.py`, `make sim-latency`). Median offset of matched transitions,
+  in frames (pred − GT):
+
+  | transition | fit | held-out |
+  |---|---|---|
+  | turnover | −2 | −2 |
+  | D onset | +6 | +8 |
+  | D end | +1 | +21.5 |
+
+  Moving D onsets 6 frames earlier costs −0.003 on held-out. Gap flips (a takeover moved into
+  the preceding ball gap) tune to a no-op on fit. **No correction**: transitions stay where they
+  are placed by construction. The D-onset lag partly reflects the sim's assumed stoppage lag.
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
