@@ -5,7 +5,9 @@ clean ball -> per-team distances -> touches -> dead-ball evidence -> D runs -> o
 owner.decoder is "rules" (owner.hypothesis over touches, v1) or "viterbi" (every contact, with a
 learned takeover probability, decoded as a sparse-transition path, v3). With gaps.enabled (v5),
 long ball gaps are then re-decoded from the players alone (decode/gaps.py), except the frames
-before a kick-off, which stay D. Before a half's kick-off
+before a kick-off, which stay D. With deadstate.enabled (v8), D comes from a learned per-frame
+model (learn/deadstate.py, decode/dead.py) instead of the evidence rules, and the gap decoder
+takes its P(dead) from that model. Before a half's kick-off
 the ball is dead: where the half's graded block starts more than kickoff.tolerance_frames before
 the derived kick-off (events/restarts.py: Kick Off (Start) tag + line-up break), the frames up to
 the kick-off are D. No published frame number is used. Frames outside the graded halves are X;
@@ -17,6 +19,7 @@ import os
 import numpy as np
 
 from mtah import registry
+from mtah.decode.dead import decode_dead
 from mtah.decode.gaps import decode_gaps
 from mtah.decode.rules import decode_owner
 from mtah.decode.viterbi import decode_viterbi
@@ -27,7 +30,7 @@ from mtah.features.ball import clean_ball
 from mtah.features.players import team_distances
 from mtah.io.atd import load_game
 from mtah.io.tags import load_tags
-from mtah.learn import gapstate, takeover
+from mtah.learn import deadstate, gapstate, takeover
 
 
 def kickoffs(game, atd, cfg, data_dir=None):
@@ -66,14 +69,23 @@ def run(game, cfg, data_dir=None, atd=None):
         k = kicks.get(half)
         if k is not None and k - first > tol:
             pre_kick[first:min(k, last + 1)] = True
-    dead |= pre_kick
-    dead &= graded
     oc = cfg["owner"]
     gc = cfg.get("gaps")
+    ds = cfg.get("deadstate")
     F = None
-    if (gc and gc["enabled"]) or oc.get("shape_features"):
+    if (gc and gc["enabled"]) or oc.get("shape_features") or (ds and ds["enabled"]):
         F = gapstate.features(players, atd.team_of_slot, gapstate.home_direction(atd, sp, kicks),
                               atd.pitch, gc, fps)
+    p_learned = None
+    if ds and ds["enabled"]:
+        FD = deadstate.features(F, deadstate.ball_features(ball_raw, ball, atd.pitch, fps))
+        gr = np.flatnonzero(graded)
+        p_learned = np.full(sp["n_frames"], np.nan)
+        p_learned[gr] = deadstate.predict(deadstate.load(cfg), FD, gr)
+        dead = decode_dead(p_learned, graded, ds["step_frames"], ds["lam"])
+        restarts = []
+    dead |= pre_kick
+    dead &= graded
     if oc["decoder"] == "viterbi":
         events = takeover.contacts(ball, d, cfg["touch"], oc["contact_r_m"], fps)
         X = takeover.features(events, d, fps)
@@ -96,6 +108,8 @@ def run(game, cfg, data_dir=None, atd=None):
         idx = np.flatnonzero(gap)
         p_dead, p_home = np.full(sp["n_frames"], np.nan), np.full(sp["n_frames"], np.nan)
         p_dead[idx], p_home[idx] = gapstate.predict(gapstate.load(cfg), F, idx)
+        if p_learned is not None:
+            p_dead[idx] = p_learned[idx]
         labels = decode_gaps(labels, gap, p_dead, p_home, gc["step_frames"], gc["lam_dead"],
                              gc["lam_owner"])
         info["gap_mask"] = gap

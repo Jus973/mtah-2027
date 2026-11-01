@@ -1,0 +1,29 @@
+# Rules v8: v6 with a learned per-frame dead ball (learn/deadstate.py, decode/dead.py) in place
+# of the evidence rules and of the gap decoder's dead model. The DFL data freezes the dead-time
+# ball, which no real tracker does (0.08% of seen real ball frames do not move; 21% on the sim),
+# so the model is trained on the 5 fit sim matches after making that ball realistic, three ways:
+# tracker noise (jitter_m), fetched and carried by a player (pickup), and lost. It reads team
+# shape and the ball's position and speed, never whether the ball is seen. make train-dead
+# trains models/dead_v1.txt and prints the paired comparison with v6 under six dead-ball
+# conditions, out of fold; lam is tuned out of fold.
+inherit: rules_v6.yaml
+
+deadstate:
+  enabled: true
+  model: models/dead_v1.txt
+  train_conditions: [jitter, pickup, lost]
+  jitter_m: 0.02            # tracker noise on a still ball (the real ball d2 caps it at 1-2 cm)
+  pickup_radius_m: 1.0      # the dead ball is fetched by the first player this close ...
+  carry_noise_m: 0.3        # ... and carried with this much noise
+  step_frames: 5
+  lam: 2.5                  # cost per change between alive and dead (tuned out of fold)
+
+dead_model:                 # LightGBM, single-threaded and seeded
+  learning_rate: 0.05
+  num_leaves: 31
+  min_data_in_leaf: 100
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  feature_fraction: 0.8
+  seed: 0
+  num_boost_round: 300
