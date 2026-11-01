@@ -16,6 +16,8 @@ touch:
   min_frames: 12            # an episode is a touch if the ball stays close this long ...
   min_turn_deg: 20          # ... or turns this much ...
   min_dv_mps: 12.0          # ... or changes speed this much
+  min_launch_mps: 99.0      # ... or leaves this fast from rest or from unseen (v1: off)
+  rest_mps: 1.0             #     "rest" = slower than this before the episode
   kin_offset_frames: 3      # velocity measured this many frames before / after the episode
 
 owner:
@@ -36,11 +38,17 @@ deadball:
   oob_min_frames: 15
   gap_min_frames: 25        # ball missing at least this long = a stoppage (real gaps: < 26 or > 100)
   gap_offset_frames: 0
+  gap_v_players_mps: 99.0   # gap frames count only while players' mean speed is below this (v1: off)
+  gap_speed_window_frames: 25
+  gap_calm_min_frames: 1
   speed_window_frames: 25
   v_still_mps: 0.05         # ball slower than this ...
   v_players_mps: 1.0        # ... and players' mean speed below this ...
   still_min_frames: 75      # ... for at least this long = a stoppage
   merge_frames: 50          # evidence runs this close are one stoppage
+  restart_window_frames: null  # release restarts: a touch started inside the evidence, ending
+                            #   at most this many frames before it ends (v1: off)
+  restart_flight_mps: 99.0  # flight restarts: the ball reappears this fast after a gap (v1: off)
 
 # Smart Tagging <-> tracking alignment (PLAN.md M1), label-free: make airlock T=dead-stats on the
 # real match, 31 Oct. Set-piece tags are fixed 35 s windows; the predicted restart (dead-ball v1

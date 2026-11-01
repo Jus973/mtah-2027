@@ -74,3 +74,48 @@ def test_dead_runs_end_at_the_restart_touch():
     assert mask[100:170].all() and not mask[170] and not mask[300:350].any()
     only_oob = dead_runs(ev, touches, graded, CFG, kinds=("oob",))
     assert only_oob[0][:2] == (100, 129)             # restart = first touch after the evidence
+
+
+def test_gap_counts_only_while_players_are_calm():
+    ball, players = world()                           # players jog at 3 m/s
+    ball[100:300] = np.nan                            # a long gap in open play ...
+    slow = players.copy()
+    slow[400:600] = slow[400]                         # ... and one where players stand still
+    ball[400:600] = np.nan
+    cfg = dict(CFG, gap_offset_frames=0, gap_v_players_mps=1.0, gap_speed_window_frames=25,
+               gap_calm_min_frames=25)
+    graded = np.ones(len(ball), bool)
+    ev = evidence(ball, ball, np.isfinite(ball[:, 0]), slow, graded, PITCH, cfg)
+    assert not ev["gap"][100:300].any() and ev["gap"][420:600].all()
+    off = evidence(ball, ball, np.isfinite(ball[:, 0]), slow, graded, PITCH,
+                   dict(cfg, gap_v_players_mps=99.0))
+    assert off["gap"][100:300].all()
+
+
+def test_release_and_flight_restarts():
+    T = 400
+    graded = np.ones(T, bool)
+    ev = {k: np.zeros(T, bool) for k in ("oob", "gap", "still", "flight")}
+    ev["oob"][100:150] = True                      # ball out; a thrower holds it 120-140
+    thrower = Touch(start=120, end=140, team=1, n_frames=21, d_min=0.3, speed_before=np.nan,
+                    speed_after=9.0, turn_deg=np.nan)
+    ev["gap"][200:260] = ev["flight"][200:260] = True   # the ball reappears in flight at 260
+    touches = [thrower, touch(170, team=0), touch(300, team=0)]
+    off = dict(CFG, restart_window_frames=None)
+    assert [r[:2] for r in dead_runs({k: v for k, v in ev.items() if k != "flight"}, touches,
+                                     graded, off)] == [(100, 169), (200, 299)]
+    restarts = []
+    on = dict(CFG, restart_window_frames=25)
+    assert [r[:2] for r in dead_runs(ev, touches, graded, on, out_restarts=restarts)] \
+        == [(100, 140), (200, 259)]
+    assert [(t.start, t.team) for t in restarts] == [(141, 1)]   # the throw: the taker's team
+
+
+def test_flight_needs_a_fast_ball_after_the_gap():
+    ball, players = world()                        # the ball rolls at 5 m/s
+    ball[100:200] = np.nan
+    graded = np.ones(len(ball), bool)
+    for v, fast in ((4.0, True), (6.0, False)):
+        ev = evidence(ball, ball, np.isfinite(ball[:, 0]), players, graded, PITCH,
+                      dict(CFG, restart_flight_mps=v))
+        assert ev["flight"][100:200].all() == fast and not ev["flight"][:100].any()

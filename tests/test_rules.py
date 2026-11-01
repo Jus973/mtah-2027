@@ -102,3 +102,21 @@ def test_h2_on_the_fake_match(fake, fake_atd):
     labels = decode_owner(touch_events(ball, d, CFG["touch"]), registry.graded_mask(sp),
                           gt == "D", "H2", CFG["owner"])
     assert score(labels, gt_path)["spell_f1_mean"] > 0.3
+
+
+def test_launch_from_rest_or_unseen_is_a_touch():
+    t = np.arange(60)
+    # A placed ball at the player's feet is kicked away at 8 m/s on frame 30: 3 frames of contact
+    # before it leaves, no velocity before it, so no turn and only an 8 m/s change.
+    x = np.where(t < 30, 49.5, 49.5 + 0.32 * (t - 30))
+    kick = np.column_stack([x, np.full(60, 34.0)])
+    unseen = kick.copy()
+    unseen[:29] = np.nan                                  # the ball reappears as it is kicked
+    d_kick, d_unseen = _one_player_world(kick), _one_player_world(unseen)
+    off = dict(CFG["touch"], min_frames=40, min_dv_mps=12.0, min_launch_mps=99.0)
+    on = dict(off, min_launch_mps=5.0, rest_mps=1.0)
+    assert touch_events(kick, d_kick, off) == [] and touch_events(unseen, d_unseen, off) == []
+    assert len(touch_events(kick, d_kick, on)) == 1 and len(touch_events(unseen, d_unseen, on)) == 1
+    # A ball already moving past the player is no launch, however fast it leaves.
+    fly = np.column_stack([30 + 0.8 * t, np.full(60, 34.5)])
+    assert touch_events(fly, _one_player_world(fly), dict(on, min_frames=5)) == []

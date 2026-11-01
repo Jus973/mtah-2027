@@ -34,7 +34,7 @@ JOBS = {
     "candidate": "run_candidate.py",
 }
 # Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
-JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}}
+JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"}}
 REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
@@ -105,7 +105,7 @@ def main():
     parser.add_argument("--game", default="BAR-ATH")
     parser.add_argument("--data-dir", default=None, help="synthetic matches only")
     parser.add_argument("--csv", default=None, help="candidate CSV (public-check)")
-    parser.add_argument("--config", default=None, help="configs/*.yaml (candidate)")
+    parser.add_argument("--config", default=None, help="configs/*.yaml (candidate, dead-stats)")
     parser.add_argument("--name", default=None, help="candidate name (candidate)")
     args = parser.parse_args()
     given = {k for k in ("csv", "config", "name") if getattr(args, k) is not None}

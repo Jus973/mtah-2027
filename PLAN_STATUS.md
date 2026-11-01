@@ -5,6 +5,8 @@ reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-b
 sim spellF1 0.541; official baseline 0.286). **Candidate v1 built on the real match: validator,
 all bands and the public bug check pass; regenerates byte-identically. Ready to upload (human).**
 Draft technical document: `docs/technical.md` (≈5 pages estimated), built by `make doc`.
+Dead-ball v2 (`configs/rules_v2.yaml`) cuts D over-prediction but ties v1 on the sim. **v1 stays
+selected.**
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -225,6 +227,56 @@ agent). Everything below is label-free or verdict-only:
   the held-out sim (0.522). H1 stays.
 - Re-running `make airlock T=candidate NAME=v1` regenerates the same sha256 (checked).
 
+**Dead-ball v2: cutting the D over-prediction (31 Oct).** Diagnosis on the fit matches (v1,
+open data):
+- **Where the false D comes from.** Predicted D 56.6% vs true 46.3%. Of the false-D frames:
+  - 37% spurious runs: 85 runs, all from ball gaps in open play;
+  - 32% late restarts;
+  - 19% early onsets: a gap that starts in play;
+  - 12% merges across live play.
+- **What it costs.** Partial oracles bound the gain on the fit matches: detected D 0.547, perfect
+  D 0.587. True restarts add +0.017, true onsets +0.015, removing spurious runs +0.008.
+  **Boundary timing, not spurious stoppages, is what costs spellF1, and all D work is worth at
+  most ~+0.04.** The owner rule is the bigger lever: H1 with perfect D is still only 0.603
+  held-out.
+- **Late restarts.** Mostly throw-ins and corners, taken while the ball is still beyond the line:
+  169 runs, median 43 frames late. The taker's touch starts inside the evidence and was skipped.
+  A further 33 runs end late because the ball reappears in flight after the restart.
+
+New rules (off in `rules.yaml`, so v1 regenerates byte-identically):
+- `deadball.gap_v_players_mps`: gap evidence counts only while players are calm. Sim gaps in play
+  have median player speed 2.27 m/s, stoppage gaps 1.22. Real long gaps: p10 / p50 / p90 0.78 /
+  1.24 / 2.28 m/s vs sim J03WMX 0.92 / 1.46 / 2.44, so the filter should transfer.
+- `deadball.restart_window_frames`: release restarts. The taker's team owns the ball after them.
+- `deadball.restart_flight_mps`: flight restarts.
+- `touch.min_launch_mps`: launch touches.
+
+`make sim-dead CFG=configs/rules_v2.yaml` tuned them on the fit matches. The held-out row of each
+ablation drops one rule:
+
+| held-out | spellF1 | macroF1 | alive/dead F1 | D share (GT 0.413) | D precision |
+|---|---|---|---|---|---|
+| v1 (rules.yaml) | 0.5406 | 0.833 | 0.889 | 0.515 | 0.786 |
+| **v2** (rules_v2.yaml) | **0.5450** | 0.845 | 0.913 | 0.486 | 0.827 |
+| v2 without release | 0.5419 | 0.844 | 0.912 | | |
+| v2 without the calm-gap filter | 0.5416 | 0.838 | 0.898 | | |
+| v2 without flight | 0.5458 | 0.843 | 0.909 | | |
+| v2 without launch | 0.5461 | 0.844 | 0.913 | | |
+
+Real match, label-free (`make airlock T=candidate NAME=v2`, `T=dead-stats CFG=...`):
+- Validator, all bands and the public bug check pass.
+- D share 46.0% (v1 50.8%); 376 spells (v1 354); 141 D runs.
+- Smart-Tagging consistency **0.728 (v1 0.740)**. The ~20k frames v2 turns from D into live
+  play agree with the tagger only ~60% of the time.
+- Predicted restart minus set-piece tag start, p25 / p50 / p75: 5.2 / 7.0 / 11.7 s (v1 6.0 / 9.5 /
+  13.2). The spread is slightly tighter.
+- 90.6% of long-gap frames pass the calm filter.
+
+**Decision (§6.4):** a near-tie on the sim (+0.004, per-match CIs ±0.035). The tie-breaks (fewer
+components, then consistency) both favour v1, so **v1 stays selected**. v2's rules stay in the
+code, off by default, for the decoder work: they are evidence, and a Viterbi can weigh them
+instead of applying them as hard rules.
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
@@ -286,8 +338,10 @@ agent). Everything below is label-free or verdict-only:
 M1 is done except the human upload (TODO 9). Next (M1 leftovers, then M2):
 1. ~~Draft technical document~~ done: `docs/technical.md`. Update it with every candidate change;
    final version at M4.
-2. Cut the D over-prediction (restart placement, gap-in-play filter); gap policy and the sparse
-   Viterbi decoder; latency residuals on the sim. Re-check every change with `make sim-dead`
+2. ~~Cut the D over-prediction~~ tried (v2, near-tie, not adopted). D is worth ≤ +0.04 on the
+   sim; the owner rule is the bigger lever (H1 + perfect D 0.603). Next: the sparse Viterbi
+   decoder over touch and dead-ball evidence (with the v2 rules as soft evidence), deflection
+   handling in the owner rule, latency residuals on the sim. Re-check every change with `make sim-dead`
    (held-out) and `make airlock T=candidate` (bands, consistency, public verdict).
 3. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), then
    tag-anchored restarts (`tags.set_piece_restart_after_start_s`).

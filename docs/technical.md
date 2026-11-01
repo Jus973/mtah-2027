@@ -214,9 +214,19 @@ has no Smart Tagging yet. Touch statistics do transfer: the ball is within 1.0 m
 ## 6. Limitations and next steps
 
 - **`D` is over-predicted.** 50.8% of graded frames are `D` on this match, and on the sim the
-  detector gives 51–52% vs 41% true (precision 0.79, recall 0.98). Ball gaps in open play become
-  stoppages, and a restart the tracker misses ends `D` late. Next: a gap-in-play filter and
-  restarts anchored on the set-piece tags.
+  detector gives 51–52% vs 41% true (precision 0.79, recall 0.98). We tried four fixes, tuned on
+  the fit matches:
+  - gap evidence only while players are calm (in-play gaps: median 2.3 m/s, stoppage gaps 1.2);
+  - a stoppage ends when the ball leaves the taker of a throw-in or corner;
+  - a stoppage ends when the ball reappears in flight;
+  - a kick from rest counts as a touch.
+
+  Together they cut the sim `D` share to 48.6% and raised precision to 0.83, but held-out
+  spellF1 moved only +0.004 (0.545), inside the noise. On this match `D` fell to 46.0%, while
+  Smart-Tagging consistency fell slightly (0.728). Under our decision rule that is a tie, which
+  goes to the simpler v1. A partial-oracle study on the fit matches bounds what any `D` work
+  can gain: perfect `D` adds +0.04, mostly from boundary timing (onsets +0.015, restarts
+  +0.017). Removing spurious stoppages adds only +0.008.
 - **Deflections and unwon aerials** flip possession under H1. The ground truth does not count
   them, but every stricter rule we tried did worse.
 - **Short possessions inside ball gaps** are invisible: a gap holds the owner.

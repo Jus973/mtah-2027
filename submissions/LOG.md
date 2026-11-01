@@ -43,3 +43,10 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   - v1: 0.522 [0.484, 0.560] / 0.560 [0.526, 0.594];
   - smooth50: 0.287 [0.259, 0.314] / 0.284 [0.251, 0.315].
   A timing re-run of v1 regenerated the same sha256 (4 s with a warm cache).
+- 2026-10-31: Dead-ball v2 (`configs/rules_v2.yaml`) adds four rules, off in rules.yaml so v1
+  regenerates byte-identically: calm-gap filter, release restarts, flight restarts, launch
+  touches.
+  - Sim held-out spellF1 0.5450 vs v1 0.5406, a near-tie. D share 0.486 vs 0.515 (GT 0.413).
+  - Real match: all checks pass; D 46.0%; consistency 0.728 (v1 0.740).
+  - §6.4 tie-breaks favour v1, which stays selected.
+  - Partial oracles on the fit matches: perfect D is worth only +0.04, mostly boundary timing.

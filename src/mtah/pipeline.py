@@ -47,7 +47,8 @@ def run(game, cfg, data_dir=None, atd=None):
     touches = touch_events(ball, d, cfg["touch"], fps)
     ev = evidence(ball_raw, ball, observed, players, graded, atd.pitch, cfg["deadball"], fps)
     dead = np.zeros(sp["n_frames"], dtype=bool)
-    runs = dead_runs(ev, touches, graded, cfg["deadball"])
+    restarts = []                       # releases that ended a stoppage: the taker's touch
+    runs = dead_runs(ev, touches, graded, cfg["deadball"], out_restarts=restarts)
     for a, b, _ in runs:
         dead[a:b + 1] = True
     kicks = kickoffs(game, atd, cfg, data_dir)
@@ -57,7 +58,10 @@ def run(game, cfg, data_dir=None, atd=None):
         if k is not None and k - first > tol:
             dead[first:min(k, last + 1)] = True
     dead &= graded
-    labels = decode_owner(touches, graded, dead, cfg["owner"]["hypothesis"], cfg["owner"], fps)
-    info = {"touches": len(touches), "d_runs_evidence": len(runs),
+    owner_touches = sorted(touches + restarts, key=lambda t: t.start)
+    labels = decode_owner(owner_touches, graded, dead, cfg["owner"]["hypothesis"], cfg["owner"],
+                          fps)
+    info = {"touches": len(touches), "release_restarts": len(restarts),
+            "d_runs_evidence": len(runs),
             "d_share_graded": float(dead[graded].mean()), "kickoffs": kicks}
     return labels, info

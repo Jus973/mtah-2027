@@ -3,9 +3,11 @@
 A contact frame has a player within r_touch_m of the (cleaned) ball. A contact episode is a run
 of contact frames whose nearest team stays the same (gaps of <= bridge_frames bridged); a ball
 flying past a player also makes one, so an episode counts as a touch only if the ball stays
-close for >= min_frames, turns by >= min_turn_deg, or changes speed by >= min_dv_mps. Positions
-are 2-d, so an aerial ball over a player is indistinguishable from a touch except by those
-kinematic tests.
+close for >= min_frames, turns by >= min_turn_deg, or changes speed by >= min_dv_mps, or is
+launched: it leaves at >= min_launch_mps from rest (slower than rest_mps) or from unseen. Launch
+catches restart kicks, which the other tests miss: a placed or reappearing ball has no velocity
+before the kick to turn or change. Positions are 2-d, so an aerial ball over a player is
+indistinguishable from a touch except by those kinematic tests.
 """
 
 from dataclasses import dataclass
@@ -60,8 +62,11 @@ def touch_events(ball, d, cfg, fps=25):
             turn = float(np.degrees(np.arccos(np.clip(cos, -1, 1))))
         n = b - a + 1
         sb, sa = float(speed[i]), float(speed[j])
+        launch = (np.isfinite(sa) and sa >= cfg["min_launch_mps"]
+                  and not (np.isfinite(sb) and sb >= cfg["rest_mps"]))
         keep = (n >= cfg["min_frames"] or (np.isfinite(turn) and turn >= cfg["min_turn_deg"])
-                or (np.isfinite(sb) and np.isfinite(sa) and abs(sa - sb) >= cfg["min_dv_mps"]))
+                or (np.isfinite(sb) and np.isfinite(sa) and abs(sa - sb) >= cfg["min_dv_mps"])
+                or launch)
         if keep:
             out.append(Touch(start=int(a), end=int(b), team=team, n_frames=int(n),
                              d_min=float(np.min(near[a:b + 1])), speed_before=sb, speed_after=sa,

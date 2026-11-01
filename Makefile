@@ -67,7 +67,7 @@ sim-rules:
 
 # Tune dead-ball v1 on the sim's fit matches; ablate and compare on held-out.
 sim-dead:
-	$(PY) scripts/sim_deadball.py
+	$(PY) scripts/sim_deadball.py --config $(or $(CFG),configs/rules.yaml)
 
 sim-costs:
 	$(PY) scripts/sim_costs.py

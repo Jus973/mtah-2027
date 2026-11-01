@@ -1,0 +1,22 @@
+# Rules v2: v1 with the dead-ball over-prediction cut. Same touch detector and owner rule (H1);
+# new: calm-gap filter, launch touches, release and flight restarts (events/deadball.py).
+# Tuned by make sim-dead CFG=configs/rules_v2.yaml on the 5 fit matches (31 Oct): fit spellF1
+# 0.549 (v1 0.537). Held-out 0.545 (v1 0.541; J03WQQ 0.522 / J03WR9 0.568), within noise. D share
+# 0.486 vs GT 0.413 (v1 0.515), precision 0.827 (v1 0.786). Held-out ablation: no release 0.542,
+# no calm gap 0.542, no flight 0.546, no launch 0.546.
+inherit: rules.yaml
+
+touch:
+  min_launch_mps: 5.0
+  rest_mps: 1.0
+
+deadball:
+  oob_margin_m: 0.0
+  oob_min_frames: 5
+  gap_v_players_mps: 2.0
+  gap_speed_window_frames: 25
+  gap_calm_min_frames: 25
+  still_min_frames: 50
+  merge_frames: 25
+  restart_window_frames: 6
+  restart_flight_mps: 6.0

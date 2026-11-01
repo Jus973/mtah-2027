@@ -1,11 +1,13 @@
-"""make airlock T=dead-stats: label-free checks of dead-ball v1 on a match (real or sim).
+"""make airlock T=dead-stats [CFG=...]: label-free checks of the dead-ball rules on a match.
 
-With configs/rules.yaml: the share of graded frames predicted D; the number of D runs against the
+With the config (default configs/rules.yaml): the share of graded frames predicted D; the number of D runs against the
 PLAN.md §6.3 band (60-150 over the real match's 158,857 graded frames, scaled to this match);
 run lengths; how many runs each evidence kind took part in; and, where the match has Smart
 Tagging, how often a set-piece tag (throw-in, corner, goal kick, free kick, kick-off after a goal)
 starts within +/- W seconds of a predicted restart (D run end), next to the chance rate for that
-window. On a sim match the GT D share is printed for comparison. Aggregates only.
+window. The calm-gap transfer check: players' mean speed over long ball gaps, and the share of
+long-gap frames the calm filter keeps; run it on the real match and on a sim match and compare.
+On a sim match the GT D share is printed for comparison. Aggregates only (real or sim).
 """
 
 import os
@@ -17,20 +19,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _guard import check, game_args, put  # noqa: E402
 
 from mtah import config, registry  # noqa: E402
-from mtah.events.deadball import KINDS, dead_runs, evidence  # noqa: E402
+from mtah.events.deadball import KINDS, dead_runs, evidence, players_speed  # noqa: E402
 from mtah.events.touches import touch_events  # noqa: E402
 from mtah.features.ball import clean_ball  # noqa: E402
 from mtah.features.players import team_distances  # noqa: E402
 from mtah.io.atd import load_game  # noqa: E402
 from mtah.io.tags import load_tags  # noqa: E402
+from mtah.learn.stats import runs  # noqa: E402
 
 SET_PIECES = ("Throw-in", "Corner Kick", "Goal Kick", "Free Kick", "Kick Off (After Goal)")
 WINDOWS_S = (2, 5)
 REAL_GRADED = 158857
 
-args = game_args()
+def add(parser):
+    parser.add_argument("--config", default="configs/rules.yaml")
+
+
+args = game_args(add=add)
 sp = registry.spec(args.game, args.data_dir)
-cfg = config.load("rules.yaml")
+cfg = config.load(os.path.abspath(args.config))
 fps = sp["fps"]
 atd, _ = load_game(args.game, args.data_dir)
 graded = registry.graded_mask(sp)
@@ -58,6 +65,20 @@ put("D runs", {"n": len(dr), "band_scaled": [round(lo, 1), round(hi, 1)],
                if len(lengths) else None})
 put("D runs with each evidence kind", {k: sum(k in kinds for _, _, kinds in dr) for k in KINDS})
 check("D runs within the scaled band", lo <= len(dr) <= hi, n=len(dr))
+
+dc = cfg["deadball"]
+speed = players_speed(players, fps)
+gaps = [(a, n) for a, n in zip(*runs(~np.isfinite(ball[:, 0]) & graded)) if n >= dc["gap_min_frames"]]
+if gaps:
+    gap_speed = [float(np.nanmean(speed[a:a + n])) for a, n in gaps]
+    long_gap = np.zeros(len(graded), dtype=bool)
+    for a, n in gaps:
+        long_gap[a:a + n] = True
+    put("players mean speed over long ball gaps, m/s (p10, p25, p50, p75, p90)",
+        {"n_gaps": len(gaps), "quantiles": [float(q) for q in np.nanpercentile(gap_speed,
+                                                                               [10, 25, 50, 75, 90])]})
+    put("long-gap frames kept as evidence by the calm filter, %",
+        100 * float(ev["gap"][long_gap].mean()))
 
 paths = registry.asset_paths(args.game, args.data_dir)
 if os.path.isfile(paths["smart_tagging"]):
