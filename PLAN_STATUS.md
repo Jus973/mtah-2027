@@ -7,8 +7,8 @@ all bands and the public bug check pass; regenerates byte-identically. Ready to 
 Draft technical document: `docs/technical.md` (≈5 pages estimated), built by `make doc`.
 Dead-ball v2 (`configs/rules_v2.yaml`) cuts D over-prediction but ties v1 on the sim.
 **Owner decoder v3** (`configs/rules_v3.yaml`, learned takeovers + Viterbi): held-out sim 0.584
-vs v1 0.541, better on all 7 sim matches, every real-match check passes. **Selection v1 → v3 is
-pending a team decision** (§6.4's interval-overlap rule calls it a tie).
+vs v1 0.541, better on all 7 sim matches, every real-match check passes. **v3 is selected**
+(31 Oct, after the team approved amending §6.4 to a paired per-match test).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -318,9 +318,9 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   - Smart-Tagging consistency 0.740 (v1 0.740);
   - 312 spells (v1 354), 18.3% under 2 s (v1 22.9%), 51.3% under 6 s (v1 55.1%), mean 10.0 s;
     PLAN §2 infers ≈ 20% / ≈ 50% for the real GT.
-- **Decision needed:** §6.4 says overlapping bootstrap intervals → prefer fewer components (v1).
-  Both held-out intervals overlap, but the paired test is decisive. Recommendation: amend §6.4
-  to a paired per-match comparison and select v3.
+- **Decision (31 Oct, team-approved):** §6.4 step 2 is amended to a paired per-match comparison
+  (positive mean difference and a one-sided sign test at p ≤ 0.05). **v3 is selected.** The old
+  interval-overlap rule called it a tie.
 - **Risk:** the takeover labels come from DFL possession, which flips more often than the real GT
   (sim bias 1). v3 predicts 0.8× the sim GT's spells and sits inside the real bands, but a
   semantic mismatch is a bias the sim cannot measure.
@@ -352,12 +352,14 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
    of `BAR-ATH_tactical_smart_tagging.xml`. Consolidate into `~/mtah2027` and delete them, since
    the T&C require tracking and deleting all copies.
 6. Review the revised PLAN.md (§1, §5 M1–M3, §6) and object to anything you disagree with.
-9. **Upload candidate v1 to the Google Form now** (PLAN M1: a scored entry exists whatever happens
+9. **Upload the selected candidate (now v3, see below) to the Google Form now** (PLAN M1: a scored entry exists whatever happens
    later). Needs: the CSV named `<TEAM_NAME>.csv`, a **public** repo URL and a draft document.
    There is no git remote yet: create a public GitHub repo for this project and push `main`
    first (your call; the pre-commit guard keeps bundle data out). Check the file before
-   uploading: `shasum -a 256 submissions/candidates/v1.csv` must start with `3c32c4758d117a6a`.
-   Then set `uploaded? = yes` on the v1 row in submissions/LOG.md.
+   uploading: `shasum -a 256 submissions/candidates/v3.csv` must start with `00f4551f83d84c89`
+   (v1, the earlier choice: `3c32c4758d117a6a`). Once `make submission` exists, upload its
+   output instead.
+   Then set `uploaded? = yes` on that row in submissions/LOG.md.
    **Document:** review `docs/technical.md`, especially the team notes in the HTML comment at its end:
    - the full sha256;
    - the cold `make cache` time;

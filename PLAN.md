@@ -3,6 +3,8 @@
 > Paste this file into the repo root as `PLAN.md`, then start Claude Code with the kickoff prompt in §0.
 > Dates assume today is **Fri 30 Oct 2026 (PT)**. Phase 1 closes **Tue 17 Nov 2026** (CET; exact hour unstated — see §9). Internal hard deadline: **Mon 16 Nov, 17:00 PT**.
 >
+> **§6.4 step 2 amended Sat 31 Oct 2026 (evening)** to a paired per-match comparison; see §6.4.
+>
 > **Revised Sat 31 Oct 2026** for the official rule changes of 22–23 Oct (RULES.md / FAQ.md @ `f8f2629`): **no hand labels on this match for any purpose, validation included; the public 5 minutes are a correctness check, never a tuning or selection set; no rules or constants tied to specific frames of this match.** Selection now rests on simulation over degraded open data (§6.1) plus label-free checks on the real match (§6.2). Changed: §0, §1, §2, §3, §4, §5 M0–M3, §6, §8, §9, App. D.
 
 ---
@@ -312,7 +314,8 @@ Any candidate must satisfy, over graded frames: **spells 280–550** (public win
 
 ### 6.4 Decision rule for the final file
 1. Discard any candidate that fails §6.3, the validator, or the public-window bug check (spellF1 ≥ 0.35; frames aligned, team sign right).
-2. Rank by held-out sim spellF1 (point estimate). If the top two overlap in bootstrap intervals, prefer the one with fewer components, then the better §6.2 consistency, then the better sim macroF1 (official tie-break).
+2. Rank by held-out sim spellF1 (point estimate). A challenger replaces the current choice only if a **paired per-match comparison** favours it. Both are scored on the same sim matches with the same GT. Held-out matches always count; fit matches count only where the challenger's learned parts are out of fold (cross-fitted), which is conservative for it. It must win the mean paired difference and a one-sided sign test at p ≤ 0.05 (with 7 matches: all 7). Otherwise it is a tie: prefer the one with fewer components, then the better §6.2 consistency, then the better sim macroF1 (official tie-break).
+   *Amended Sat 31 Oct.* The earlier rule ("if the top two overlap in bootstrap intervals") compared unpaired per-match intervals. With two held-out matches it cannot resolve differences below about 0.07, while two candidates scored on the same matches differ by much less noise. Under the old rule v3 (+0.043, better on 7 of 7 sim matches) tied with v1.
 3. The public-window score is a pass/fail bug check only. It is never compared across candidates and never used to break ties.
 4. Never pick a candidate because it "looks right" on frames someone watched — looking is for finding bugs, not for choosing files.
 5. Include a turnover or a `D` iff its calibrated probability ≥ 0.5 (F1 is symmetric in FP/FN); calibrate on sim.

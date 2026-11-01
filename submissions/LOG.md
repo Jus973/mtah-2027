@@ -7,7 +7,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 18:10 | v1 | f96f2f64a285 | 4cbeed1 | 3c32c4758d117a6a | pass | 0.5406 | pass | consistency 0.740 | no |
 | 2026-10-31 18:10 | v1-h2 | bc6afc21311e | 4cbeed1+dirty | 6b2c1299a6e2a7e2 | pass | 0.5217 | FAIL | consistency 0.714 | no |
 | 2026-10-31 20:30 | v2 | 14177d87de60 | ef58ae0 | a5a8eb85099c74fb | pass | 0.5450 | pass | consistency 0.728; near-tie with v1, not selected (§6.4) | no |
-| 2026-10-31 20:46 | v3 | 2cb112d12c53 | 6dfcf31 | 00f4551f83d84c89 | pass | 0.5838 | pass | consistency 0.740; leading candidate, 7/7 sim matches beat v1; selection pending (§6.4) | no |
+| 2026-10-31 20:46 | v3 | 2cb112d12c53 | 6dfcf31 | 00f4551f83d84c89 | pass | 0.5838 | pass | consistency 0.740; SELECTED: paired §6.4 (amended), 7/7 sim matches beat v1 | no |
 
 
 ## Work log
@@ -59,3 +59,8 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   - Real match: all checks pass; consistency 0.740; 312 spells, 18% under 2 s.
   - Selection v1 → v3 is pending a team decision: §6.4's interval-overlap rule says tie, the
     paired test says v3.
+- 2026-10-31: §6.4 step 2 amended to a paired per-match comparison: a positive mean paired
+  difference and a one-sided sign test at p ≤ 0.05 over the held-out matches plus the fit
+  matches where the challenger is out of fold. **v3 selected over v1**: Δ +0.043 held-out, 7/7
+  matches, p ≈ 0.008. v2 vs v1 stays a tie, since v2 is tuned in-sample and only the 2 held-out
+  matches count.
