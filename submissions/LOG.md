@@ -2,7 +2,7 @@
 
 One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FINAL.
 
-| datetime (PT) | candidate | config sha | git SHA | csv sha256 | public spellF1 / macroF1 | sim spellF1 | bands | notes | uploaded? |
+| datetime | candidate | config sha | git SHA | csv sha256 | public check (verdict only) | held-out sim spellF1 | bands | notes | uploaded? |
 |---|---|---|---|---|---|---|---|---|---|
 
 ## Work log

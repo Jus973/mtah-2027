@@ -1,0 +1,108 @@
+"""make candidate CFG=configs/rules.yaml NAME=v1 (agents: make airlock T=candidate CFG=... NAME=...).
+
+Runs mtah.pipeline on the match and writes submissions/candidates/<NAME>.csv (gitignored, never
+read by an agent). Prints aggregates only: the official validator, the structural bands
+(PLAN.md §6.3, kick-offs checked against the published facts with the detector's tolerance),
+Smart-Tagging consistency (§6.2a), the public-window bug check as a verdict (§6.4), the held-out
+sim spellF1 of the same config (§6.1, if the sim is built), sha256, config hash and git SHA. Then
+appends one row to submissions/LOG.md. Deterministic: same config + same commit = same bytes.
+"""
+
+import datetime
+import os
+import re
+import subprocess
+import sys
+
+import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _guard import check, game_args, put  # noqa: E402
+
+from mtah import config, pipeline, registry  # noqa: E402
+from mtah.eval.bands import bands  # noqa: E402
+from mtah.eval.consistency import tag_consistency  # noqa: E402
+from mtah.eval.score import public_check, score  # noqa: E402
+from mtah.io.tags import load_tags  # noqa: E402
+from mtah.submit.write import sha256, validate, write_csv  # noqa: E402
+
+LOG = os.path.join(registry.ROOT, "submissions", "LOG.md")
+
+
+def add(parser):
+    parser.add_argument("--config", default="configs/rules.yaml")
+    parser.add_argument("--name", required=True)
+
+
+def git_sha():
+    out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=registry.ROOT,
+                         capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
+                           cwd=registry.ROOT, capture_output=True, text=True).stdout.strip()
+    return out + ("+dirty" if dirty else "")
+
+
+args = game_args(add=add)
+if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", args.name):
+    sys.exit("--name: letters, digits, _ and - only")
+cfg = config.load(os.path.abspath(args.config))
+sp = registry.spec(args.game, args.data_dir)
+labels, info = pipeline.run(args.game, cfg, args.data_dir)
+out = write_csv(os.path.join(registry.ROOT, "submissions", "candidates", args.name + ".csv"), labels)
+digest = sha256(out)
+put("candidate", {"name": args.name, "config": os.path.relpath(os.path.abspath(args.config),
+                                                               registry.ROOT),
+                  "config_hash": config.config_hash(cfg), "git": git_sha(), "sha256": digest[:16]})
+put("pipeline", {"touches": info["touches"], "d_runs_from_evidence": info["d_runs_evidence"],
+                 "d_share_graded": info["d_share_graded"],
+                 "kickoffs_found": sorted(info["kickoffs"])})
+
+ok = check("official validator", validate(out, sp["n_frames"]) is None)
+pub = cfg["published"]
+real = not sp["fake"]
+kicks = {int(k): v for k, v in pub["kickoff_frames"].items()} if real else None
+team = {int(k): v for k, v in pub["kickoff_team"].items()} if real else None
+b = bands(labels, sp, cfg["bands"], kicks, team, tol=cfg["kickoff"]["tolerance_frames"])
+put("structure", {k: b[k] for k in ("n_spells", "frac_lt_2s", "frac_lt_6s", "mean_spell_s",
+                                    "n_d_runs", "home_share_alive", "x_frac_graded")})
+for name, passed in b["checks"].items():
+    ok &= check("band " + name, passed)
+
+tag_path = registry.asset_paths(args.game, args.data_dir)["smart_tagging"]
+consistency = None
+if os.path.isfile(tag_path):
+    c = tag_consistency(labels, load_tags(tag_path, sp["fps"]), cfg["tag_team_map"],
+                        registry.graded_mask(sp))
+    consistency = c["agree"]
+    put("smart-tagging consistency", {"agree": c["agree"], "frames": c["frames"]})
+    put("smart-tagging consistency by code [agree, frames]", c["by_code"])
+
+verdict = None
+if real:
+    r = public_check(out, cfg["public_check"])
+    verdict = r["verdict"]
+    put("public bug check verdict", verdict)
+    ok &= check("public bug check passes (verdict only)", verdict == "pass")
+    check("team sign: H/A as written beats swapped", r["swap_scores_higher"] is False)
+
+sim_scores = []
+for mid in cfg["matches"]["holdout"]:
+    game = "DFL-" + mid
+    if os.path.isfile(os.path.join(registry.SIM_DIR, game, registry.FAKE_META)):
+        sim_labels, _ = pipeline.run(game, cfg)
+        sim_scores.append(score(sim_labels, "sim:" + game)["spell_f1_mean"])
+sim_f1 = float(np.mean(sim_scores)) if sim_scores else None
+put("held-out sim spellF1 (same config)", {"mean": sim_f1, "per_match": sim_scores})
+
+if real:
+    row = "| {} | {} | {} | {} | {} | {} | {} | {} | {} | no |\n".format(
+        datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), args.name, config.config_hash(cfg),
+        git_sha(), digest[:16], verdict, "{:.4f}".format(sim_f1) if sim_f1 is not None else "-",
+        "pass" if b["pass"] else "FAIL",
+        "consistency {:.3f}".format(consistency) if consistency is not None else "")
+    with open(LOG) as handle:
+        text = handle.read()
+    head, sep, tail = text.partition("\n## Work log")
+    with open(LOG, "w") as handle:
+        handle.write(head.rstrip("\n") + "\n" + row + "\n" + sep + tail)
+sys.exit(0 if ok else 1)

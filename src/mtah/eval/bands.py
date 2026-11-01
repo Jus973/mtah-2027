@@ -21,8 +21,12 @@ def _runs(labels):
     return out
 
 
-def bands(labels, sp, cfg, kickoffs=None, kickoff_team=None):
-    """dict(stats..., checks={name: bool}, pass=bool). labels: (T,) array of 'H'/'A'/'D'/'X'."""
+def bands(labels, sp, cfg, kickoffs=None, kickoff_team=None, tol=0):
+    """dict(stats..., checks={name: bool}, pass=bool). labels: (T,) array of 'H'/'A'/'D'/'X'.
+
+    Kick-off checks allow `tol` frames of slack for a derived kick-off: everything up to
+    kickoff - tol is D, and the first alive label within kickoff + tol is the kick-off team.
+    """
     labels = np.asarray(labels).astype("<U1")
     fps = sp["fps"]
     graded = registry.graded_mask(sp)
@@ -61,10 +65,14 @@ def bands(labels, sp, cfg, kickoffs=None, kickoff_team=None):
             k = kickoffs.get(half)
             if k is None:
                 continue
-            if k > first:
-                checks["pre_kickoff_D_half{}".format(half)] = bool(np.all(labels[first:k] == "D"))
+            if k - tol > first:
+                checks["pre_kickoff_D_half{}".format(half)] = bool(
+                    np.all(labels[first:k - tol] == "D"))
             if kickoff_team:
-                checks["kickoff_team_half{}".format(half)] = labels[k] == kickoff_team[half]
+                w = labels[max(first, k - tol):k + tol + 1]
+                alive = w[np.isin(w, ["H", "A"])]
+                checks["kickoff_team_half{}".format(half)] = bool(
+                    len(alive) and alive[0] == kickoff_team[half])
     stats["checks"] = checks
     stats["pass"] = all(checks.values())
     return stats

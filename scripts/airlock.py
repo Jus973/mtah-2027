@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -30,8 +31,11 @@ JOBS = {
     "public-check": "public_check.py",
     "touch-stats": "touch_stats.py",
     "dead-stats": "dead_stats.py",
+    "candidate": "run_candidate.py",
 }
-CSV_JOBS = {"public-check"}  # jobs that take a candidate CSV (CSV=...)
+# Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
+JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}}
+REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
 
@@ -100,12 +104,23 @@ def main():
     parser.add_argument("job", choices=sorted(JOBS))
     parser.add_argument("--game", default="BAR-ATH")
     parser.add_argument("--data-dir", default=None, help="synthetic matches only")
-    parser.add_argument("--csv", default=None, help="candidate CSV, for " + ", ".join(sorted(CSV_JOBS)))
+    parser.add_argument("--csv", default=None, help="candidate CSV (public-check)")
+    parser.add_argument("--config", default=None, help="configs/*.yaml (candidate)")
+    parser.add_argument("--name", default=None, help="candidate name (candidate)")
     args = parser.parse_args()
-    if (args.csv is not None) != (args.job in CSV_JOBS):
-        sys.exit("airlock: CSV=... is required by, and only by: " + ", ".join(sorted(CSV_JOBS)))
+    given = {k for k in ("csv", "config", "name") if getattr(args, k) is not None}
+    allowed, needed = JOB_OPTIONS.get(args.job, set()), REQUIRED.get(args.job, set())
+    if given - allowed or needed - given:
+        sys.exit("airlock: {} takes {} (requires {})".format(
+            args.job, sorted(allowed) or "no options", sorted(needed) or "none"))
     if args.csv and not (args.csv.endswith(".csv") and os.path.isfile(args.csv)):
         sys.exit("airlock: CSV must be an existing .csv file")
+    if args.config and not (os.path.dirname(os.path.abspath(args.config))
+                            == os.path.join(registry.ROOT, "configs")
+                            and args.config.endswith(".yaml") and os.path.isfile(args.config)):
+        sys.exit("airlock: CFG must be an existing configs/*.yaml")
+    if args.name and not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", args.name):
+        sys.exit("airlock: NAME: letters, digits, _ and - only")
     fake = registry.is_fake(args.game, args.data_dir)
     if args.data_dir and not fake:
         sys.exit("airlock: --data-dir is for synthetic matches; the bundle path comes from "
@@ -129,6 +144,10 @@ def main():
         cmd += ["--data-dir", args.data_dir]
     if args.csv:
         cmd += ["--csv", os.path.abspath(args.csv)]
+    if args.config:
+        cmd += ["--config", os.path.abspath(args.config)]
+    if args.name:
+        cmd += ["--name", args.name]
     with open(log_path, "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                             env=env, cwd=registry.ROOT).returncode

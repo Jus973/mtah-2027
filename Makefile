@@ -24,7 +24,7 @@ test:
 # The bundle path comes from MTAH_DATA_DIR or .mtah.local; the full log stays beside the cache.
 T ?=
 airlock:
-	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv $(CSV))
+	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv $(CSV)) $(if $(CFG),--config $(CFG)) $(if $(NAME),--name $(NAME))
 
 check-data:
 	@test -n "$(MTAH_DATA_DIR)" || (echo "MTAH_DATA_DIR is not set" && exit 1)
@@ -78,5 +78,9 @@ GT ?=
 score:
 	$(PY) -c "import json,sys; from mtah.eval.score import score; print(json.dumps(score('$(CSV)', '$(GT)', bootstrap=1000), indent=2))"
 
-autopsy candidate sync submission doc:
+# make candidate CFG=configs/rules.yaml NAME=v1 (humans; agents use make airlock T=candidate ...)
+candidate: check-data
+	$(PY) scripts/run_candidate.py --game $(GAME) --config $(or $(CFG),configs/rules.yaml) --name $(NAME)
+
+autopsy sync submission doc:
 	@echo "make $@: not implemented yet (PLAN.md M1+). See PLAN_STATUS.md." && exit 1
