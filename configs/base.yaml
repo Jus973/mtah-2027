@@ -50,3 +50,16 @@ published:
   kickoff_frames: {1: 11185, 2: 113742}
   kickoff_team: {1: A, 2: H}
   home_tag_club: Barcelona
+
+stability:  # PLAN.md §6.2c, scripts/stability.py: label-free self-consistency of a candidate
+  perturb_frac: 0.1         # each threshold moved by -/+ this fraction, one at a time
+  min_spell: 0.5            # "spells shift wholesale": under half the spells survive a 10% change
+  seeds: [1, 2]             # learned components retrained with these seeds
+  params: [ball.max_interp_gap, ball.outside_m, ball.v_max_mps, touch.r_touch_m, touch.min_frames,
+           touch.min_turn_deg, touch.min_dv_mps, owner.contact_r_m, owner.alpha,
+           deadball.oob_margin_m, deadball.oob_min_frames, deadball.gap_min_frames,
+           deadball.merge_frames, kickoff.tolerance_frames]
+
+disagreement:  # PLAN.md §6.5, scripts/disagreement.py (debugging only)
+  candidates: [v1, v2, v3]
+  min_frames: 5             # shorter disagreement runs are not worth a clip

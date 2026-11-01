@@ -346,6 +346,17 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   Moving D onsets 6 frames earlier costs −0.003 on held-out. Gap flips (a takeover moved into
   the preceding ball gap) tune to a no-op on fit. **No correction**: transitions stay where they
   are placed by construction. The D-onset lag partly reflects the sim's assumed stoppage lag.
+- **Stability (§6.2c)** (`make airlock T=stability`). 14 thresholds are moved ±10% one at a time,
+  and the takeover model is retrained with seeds 1 and 2. Each variant is scored against the
+  reference output with the official scorer:
+  - real match: min spell agreement 0.854 (`owner.contact_r_m` +10%), median 0.999; seeds
+    0.966 / 0.968;
+  - held-out sim J03WQQ: min 0.921;
+  - **not fragile** (floor 0.5).
+- **Disagreement map (§6.5)** (`make airlock T=disagreement`). Share of graded frames where
+  candidates disagree: v1 vs v3 2.2%, v1 vs v2 6.0%, v2 vs v3 8.1%; any two 8.1% (< 10% PASS).
+  There are 202 segments (median 1.7 s), written to `<cache>/disagreement/segments.csv` for the
+  clip viewer.
 
 ## TODO for humans (run locally; paste back only the printed lines)
 

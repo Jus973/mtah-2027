@@ -33,10 +33,12 @@ JOBS = {
     "dead-stats": "dead_stats.py",
     "candidate": "run_candidate.py",
     "submission": "make_submission.py",
+    "stability": "stability.py",
+    "disagreement": "disagreement.py",
 }
 # Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
 JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"},
-               "submission": {"config", "name"}}
+               "submission": {"config", "name"}, "stability": {"config"}}
 REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
