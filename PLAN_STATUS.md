@@ -1,11 +1,11 @@
 # PLAN_STATUS: running state
 
 Last updated: Sat 31 Oct 2026, agent session 2. **Every agent-side item of PLAN.md M0–M4 is done
-or closed with a measured reason. What is left is human: the upload, the emails, the public repo
-and Docker.** The final file is `make submission` from `configs/final.yaml` (candidate v3:
+or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
+reproductions. What is left is human: the public repo, the upload and the emails.** The final file is `make submission` from `configs/final.yaml` (candidate v3:
 learned takeovers + Viterbi), sha256
-`00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. Two runs from a clean clone
-give the same file.
+`00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. A cold clean clone (twice)
+and Docker on arm64 and amd64 give the same file.
 - Held-out sim: 0.584 (v1 0.541), better on 7/7 sim matches.
 - Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.740;
   stable under ±10% threshold changes.
