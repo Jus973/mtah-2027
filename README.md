@@ -18,13 +18,13 @@ make cache                                  # parse the ATD into an npz cache ou
 make submission                             # -> "submissions/final/Berkeley Sports Research Group.csv"
 ```
 
-`make submission` runs `configs/final.yaml` (the selected candidate, v3), the official validator
+`make submission` runs `configs/final.yaml` (the selected candidate, v5), the official validator
 and the structural bands on the exact file. It records the file's sha256 in
 `submissions/final/<team>.sha256`, or checks it against that file when it exists. The team name
 (`team` in `configs/base.yaml`; override with `TEAM="..."`) is the file name. The
-submitted file has sha256 `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`
+submitted file has sha256 `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`
 (`submissions/final/Berkeley Sports Research Group.sha256`). Runs are deterministic: CPU only, no randomness at
-inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 4 s once the cache exists.
+inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 13 s once the cache exists.
 
 With Docker (the real bundle opens only at a terminal, hence `-t`). The image gives the same
 file on linux/arm64 and linux/amd64:
@@ -40,8 +40,10 @@ Every contact between the ball and a player is a candidate possession change. A 
 trained only on degraded open data (`models/takeover_v1.txt`) gives each contact by the
 non-owning team a takeover probability. A two-state Viterbi over the contacts
 (`src/mtah/decode/viterbi.py`) picks the owner path. Dead-ball stretches come from the tracking:
-the ball out of bounds or lost by the tracker while players are calm, up to the restart
-(`src/mtah/events/deadball.py`). See `docs/technical.md`.
+the ball out of bounds or lost by the tracker, up to the restart (`src/mtah/events/deadball.py`).
+Inside long ball gaps, two more sim-trained models read the players alone (team shape and motion,
+`models/gap_*_v1.txt`), and a three-state Viterbi re-decides `H`, `A` or `D`
+(`src/mtah/decode/gaps.py`). See `docs/technical.md`.
 
 ## Selection and checks (no labels on this match)
 
@@ -50,8 +52,9 @@ make open-data                              # DFL/IDSSE open dataset, 2.63 GB, C
 make sim                                    # degraded open-data matches -> ~/opendata/sim/DFL-*
 make sim-check                              # sim acceptance test: official baseline ~0.24 on the sim
 make train-takeover                         # retrain models/takeover_v1.txt (byte-identical)
+make train-gaps                             # retrain the gap models (byte-identical) + paired test
 make sim-ablate                             # held-out ablations of the final config
-make candidate NAME=v3 CFG=configs/rules_v3.yaml   # a candidate + bands, consistency, public check
+make candidate NAME=v5 CFG=configs/rules_v5.yaml   # a candidate + bands, consistency, public check
 ```
 
 Agents run real-data targets only through the airlock, which releases policy-checked aggregates:

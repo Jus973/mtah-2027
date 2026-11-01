@@ -109,10 +109,16 @@ def main():
     for i in range(len(fit_ids), len(Q)):
         gap, gt = G[i].gap, Q[i].m.gt
         alive = gap & np.isin(gt, ["H", "A"])
+        ends = np.array([e.end for e in Q[i].events])
+        teams = np.array([e.team for e in Q[i].events])
+        last = np.searchsorted(ends, np.flatnonzero(alive), side="right") - 1
+        carry = np.where(last >= 0, teams[np.maximum(last, 0)], -1)
         print("held-out {} gap frames: dead accuracy {:.3f} (prior {:.3f}); alive owner accuracy "
-              "{:.3f}".format(Q[i].m.game, ((probs[i][0][gap] > 0.5) == (gt[gap] == "D")).mean(),
-                              max((gt[gap] == "D").mean(), (gt[gap] != "D").mean()),
-                              ((probs[i][1][alive] > 0.5) == (gt[alive] == "H")).mean()))
+              "{:.3f} (last contact's team {:.3f})".format(
+                  Q[i].m.game, ((probs[i][0][gap] > 0.5) == (gt[gap] == "D")).mean(),
+                  max((gt[gap] == "D").mean(), (gt[gap] != "D").mean()),
+                  ((probs[i][1][alive] > 0.5) == (gt[alive] == "H")).mean(),
+                  (carry == np.where(gt[alive] == "H", 0, 1)).mean()))
 
     before = np.array([q.m.evaluate(b)["spell_f1"] for q, b in zip(Q, base)])
     after = np.array([Q[i].m.evaluate(labels(i, lam_dead, lam_owner))["spell_f1"]

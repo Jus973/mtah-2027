@@ -11,7 +11,9 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-10-31 21:01 | v4 | 1b26d03d65f2 | 65493ac | 66da042216912ab0 | pass | 0.5930 | pass | consistency 0.726; rejected: sim tie (paired rule), consistency regression | no |
 | 2026-10-31 21:13 | ablate-v3-no_oob | 2ad4fc1b4402 | 158d253 | 09352f5c76797526 | pass | 0.5784 | pass | consistency 0.742; M3 ablation, not a submission | no |
 | 2026-10-31 21:13 | ablate-v3-no_still | cb4e3815f479 | 158d253 | 00f4551f83d84c89 | pass | 0.5808 | pass | consistency 0.740; M3 ablation (= v3 output: stillness inert) | no |
-| 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | **FINAL** (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 | no |
+| 2026-10-31 21:26 | final | d41eecabe3a4 | 5b20987 | 00f4551f83d84c89 | pass | 0.5808 | pass | FINAL until 1 Nov, superseded by v5 (§6.4): configs/final.yaml = v3 minus inert stillness, same file as v3; consistency 0.740 | no |
+| 2026-11-01 00:43 | v5 | 82ab56b08fbc | 53938f3 | c1abb6e5e46d78ab | pass | 0.6087 | pass | consistency 0.746; SELECTED: paired §6.4, 7/7 sim matches beat the v3 final, +0.030, p = 0.0078 | no |
+| 2026-11-01 00:44 | final | 63d3fbdb94ed | 80906c1 | c1abb6e5e46d78ab | pass | 0.6087 | pass | **FINAL** (§6.4): configs/final.yaml = v5, same file as v5; consistency 0.746 | no |
 
 
 ## Work log
@@ -84,3 +86,20 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   (Berkeley Sports Research Group), same sha256; Docker entry point re-verified. Emails 1 and 2
   sent to the organisers (user-approved). The deadline is 17 Nov 11:59 PM CET and the Form link
   arrives by 14 Nov; a daily Gmail watch flags it. Upload waits for the user's go.
+- 2026-11-01: Owner inside long ball gaps (v5, `configs/rules_v5.yaml`). v3 calls every gap of
+  ≥ 25 frames `D`. On the sim, 20% of long-gap frames are alive and the missed turnovers that
+  sit near gaps are all inside long ones (median 24 s). Oracles over v3: perfect `D` in gaps
+  +0.015; the true labels in gaps +0.10. So the owner during gaps is the lever, not the contacts
+  at a gap's ends (the planned next step 1).
+  - Two LightGBM gap models trained on the sim fit matches from the players alone
+    (`learn/gapstate.py`): P(dead) and P(H owns | alive), 44 team-shape and motion features.
+    A three-state Viterbi re-decodes each long gap (`decode/gaps.py`); penalties tuned out of
+    fold (`make train-gaps`). Gap timing and contact features added only 0.003 and were left out.
+  - Paired vs the v3 final: +0.030, 7/7 matches, sign test p = 0.0078; held-out 0.581 → 0.609,
+    macroF1 0.827 → 0.878.
+  - Real match (airlock): all candidate checks pass; consistency 0.746 (v3 0.740) and 0.847 on
+    the gap frames v5 decodes alive; 6.8% of gap frames decoded alive (sim 17–20%), with
+    tag-phase coverage of its gap `D` (51%) close to other `D` (59%). Stability min 0.861; v3 vs
+    v5 differ on 2.7% of graded frames.
+  - **v5 selected (FINAL).** sha256 c1abb6e5e46d78ab…, identical twice, from a cold cache, from a
+    fresh clean clone (cold, twice) and in Docker on linux/arm64 and linux/amd64. Not uploaded.

@@ -1,16 +1,17 @@
 # PLAN_STATUS: running state
 
-Last updated: Sat 31 Oct 2026, agent session 2. **Every agent-side item of PLAN.md M0–M4 is done
+Last updated: Sun 1 Nov 2026, agent session 3. **Every agent-side item of PLAN.md M0–M4 is done
 or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
 reproductions, and the public repo (https://github.com/Jus973/mtah-2027). What is left is human:
-register the team name, and upload when the Form arrives (a daily Gmail watch will flag it).** The final file is `make submission` from `configs/final.yaml` (candidate v3:
-learned takeovers + Viterbi), sha256
-`00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`. A cold clean clone (twice)
+register the team name, and upload when the Form arrives (a daily Gmail watch will flag it;
+none by 1 Nov).** The final file is `make submission` from `configs/final.yaml` (candidate v5:
+learned takeovers + Viterbi, plus a ball-free decode inside long ball gaps), sha256
+`c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d`. A cold clean clone (twice)
 and Docker on arm64 and amd64 give the same file.
-- Held-out sim: 0.584 (v1 0.541), better on 7/7 sim matches.
-- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.740;
+- Held-out sim: 0.609 (v3 0.581, v1 0.541); v5 beats v3 on 7/7 sim matches (p = 0.0078).
+- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.746;
   stable under ±10% threshold changes.
-- Technical document: `docs/technical.md` (≈ 5.5 pages; `make doc`).
+- Technical document: `docs/technical.md` (≈ 6 pages; `make doc`).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -327,6 +328,47 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
   (sim bias 1). v3 predicts 0.8× the sim GT's spells and sits inside the real bands, but a
   semantic mismatch is a bias the sim cannot measure.
 
+## v5: ball-free decode inside long ball gaps (1 Nov, agent)
+
+- **Diagnosis** (v3, out of fold, 7 sim matches). Of 1,282 missed GT turnovers (±1 s), 328 are
+  near ball gaps, all inside long ones (median 609 frames). v3 calls every gap of ≥ 25 frames
+  `D`, but 20% of long-gap frames are alive in the sim GT. Oracles inside long gaps: perfect
+  `D` +0.015; gap-level `D`/alive +0.005; the true labels +0.10. So the lever is the owner
+  during alive gap frames, which contacts at a gap's entry and exit (the old next step 1) cannot
+  reach.
+- **Models** (`learn/gapstate.py`, `make train-gaps`, sim fit matches only). P(dead) and
+  P(H owns | alive) per long-gap frame, from 44 team-shape and motion features in each team's
+  attacking direction, with ±1 s and ±2 s context. Team-symmetric, single-threaded, retrains
+  byte-identical (`models/gap_dead_v1.txt`, `models/gap_owner_v1.txt`, about 1 MB each).
+  Held-out: dead accuracy 0.948 / 0.927 (majority class 0.789 / 0.781); owner on alive gap
+  frames 0.813 / 0.872 (the last contact's team 0.72 / 0.69).
+  - Feature ablation (out of fold, mean paired gain): all +0.0305, without gap timing +0.0279,
+    without contacts +0.0289, players only +0.0273 (7/7 each). Players only is kept: within
+    0.01, and it does not depend on where the sim places its gaps.
+- **Decoder** (`decode/gaps.py`): a three-state Viterbi per gap in 5-frame steps, with
+  penalties tuned out of fold: λ_D 30, λ_owner 15 (inside the grids). Frames before a kick-off
+  stay `D`.
+- **Selection** (§6.4, paired vs the v3 final, both out of fold on fit): +0.038, +0.033, +0.014,
+  +0.038, +0.031 (fit), +0.028, +0.028 (held-out): mean +0.030, 7/7, p = 0.0078. Held-out
+  0.581 → 0.609; macroF1 0.827 → 0.878. `make sim-ablate`: without the gap decoder −0.028; the
+  other rows keep their sign (long gaps −0.055, out of bounds −0.006; α = 1 would be +0.005 on
+  held-out, but α is tuned out of fold and held-out matches never tune).
+- **Real match** (airlock, label-free):
+  - candidate checks all pass: validator, bands (319 spells, 16.3% < 2 s, 135 `D` runs, home
+    share 0.61), public bug check, team sign; consistency 0.746 (v3 0.740); set-piece
+    alignment 32% (unchanged);
+  - long gaps are 40.5% of graded frames, of which v5 decodes 6.8% alive (sim 17–20%). On the
+    tagged ones, the tag's team agrees with v5's owner on 0.847 of 12,548 frames;
+  - team-tagged phase coverage: alive outside gaps 0.83, alive in gaps 0.79, `D` outside gaps
+    0.59, `D` in gaps 0.51. The gap frames kept `D` look like other `D`, not missed play;
+  - stability: min spell agreement 0.861 over 18 perturbed thresholds; gap-model seeds 1.000 /
+    0.999; disagreement v3 vs v5 2.7% of graded frames, any two of v1/v2/v3/v5 9.5% (< 10%);
+  - `D` share 48.1% (v3 50.8%; held-out sim 42–45% vs GT 41–42%).
+- **FINAL: v5.** `configs/final.yaml` inherits `rules_v5.yaml`. sha256 `c1abb6e5…618d`, twice,
+  cold, from a fresh clean clone (cold, twice; 94 tests pass there) and in Docker on linux/arm64
+  and linux/amd64. To go back to v3: `inherit: rules_v3.yaml` with `deadball.kinds: [oob, gap]`
+  in `configs/final.yaml`, and restore the old sha256 (`00f4551f…bc499a`).
+
 ## M2–M4 progress (31 Oct, agent; goal: finish the plan)
 
 - **§6.4 amended, v3 selected** (above). `configs/final.yaml` inherits `rules_v3.yaml`.
@@ -419,7 +461,8 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
     consistency is 0.742 (vs 0.740), but set-piece alignment falls (D near the aligned restart:
     25% vs 32%) and there are 119 D runs instead of 133. It is the one D evidence that does not
     lean on the sim's stoppage-gap assumption (sim bias 3), so the sim understates it.
-- **Video ball recovery go/no-go (M3): no-go by default.**
+- **Video ball recovery go/no-go (M3): no-go.** With v5 (1 Nov), (b) fails: 18.3% / 22.1% of
+  missed or split held-out spells lie in ball gaps (go needs ≥ 25%). The 31 Oct figures for v3:
   - (a) Rules + learned below 0.65 on sim: yes (0.584).
   - (b) ≥ 25% of missed or split spells lie in ball gaps: yes, just (J03WQQ 25.3% of 194,
     J03WR9 27.2% of 162).
@@ -498,20 +541,21 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
 4. **When the Form arrives (by 14 Nov): upload, after you say go.**
    - CSV: `submissions/final/Berkeley Sports Research Group.csv`. Rebuild it right before
      uploading with `make submission`; its sha256 must be
-     `00f4551f83d84c891e0c13c5d62fa0e8d0918a749c16e97722edaa32f1bc499a`.
+     `c1abb6e5e46d78ab119cf477905ba1e4ea5d134c9bd5560bc91b3fe430e8618d` (v5, since 1 Nov).
    - Repo URL: https://github.com/Jus973/mtah-2027.
    - Document: `docs/Berkeley Sports Research Group.md`. Rebuild it with
      `make doc REPO=https://github.com/Jus973/mtah-2027` after any change to `docs/technical.md`.
    - Re-open the response and verify all fields; then set `uploaded? = yes` on the FINAL row of
      `submissions/LOG.md`.
 5. **Optional:**
-   - *Video ball recovery go/no-go (M3).* Conditions (a) and (b) are met; (c), P3 having ≥ 4
-     free days, is yours. Default no-go.
+   - *Video ball recovery go/no-go (M3):* settled as no-go on 1 Nov. With v5, condition (b)
+     fails (18–22% of missed spells in gaps, under 25%).
    - *Clip viewer and autopsy (§6.5, debugging only).* `make clips`, then open
      `tools/clipviewer/index.html`; `make autopsy`.
    - *PDF of the document:* install pandoc plus a LaTeX engine, then `make doc` writes it.
 6. Review the revised PLAN.md (§1, §5, §6, the amended §6.4) and object to anything you
-   disagree with.
+   disagree with. **New on 1 Nov:** the final moved from v3 to v5 by the §6.4 paired rule (v5
+   section above). Say so if you want v3 back; the switch is one line in `configs/final.yaml`.
 7. After the competition, delete every bundle copy and the caches (T&C).
 
 Done earlier (kept for the record):
@@ -555,9 +599,8 @@ Done earlier (kept for the record):
 
 The agent-side plan is finished, with every component kept or dropped by its gate (sections
 above). The human steps are the TODO list. If there is time before the freeze, or for Phase 2:
-1. Contacts the 1 m radius misses: possession changes inside ball gaps make up ≈ 25% of v3's
-   missed spells on the sim. The candidates would be contacts reconstructed from the gap's
-   entry and exit, with the model retrained on the sim.
+1. ~~Contacts inside ball gaps~~ done differently on 1 Nov: v5's ball-free gap decoder (above).
+   The sim ceiling with the true labels inside gaps is +0.10 over v3; v5 gets +0.03.
 2. Restart owner after corners (5/11 corner team): a restart-specific feature for the takeover
    model, judged by the paired rule and the set-piece check.
 3. Decode D in the same Viterbi path, using the v2 rules as soft evidence instead of hard rules.
