@@ -1,8 +1,9 @@
 # PLAN_STATUS: running state
 
 Last updated: Sat 31 Oct 2026, agent session 2. M0 done. M1: sim v0 accepted (smooth50 0.261 vs
-reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-ball v1: held-out
-sim spellF1 0.541 with detected D (0.606 with oracle D; official baseline 0.286).
+reference 0.243); public check is verdict-only; rules v1 = touches + H1 + dead-ball v1 (held-out
+sim spellF1 0.541; official baseline 0.286). **Candidate v1 built on the real match: validator,
+all bands and the public bug check pass; regenerates byte-identically. Ready to upload (human).**
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
 
@@ -208,6 +209,21 @@ tunes it end to end (H1 spellF1) on the fit matches:
   predicted restart falls **9.5 s after the tag start** (IQR 6.0–13.2 s): stored as
   `tags.set_piece_restart_after_start_s` for tag-anchored restarts later.
 
+**Candidate v1 (31 Oct)** — `make airlock T=candidate NAME=v1` (rules.yaml, H1), git 4cbeed1,
+sha256 `3c32c4758d117a6a…`, file `submissions/candidates/v1.csv` (gitignored, never read by the
+agent). Everything below is label-free or verdict-only:
+- Official validator PASS. Bands (§6.3) all PASS: 354 spells, 22.9% < 2 s, 55.1% < 6 s, mean
+  8.8 s, 133 D runs, home share of alive 0.61, X 0, kick-off team right in both halves, D before
+  the second-half kick-off. D on 50.8% of graded frames (probably ~10 points high, as on the sim).
+- Public bug check: **pass** (spellF1 ≥ 0.35; number not printed); team sign right.
+- Smart-Tagging consistency 0.740. The tagger emits each phase twice (attacking team + defending
+  opponent, same window) and each pair agrees exactly, which confirms the attack/defend mapping.
+- Held-out sim spellF1 of the same config 0.541.
+- **H1 vs H2 re-checked on the real match:** H2 (`v1-h2`) has lower consistency (0.714), too
+  many short spells (421; < 6 s band FAIL), fails both kick-off-team bands, and scores lower on
+  the held-out sim (0.522). H1 stays.
+- Re-running `make airlock T=candidate NAME=v1` regenerates the same sha256 (checked).
+
 ## TODO for humans (run locally; paste back only the printed lines)
 
 1. ~~**Real-data M0 checks.**~~ cache + baseline-check PASS (31 Oct); anchors FAIL, see 7. Paste back the `[PASS]/[FAIL]` lines and the aggregate lines.
@@ -235,6 +251,12 @@ tunes it end to end (H1 spellF1) on the fit matches:
    of `BAR-ATH_tactical_smart_tagging.xml`. Consolidate into `~/mtah2027` and delete them, since
    the T&C require tracking and deleting all copies.
 6. Review the revised PLAN.md (§1, §5 M1–M3, §6) and object to anything you disagree with.
+9. **Upload candidate v1 to the Google Form now** (PLAN M1: a scored entry exists whatever happens
+   later). Needs: the CSV named `<TEAM_NAME>.csv`, a **public** repo URL and a draft document.
+   There is no git remote yet: create a public GitHub repo for this project and push `main`
+   first (your call; the pre-commit guard keeps bundle data out). Check the file before
+   uploading: `shasum -a 256 submissions/candidates/v1.csv` must start with `3c32c4758d117a6a`.
+   Then set `uploaded? = yes` on the v1 row in submissions/LOG.md.
 
 ## Blocked / known limitations
 
@@ -250,13 +272,11 @@ tunes it end to end (H1 spellF1) on the fit matches:
 
 ## Next steps
 
-M1, in order:
-1. ~~Public bug check~~, ~~touches + owner hypotheses~~, ~~dead-ball v1~~ done.
-2. Candidate v1 on the real match (`scripts/run_candidate.py`, `make candidate`): rules.yaml
-   end to end, output CSV to `submissions/candidates/`, bands (§6.3) and the public bug check
-   through the airlock, a LOG.md row with config hash, git SHA and sha256; then the early Form
-   upload (human).
-3. Cut the D over-prediction (restart placement, gap-in-play filter); gap policy and the sparse
-   Viterbi decoder; latency residuals on the sim.
-4. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), to test
-   tag-anchored restarts.
+M1 is done except the human upload (TODO 9). Next (M1 leftovers, then M2):
+1. Draft technical document (`docs/`, ≤ 6 pages, §8) so the early Form upload has one.
+2. Cut the D over-prediction (restart placement, gap-in-play filter); gap policy and the sparse
+   Viterbi decoder; latency residuals on the sim. Re-check every change with `make sim-dead`
+   (held-out) and `make airlock T=candidate` (bands, consistency, public verdict).
+3. Smart-Tagging-style set-piece tags for the sim from the DFL events (sim bias 5), then
+   tag-anchored restarts (`tags.set_piece_restart_after_start_s`).
+4. M2: learned emissions (LightGBM on the sim), broadcast/audio (both videos have audio).

@@ -4,6 +4,9 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 
 | datetime | candidate | config sha | git SHA | csv sha256 | public check (verdict only) | held-out sim spellF1 | bands | notes | uploaded? |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-10-31 18:10 | v1 | f96f2f64a285 | 4cbeed1 | 3c32c4758d117a6a | pass | 0.5406 | pass | consistency 0.740 | no |
+| 2026-10-31 18:10 | v1-h2 | bc6afc21311e | 4cbeed1+dirty | 6b2c1299a6e2a7e2 | pass | 0.5217 | FAIL | consistency 0.714 | no |
+
 
 ## Work log
 
@@ -29,3 +32,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   tuned end to end on the sim fit matches: held-out spellF1 0.541 with detected D (oracle 0.606,
   official baseline 0.286). Real match, label-free: 135 D runs (band PASS), 86% of set-piece tags
   start inside predicted D; predicted restarts sit 9.5 s after set-piece tag starts.
+- 2026-10-31: Candidate v1 (rules.yaml: touches + H1 + dead-ball v1) on the real match through the
+  airlock: validator, all bands and the public bug check pass; Smart-Tagging consistency 0.740;
+  held-out sim 0.541. v1-h2 (H2) logged for comparison: worse on every label-free check. v1
+  regenerates byte-identically. Waiting for the human Form upload.

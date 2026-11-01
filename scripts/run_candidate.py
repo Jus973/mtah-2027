@@ -37,7 +37,8 @@ def add(parser):
 def git_sha():
     out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=registry.ROOT,
                          capture_output=True, text=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--", ".",
+                            ":(exclude)submissions/LOG.md"],  # this script writes LOG.md itself
                            cwd=registry.ROOT, capture_output=True, text=True).stdout.strip()
     return out + ("+dirty" if dirty else "")
 
@@ -103,6 +104,13 @@ if real:
     with open(LOG) as handle:
         text = handle.read()
     head, sep, tail = text.partition("\n## Work log")
-    with open(LOG, "w") as handle:
-        handle.write(head.rstrip("\n") + "\n" + row + "\n" + sep + tail)
+    # Re-running a logged candidate is the reproducibility check: same name, same bytes.
+    logged = [cells[4] for cells in (line.split(" | ") for line in head.splitlines())
+              if len(cells) > 5 and cells[1] == args.name]  # cells: date, name, cfg, git, sha
+    if logged:
+        same = logged[-1] == digest[:16]
+        put("regenerated {}: same sha256 as its latest LOG.md row".format(args.name), same)
+    if not logged or logged[-1] != digest[:16]:
+        with open(LOG, "w") as handle:
+            handle.write(head.rstrip("\n") + "\n" + row + "\n" + sep + tail)
 sys.exit(0 if ok else 1)
