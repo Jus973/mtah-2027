@@ -39,6 +39,8 @@ put("ball jitter d2 m (median, p75, p90)", s["ball_d2"])
 put("player jitter d2 m (median, p75, p90)", s["player_d2"])
 put("ball jumps", {"n": s["n_jumps"], "per_seen_frame": s["jump_rate"],
                    "far_outside_frames": s["n_far_outside"]})
+put("ball between seen frames: share not moving / slower than 0.1 m/s",
+    [s["ball_frozen_frac"], s["ball_still_frac"]])
 for team, name in ((HOME, "home"), (AWAY, "away")):
     put("visible {} players per graded frame (counts for 0..{})".format(name, len(s["visible"][team]) - 1),
         [int(c) for c in s["visible"][team]])

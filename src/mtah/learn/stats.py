@@ -78,6 +78,10 @@ def atd_stats(players, ball, team_of_slot, graded, pitch, cfg, fps=25):
     step = np.full(len(ball), np.nan)
     step[1:] = np.linalg.norm(np.diff(ball, axis=0), axis=1)
     n_jumps = int(np.sum(pair & (step > cfg["jump_m"])))
+    # A ball that does not move at all between seen frames. The DFL source data freezes the ball
+    # in dead time, so the sim has many such frames; a real optical tracker rarely does.
+    frozen = float(np.mean(step[pair] == 0)) if pair.any() else None
+    near_still = float(np.mean(step[pair] * fps < 0.1)) if pair.any() else None
     with np.errstate(invalid="ignore"):
         far = seen & ((ball[:, 0] < -5) | (ball[:, 0] > pitch[0] + 5)
                       | (ball[:, 1] < -5) | (ball[:, 1] > pitch[1] + 5))
@@ -120,6 +124,8 @@ def atd_stats(players, ball, team_of_slot, graded, pitch, cfg, fps=25):
         "player_d2": _quantiles(_d2(players, np.repeat(graded[:, None], players.shape[1], 1))),
         "n_jumps": n_jumps,
         "jump_rate": n_jumps / max(1, int(pair.sum())),
+        "ball_frozen_frac": frozen,
+        "ball_still_frac": near_still,
         "n_far_outside": int(far.sum()),
         "visible": visible,
         "tracklets": tracklets,
