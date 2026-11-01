@@ -37,7 +37,9 @@ if left:
     print("placeholders still to fill:", ", ".join(left))
 if shutil.which("pandoc"):
     pdf = out[:-3] + ".pdf"
-    subprocess.run(["pandoc", out, "-o", pdf], check=True)
+    # 10 pt on A4 with 2 cm margins: the layout the <= 6 page estimate assumes (PLAN.md §8).
+    subprocess.run(["pandoc", out, "-o", pdf, "-V", "papersize=a4", "-V", "fontsize=10pt",
+                    "-V", "geometry:margin=2cm"], check=True)
     print("wrote", os.path.relpath(pdf, ROOT))
 else:
     print("pandoc not installed: Markdown only (the Form accepts .md)")

@@ -120,36 +120,30 @@ coordinate descent over fixed grids. The objective was mean spellF1 with the off
 the five *fit* sim matches. Grids were widened until every tuned value sat inside them, except
 where a criterion tuned itself off (stillness; H2's control tests).
 
-**Candidate v3: learned takeovers and a sparse-transition decoder** (`configs/rules_v3.yaml`,
-not yet the submitted file). With the true `D`, H1 finds only half of the sim's possession
-changes, and 38% of the changes it predicts are wrong. Perfect takeover decisions on all
-contacts would lift spellF1 from 0.58 to 0.76 on the fit matches. That is a much larger lever
-than `D`, which is worth at most +0.04.
+**Candidate v3** (`configs/rules_v3.yaml`, not yet the submitted file). With the true `D`, H1
+finds half of the sim's possession changes, and 38% of its changes are wrong. Perfect takeover
+decisions on all contacts would lift fit spellF1 from 0.58 to 0.76, a far larger lever than `D`
+(+0.04 at most).
 
-v3 keeps v1's touches and dead-ball rules and changes how possession moves between contacts:
-- **Candidates.** Every contact (ball within 1.0 m of a player) is a candidate, not only the
-  kinematically confirmed ones.
-- **Takeover model.** LightGBM gives a contact by the non-owning team its probability of taking
-  the ball. It is single-threaded, seeded and trained on the five fit sim matches only. Its 15
-  team-symmetric features cover the contact's kinematics and its rhythm (time to the previous
-  and next contacts, and whether they are by the same team). The training label is whether the
-  sim GT owner 5 frames after the contact is the toucher's team.
-- **Decoder.** A two-state Viterbi over contacts. A takeover scores log p, a contact that fails
-  to take the ball scores log(1 − p), and p is sharpened by α = 3.0 on the log-odds scale. A
-  change still lands on the contact's first frame.
-- **Tuning.** α and the flip penalty (0) were tuned on out-of-fold predictions for the fit
-  matches.
+v3 keeps v1's touches and `D`:
+- every contact within 1.0 m is a candidate;
+- LightGBM, trained on the five fit sim matches only (single-threaded, seeded), gives each
+  contact by the non-owning team a takeover probability p. It uses 15 team-symmetric features:
+  kinematics, time to the previous and next contacts, and their teams;
+- a two-state Viterbi over contacts scores log p per takeover and log(1 − p) per contact that
+  does not take the ball, with α = 3.0 log-odds sharpening and no flip penalty (both tuned out
+  of fold). A change still lands on the contact's first frame.
 
-On held-out contacts the model has AUC 0.913. End to end with v1's detected `D`, held-out
-spellF1 is 0.584 (J03WQQ 0.559 [0.519, 0.600]; J03WR9 0.609 [0.572, 0.645]) vs 0.541 for v1.
-v3 beats v1 on all seven sim matches, by +0.016 to +0.051. On the five fit matches that holds
-even with v3 out of fold and v1 in-sample.
+Held-out results:
+- contact AUC 0.913;
+- spellF1 with detected `D` 0.584 (J03WQQ 0.559 [0.519, 0.600]; J03WR9 0.609 [0.572, 0.645]) vs
+  0.541 for v1;
+- better than v1 on all seven sim matches, by +0.016 to +0.051.
 
-On this match, v3 passes the validator, all bands and the public check. Smart-Tagging
-consistency is unchanged (0.740). It predicts fewer, longer spells: 312, with 18% under 2 s and
-51% under 6 s (v1: 354, 23%, 55%). That is closer to the ≈ 20% / ≈ 50% inferred from the
-official lag figures. Pressure features (players within 3 / 8 m) were tried and dropped: they
-left the held-out AUC unchanged and depend on track dropouts and duplicates.
+On this match, v3 passes every check, and Smart-Tagging consistency is unchanged (0.740). It
+predicts 312 spells, 18% under 2 s and 51% under 6 s (v1: 354, 23%, 55%). That is closer to the
+≈ 20% / ≈ 50% inferred from the official lag figures. Pressure features were tried and dropped:
+they left AUC unchanged.
 
 ## 5. Validation protocol
 
@@ -242,20 +236,11 @@ has no Smart Tagging yet. Touch statistics do transfer: the ball is within 1.0 m
 
 ## 6. Limitations and next steps
 
-- **`D` is over-predicted.** 50.8% of graded frames are `D` on this match, and on the sim the
-  detector gives 51–52% vs 41% true (precision 0.79, recall 0.98). We tried four fixes, tuned on
-  the fit matches:
-  - gap evidence only while players are calm (in-play gaps: median 2.3 m/s, stoppage gaps 1.2);
-  - a stoppage ends when the ball leaves the taker of a throw-in or corner;
-  - a stoppage ends when the ball reappears in flight;
-  - a kick from rest counts as a touch.
-
-  Together they cut the sim `D` share to 48.6% and raised precision to 0.83, but held-out
-  spellF1 moved only +0.004 (0.545), inside the noise. On this match `D` fell to 46.0%, while
-  Smart-Tagging consistency fell slightly (0.728). Under our decision rule that is a tie, which
-  goes to the simpler v1. A partial-oracle study on the fit matches bounds what any `D` work
-  can gain: perfect `D` adds +0.04, mostly from boundary timing (onsets +0.015, restarts
-  +0.017). Removing spurious stoppages adds only +0.008.
+- **`D` is over-predicted.** 50.8% of graded frames are `D` on this match; the sim gives 51–52%
+  vs 41% true. Four fixes cut the sim `D` share to 48.6%: calm-gap evidence, restarts at the
+  taker's release or the ball's reappearance in flight, and kicks from rest as touches. But
+  held-out spellF1 moved only +0.004, a tie that goes to the simpler v1. Partial oracles show
+  why: perfect `D` adds only +0.04 on the fit matches, mostly from boundary timing.
 - **Deflections and unwon aerials** flip possession under H1. The ground truth does not count
   them, but every stricter rule we tried did worse.
 - **Short possessions inside ball gaps** are invisible: a gap holds the owner.
