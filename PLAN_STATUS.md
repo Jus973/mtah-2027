@@ -454,6 +454,9 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
     - Linux aarch64: same sha256, 22 s.
     - Linux x86_64 (`PLATFORM=linux/amd64`, emulated): same sha256, 49 s.
     - **The file is identical on macOS arm64, Linux arm64 and Linux x86_64.**
+    - After the team-name change, the image's own entry point (`scripts/docker_run.sh`, run by
+      `make airlock T=submission-docker` with no command override) gives the same sha256 for
+      `Berkeley Sports Research Group.csv` (arm64, 22 s).
   - *`make audit`:* PASS. No bundle files or derivatives, nothing over 5 MB, no secrets,
     `.mtah.local` untracked, LICENSE and README present. It warns about absolute home paths in
     `.claude/settings.json` and `.cursorignore`.
