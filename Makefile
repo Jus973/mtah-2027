@@ -150,4 +150,4 @@ metrica-data:
 
 # Degrade Game 3 (mechanical event-derived GT) into MET-G3 under the sim dir + acceptance check
 metrica-sim:
-	$(PY) scripts/build_metrica.py
+	$(PY) scripts/build_metrica.py $(if $(FAMILY),--family $(FAMILY)) $(if $(NATIVE),--native)
