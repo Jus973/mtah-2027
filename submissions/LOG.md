@@ -540,3 +540,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   timeout — environment only, no pipeline, config or model change. FINAL row added to the
   candidates table. Not uploaded. Still the human's: the commit, registration (before 10 Nov),
   the Form (17 Nov 11:59 PM CET).
+- 2026-11-02: Adoption committed and pushed on the user's written instruction ("Commit it",
+  "Push it"): `eedd4ef` on main → github.com/Jus973/mtah-2027 (50 files; the block-match-data
+  pre-commit guard passed). Registration (before 10 Nov) and the Form (17 Nov) remain; the FINAL
+  is not uploaded.

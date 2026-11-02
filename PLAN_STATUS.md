@@ -3,8 +3,9 @@
 Last updated: Mon 2 Nov 2026, agent session 3 (v11 adoption executed). **Every agent-side item of
 PLAN.md M0–M4 is done or closed with a measured reason, including cold-cache and Docker (arm64 +
 amd64) reproductions of the FINAL, and the public repo (https://github.com/Jus973/mtah-2027).
-What is left is human: commit the adoption working tree, register the team name (before 10 Nov),
-and upload when the Form arrives (a daily Gmail watch will flag it; none flagged by 2 Nov).** The
+What is left is human: register the team name (before 10 Nov) and upload when the Form arrives
+(a daily Gmail watch will flag it; none flagged by 2 Nov); the adoption tree is committed and
+pushed (`eedd4ef` on main).** The
 final file is `make submission` from `configs/final.yaml` (candidate v11, adopted 1 Nov on the
 user's written sign-off — LOG.md adoption entry: the v6 pipeline — learned takeovers with team
 shape + Viterbi, plus a ball-free decode inside long ball gaps — with each dead-ball boundary
