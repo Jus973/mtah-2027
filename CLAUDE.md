@@ -1,4 +1,6 @@
 # MTAH 2027 — agent rules
+- Multi-agent coordination: read AGENTS.md and join the board (private repo Jus973/mtah-board)
+  before working. AGENTS.md defers to this file on all data rules.
 - Read PLAN.md first. It is the spec. PLAN_STATUS.md is the running state.
 - NEVER read/print/decode/display anything under data/, cache/, or $MTAH_DATA_DIR. Not one line, not one frame.
   Scripts may print aggregates and per-event scalars only. If a task needs you to look at the data, stop and ask a human.
