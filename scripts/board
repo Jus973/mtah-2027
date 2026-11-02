@@ -1,0 +1,732 @@
+#!/usr/bin/env python3
+"""AgentMax board — the shared task-board protocol for the mtah-2027 team.
+
+A thin, stateless wrapper over the `gh` CLI so every agent (Claude, Devin,
+humans) runs the identical claim / heartbeat / takeover protocol against the
+private board repo. The rules live in AGENTS.md; this file is the mechanism.
+
+stdlib only. Requires `gh` authenticated with access to the board repo.
+"""
+
+import argparse
+import getpass
+import json
+import re
+import socket
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
+
+import os
+
+BOARD_REPO = os.environ.get("BOARD_REPO", "Jus973/mtah-board")
+CODE_REPO = os.environ.get("BOARD_CODE_REPO", "Jus973/mtah-2027")
+MARK = "\U0001f916 BOARD"  # 🤖 BOARD
+DEFAULT_LEASE_MIN = 60
+BEAT_MAX_MIN = 25
+BUDGET_MIN = {"size:S": 120, "size:M": 360, "size:L": 1440}
+DEFAULT_BUDGET_MIN = 360
+
+LABELS = [
+    ("status:todo", "0e8a16", "Unclaimed - free to claim"),
+    ("status:in-progress", "fbca04", "Claimed under an active lease"),
+    ("status:review", "8250df", "PR open - needs a non-author review"),
+    ("status:blocked", "d73a4a", "Stuck - see the write-up on the issue"),
+    ("needs:human", "ff8c00", "Only a human can do this"),
+    ("needs:airlock", "1d3557", "Needs the gated bundle via the airlock host"),
+    ("prio:p0", "b60205", "Do first"),
+    ("prio:p1", "d93f0b", "Do soon"),
+    ("prio:p2", "cccccc", "When free"),
+    ("size:S", "c5def5", "Budget 2h"),
+    ("size:M", "54aeff", "Budget 6h"),
+    ("size:L", "0969da", "Budget 24h"),
+    ("type:idea", "06b6d4", "Proposal - needs 2 critiques before promotion"),
+    ("type:eval", "0e7a71", "Verification / benchmark run"),
+    ("channel", "6f42c1", "Pinned coordination channel - not a task"),
+]
+
+CHANNELS = {
+    "announcements": "\U0001f4e2 Announcements",  # 📢
+    "eval": "\U0001f4ca Eval log",  # 📊
+}
+
+
+def agent_id():
+    a = os.environ.get("BOARD_AGENT")
+    if not a:
+        a = "%s-%s" % (getpass.getuser(), socket.gethostname().split(".")[0])
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", a).lower()
+
+
+AGENT = agent_id()
+
+
+def die(msg, code=1):
+    print("board: %s" % msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def gh(*args, inp=None):
+    r = subprocess.run(["gh"] + list(args), capture_output=True, text=True, input=inp)
+    if r.returncode != 0:
+        die("gh %s failed:\n%s" % (" ".join(args[:3]), r.stderr.strip() or r.stdout.strip()))
+    return r.stdout
+
+
+def gh_json(*args, inp=None):
+    out = gh(*args, inp=inp)
+    return json.loads(out) if out.strip() else None
+
+
+def now():
+    return datetime.now(timezone.utc).replace(microsecond=0)
+
+
+def iso(dt):
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_iso(s):
+    return datetime.fromisoformat(s.strip().replace("Z", "+00:00"))
+
+
+def parse_lease(s):
+    m = re.fullmatch(r"(\d+)\s*([mhd]?)", str(s).strip().lower())
+    if not m:
+        die("bad lease %r (use e.g. 45m, 3h, 1d)" % s)
+    n, unit = int(m.group(1)), m.group(2) or "m"
+    return n * {"m": 1, "h": 60, "d": 1440}[unit]
+
+
+def fmt_min(mins):
+    mins = int(round(mins))
+    sign = "-" if mins < 0 else ""
+    mins = abs(mins)
+    if mins >= 60:
+        return "%s%dh%02dm" % (sign, mins // 60, mins % 60)
+    return "%s%dm" % (sign, mins)
+
+
+def age_min(dt):
+    return (now() - dt).total_seconds() / 60.0
+
+
+# ---------------------------------------------------------------- gh plumbing
+
+def get_issue(n):
+    return gh_json("issue", "view", str(n), "-R", BOARD_REPO,
+                   "--json", "number,title,state,labels,body,url")
+
+
+def label_names(issue):
+    return {l["name"] for l in issue.get("labels", [])}
+
+
+def list_issues(label=None, state="open", fields="number,title,labels,createdAt,body"):
+    args = ["issue", "list", "-R", BOARD_REPO, "--state", state,
+            "--limit", "200", "--json", fields]
+    if label:
+        args += ["--label", label]
+    return gh_json(*args) or []
+
+
+def comments(n):
+    out, page = [], 1
+    while True:
+        batch = gh_json("api", "repos/%s/issues/%s/comments?per_page=100&page=%d"
+                        % (BOARD_REPO, n, page)) or []
+        out.extend(batch)
+        if len(batch) < 100:
+            break
+        page += 1
+    return sorted(out, key=lambda c: c["id"])
+
+
+def post_comment(n, body):
+    return gh_json("api", "repos/%s/issues/%s/comments" % (BOARD_REPO, n),
+                   "-F", "body=@-", inp=body)
+
+
+def patch_comment(cid, body):
+    return gh_json("api", "-X", "PATCH",
+                   "repos/%s/issues/comments/%s" % (BOARD_REPO, cid),
+                   "-F", "body=@-", inp=body)
+
+
+def edit_labels(n, add=(), remove=()):
+    args = ["issue", "edit", str(n), "-R", BOARD_REPO]
+    for a in add:
+        args += ["--add-label", a]
+    for r in remove:
+        args += ["--remove-label", r]
+    if len(args) > 4:
+        gh(*args)
+
+
+# ---------------------------------------------------------------- the walker
+
+def parse_marker(body):
+    lines = (body or "").splitlines()
+    if not lines or not lines[0].startswith(MARK):
+        return None
+    kind = lines[0][len(MARK):].strip()
+    fields = {}
+    for ln in lines[1:]:
+        m = re.match(r"^([a-z-]+):\s*(.*)$", ln)
+        if not m:
+            break
+        fields[m.group(1)] = m.group(2).strip()
+    return kind, fields
+
+
+def build_claim(c, f):
+    claimed = parse_iso(f["claimed"])
+    return {
+        "comment_id": c["id"],
+        "agent": f["agent"],
+        "claimed": claimed,
+        "lease_min": int(f.get("lease-min", DEFAULT_LEASE_MIN)),
+        "expires": parse_iso(f["expires"]),
+        "beat": parse_iso(f.get("beat", f["claimed"])),
+        "status": f.get("status", ""),
+        "created": parse_iso(c["created_at"]),
+    }
+
+
+def live_claim(comms):
+    """Walk comments in id order; return the currently-governing claim (may be
+    expired — callers check) or None. Rules documented in AGENTS.md §3."""
+    retracted = set()
+    for c in comms:
+        pm = parse_marker(c.get("body", ""))
+        if pm and pm[0] == "RETRACT" and pm[1].get("of-claim"):
+            retracted.add(pm[1]["of-claim"])
+    cur = None
+    for c in comms:
+        pm = parse_marker(c.get("body", ""))
+        if not pm:
+            continue
+        kind, f = pm
+        if kind == "CLAIM":
+            if str(c["id"]) in retracted:
+                continue
+            try:
+                claim = build_claim(c, f)
+            except (KeyError, ValueError):
+                continue
+            t = parse_iso(c["created_at"])
+            if cur is None or cur["agent"] == claim["agent"] or t > cur["expires"]:
+                cur = claim
+            # else: lost race at post time; ignored
+        elif kind in ("RELEASE", "DONE"):
+            if cur and f.get("agent") == cur["agent"]:
+                cur = None
+        elif kind == "TAKEOVER":
+            if cur and f.get("of-claim") == str(cur["comment_id"]):
+                cur = None
+    return cur
+
+
+def expired(claim):
+    return now() > claim["expires"]
+
+
+def budget_for(lbls):
+    for k, v in BUDGET_MIN.items():
+        if k in lbls:
+            return v
+    return DEFAULT_BUDGET_MIN
+
+
+def held_min(claim):
+    return age_min(claim["claimed"])
+
+
+def overbudget(claim, lbls):
+    return held_min(claim) > budget_for(lbls)
+
+
+# ---------------------------------------------------------------- channels
+
+_channel_cache = {}
+
+
+def channel(key):
+    if key in _channel_cache:
+        return _channel_cache[key]
+    want = CHANNELS[key]
+    for it in list_issues(label="channel", fields="number,title"):
+        if want.split(" ", 1)[1].lower() in it["title"].lower():
+            _channel_cache[key] = it["number"]
+            return it["number"]
+    die("channel issue %r not found — run `board setup` first" % want)
+
+
+# ---------------------------------------------------------------- claim flow
+
+def claim_comment_body(lease_min, status="starting"):
+    t = now()
+    return "\n".join([
+        "%s CLAIM" % MARK,
+        "agent: %s" % AGENT,
+        "claimed: %s" % iso(t),
+        "lease-min: %d" % lease_min,
+        "expires: %s" % iso(t + timedelta(minutes=lease_min)),
+        "beat: %s" % iso(t),
+        "status: %s" % status,
+    ])
+
+
+def marker_body(kind, fields, note=""):
+    lines = ["%s %s" % (MARK, kind)] + ["%s: %s" % (k, v) for k, v in fields]
+    if note:
+        lines += ["", note]
+    return "\n".join(lines)
+
+
+def slug(title):
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
+
+
+def my_live_claims():
+    mine = []
+    for it in list_issues(label="status:in-progress", fields="number,title,labels"):
+        lc = live_claim(comments(it["number"]))
+        if lc and lc["agent"] == AGENT:
+            mine.append((it, lc))
+    return mine
+
+
+def do_claim(n, issue, lease_min):
+    c = post_comment(n, claim_comment_body(lease_min))
+    lc = live_claim(comments(n))
+    if not lc or lc["comment_id"] != c["id"]:
+        who = lc["agent"] if lc else "unknown"
+        post_comment(n, marker_body("RETRACT", [
+            ("agent", AGENT), ("of-claim", str(c["id"])),
+            ("reason", "lost race to %s" % who)]))
+        die("lost the claim race on #%s to %s — pick another task" % (n, who))
+    edit_labels(n, add=["status:in-progress"],
+                remove=[x for x in ("status:todo",) if x in label_names(issue)])
+    print("claimed #%s (%s) — lease %s, budget %s" %
+          (n, AGENT, fmt_min(lease_min), fmt_min(budget_for(label_names(issue)))))
+    print("branch: task/%s-%s" % (n, slug(issue["title"])))
+    print("beat every <=%dm: scripts/board beat %s \"status\"" % (BEAT_MAX_MIN, n))
+
+
+def cmd_claim(args):
+    issue = get_issue(args.n)
+    if issue["state"] != "OPEN":
+        die("#%s is %s" % (args.n, issue["state"]))
+    lbls = label_names(issue)
+    if "needs:human" in lbls and not args.human:
+        die("#%s is needs:human — a human claims it (pass --human if you are one)" % args.n)
+    if "status:in-progress" in lbls:
+        lc = live_claim(comments(args.n))
+        if lc and lc["agent"] == AGENT:
+            die("you already hold #%s — use `board beat`" % args.n)
+        if lc and not expired(lc) and not overbudget(lc, lbls):
+            die("#%s is held by %s (lease %s left) — `board takeover %s` once stale"
+                % (args.n, lc["agent"], fmt_min(-age_min(lc["expires"])), args.n))
+        die("#%s looks stale — use `board takeover %s` so the handoff is recorded"
+            % (args.n, args.n))
+    if "status:blocked" in lbls:
+        die("#%s is blocked — read the write-up, then `board unblock %s \"why\"`"
+            % (args.n, args.n))
+    if "status:todo" not in lbls:
+        die("#%s has no status:todo label (channel or untriaged issue?)" % args.n)
+    if not args.force:
+        mine = my_live_claims()
+        if mine:
+            die("WIP limit: you already hold #%s — finish, release, or --force"
+                % mine[0][0]["number"])
+    do_claim(args.n, issue, parse_lease(args.lease))
+
+
+def cmd_takeover(args):
+    issue = get_issue(args.n)
+    lbls = label_names(issue)
+    lc = live_claim(comments(args.n))
+    if lc is None:
+        if "status:todo" in lbls:
+            die("#%s is unclaimed — just `board claim %s`" % (args.n, args.n))
+        print("no live claim on #%s (label drift) — claiming it" % args.n)
+        do_claim(args.n, issue, parse_lease(args.lease))
+        return
+    if lc["agent"] == AGENT:
+        die("you already hold #%s" % args.n)
+    is_exp, is_ob = expired(lc), overbudget(lc, lbls)
+    if not is_exp and not is_ob:
+        die("#%s is legitimately held by %s — lease %s left, budget %s left"
+            % (args.n, lc["agent"],
+               fmt_min(-age_min(lc["expires"])),
+               fmt_min(budget_for(lbls) - held_min(lc))))
+    rule = "lease-expired" if is_exp else "budget-exceeded"
+    post_comment(args.n, marker_body("TAKEOVER", [
+        ("agent", AGENT), ("from", lc["agent"]),
+        ("rule", rule), ("of-claim", str(lc["comment_id"]))],
+        "Taking over per AGENTS.md §3 (%s). %s: if you are alive, your claim is void —"
+        " coordinate on this issue before touching the branch." % (rule, lc["agent"])))
+    do_claim(args.n, issue, parse_lease(args.lease))
+    print("check for pushed progress first:")
+    print("  git fetch origin && git branch -r | grep task/%s-" % args.n)
+
+
+def require_holder(n):
+    lc = live_claim(comments(n))
+    if not lc:
+        die("no live claim on #%s" % n)
+    if lc["agent"] != AGENT:
+        die("#%s is held by %s, not you (%s)" % (n, lc["agent"], AGENT))
+    return lc
+
+
+def cmd_beat(args):
+    lc = require_holder(args.n)
+    lease_min = parse_lease(args.lease) if args.lease else lc["lease_min"]
+    t = now()
+    body = "\n".join([
+        "%s CLAIM" % MARK,
+        "agent: %s" % lc["agent"],
+        "claimed: %s" % iso(lc["claimed"]),
+        "lease-min: %d" % lease_min,
+        "expires: %s" % iso(t + timedelta(minutes=lease_min)),
+        "beat: %s" % iso(t),
+        "status: %s" % (args.msg or lc["status"]),
+    ])
+    patch_comment(lc["comment_id"], body)
+    lbls = label_names(get_issue(args.n))
+    used, cap = held_min(lc), budget_for(lbls)
+    print("beat #%s — lease extended %s; budget %s/%s used"
+          % (args.n, fmt_min(lease_min), fmt_min(used), fmt_min(cap)))
+    if used > cap:
+        print("⚠ OVER BUDGET: takeover is now legal. Wrap up — `board block` with a"
+              " write-up, or `board release`.")
+
+
+def cmd_beat_all(args):
+    mine = my_live_claims()
+    if not mine:
+        return
+    for it, lc in mine:
+        ns = argparse.Namespace(n=it["number"], msg=args.msg, lease=None)
+        cmd_beat(ns)
+
+
+def finish(n, kind, note, pr=None, close=False, to_label=None):
+    lc = require_holder(n)
+    fields = [("agent", AGENT)]
+    if pr:
+        fields.append(("pr", pr))
+    post_comment(n, marker_body(kind, fields, note))
+    remove = ["status:in-progress"]
+    add = [to_label] if (to_label and not close) else []
+    edit_labels(n, add=add, remove=remove)
+    if close:
+        gh("issue", "close", str(n), "-R", BOARD_REPO, "-c",
+           "closed by %s: %s" % (AGENT, note or kind.lower()))
+    return lc
+
+
+def cmd_done(args):
+    finish(args.n, "DONE", args.note, pr=args.pr, close=args.close,
+           to_label="status:review")
+    print("done #%s → %s" % (args.n, "closed" if args.close else "status:review"))
+    print("now: `board stop \"did/learned/next\"` before you leave, and critique one"
+          " idea (`board ideas`) before your next claim.")
+
+
+def cmd_release(args):
+    finish(args.n, "RELEASE", args.note, to_label="status:todo")
+    print("released #%s back to todo" % args.n)
+
+
+def cmd_block(args):
+    if not args.note or len(args.note) < 20:
+        die("a block needs a real write-up (what you tried, what failed) — that's the"
+            " three-strikes rule's whole point")
+    finish(args.n, "RELEASE", "BLOCKED: %s" % args.note, to_label="status:blocked")
+    print("blocked #%s with write-up — a fresh pair of eyes can `board unblock` it" % args.n)
+
+
+def cmd_unblock(args):
+    issue = get_issue(args.n)
+    if "status:blocked" not in label_names(issue):
+        die("#%s is not blocked" % args.n)
+    post_comment(args.n, "unblocked by %s: %s" % (AGENT, args.note or "(no reason given)"))
+    edit_labels(args.n, add=["status:todo"], remove=["status:blocked"])
+    print("unblocked #%s → todo" % args.n)
+
+
+# ---------------------------------------------------------------- read views
+
+def prio_rank(lbls):
+    for i, p in enumerate(("prio:p0", "prio:p1", "prio:p2")):
+        if p in lbls:
+            return i
+    return 3
+
+
+def scope_line(body):
+    lines = (body or "").splitlines()
+    for i, ln in enumerate(lines):
+        m = re.match(r"^\s*(?:\*\*)?(files|scope)(?:\*\*)?\s*:\s*(.+)$", ln, re.I)
+        if m:
+            return m.group(2).strip()
+        # GitHub issue forms render fields as "### Files" + value on a later line
+        if re.match(r"^#{2,4}\s*(files|scope)\s*$", ln.strip(), re.I):
+            for nx in lines[i + 1:]:
+                if nx.strip():
+                    return nx.strip()
+    return ""
+
+
+def cmd_who(args):
+    rows = list_issues(label="status:in-progress")
+    print("== in progress ==")
+    if not rows:
+        print("(nobody holds anything)")
+    for it in rows:
+        lbls = {l["name"] for l in it["labels"]}
+        lc = live_claim(comments(it["number"]))
+        if not lc:
+            print("#%-4s ⚠ in-progress but no live claim (label drift) — claim or retriage"
+                  % it["number"])
+            continue
+        flags = []
+        if expired(lc):
+            flags.append("STALE→takeover legal")
+        if overbudget(lc, lbls):
+            flags.append("OVERBUDGET→takeover legal")
+        print("#%-4s %-18s beat %6s ago  lease %7s left  budget %s/%s  %s"
+              % (it["number"], lc["agent"], fmt_min(age_min(lc["beat"])),
+                 fmt_min(-age_min(lc["expires"])), fmt_min(held_min(lc)),
+                 fmt_min(budget_for(lbls)), " ".join(flags)))
+        if lc["status"]:
+            print("      ↳ %s" % lc["status"][:100])
+        print("      %s" % it["title"][:90])
+    rev = list_issues(label="status:review", fields="number,title")
+    if rev:
+        print("== in review (claim one!) ==")
+        for it in rev:
+            print("#%-4s %s" % (it["number"], it["title"][:90]))
+    blk = list_issues(label="status:blocked", fields="number,title")
+    if blk:
+        print("== blocked (write-ups on the issues) ==")
+        for it in blk:
+            print("#%-4s %s" % (it["number"], it["title"][:90]))
+
+
+def cmd_next(args):
+    todos = list_issues(label="status:todo")
+    inprog = list_issues(label="status:in-progress")
+    busy_scopes = [scope_line(i["body"]) for i in inprog]
+    busy_tokens = set()
+    for s in busy_scopes:
+        busy_tokens |= {t.strip(" ,") for t in s.split() if "/" in t or "." in t}
+    rows = []
+    for it in todos:
+        lbls = {l["name"] for l in it["labels"]}
+        if "channel" in lbls:
+            continue
+        rows.append((prio_rank(lbls), it["createdAt"], it, lbls))
+    rows.sort(key=lambda r: (r[0], r[1]))
+    print("== claimable (prio order) ==")
+    shown = 0
+    for _, _, it, lbls in rows:
+        human = "needs:human" in lbls
+        if human and not args.human:
+            continue
+        sc = scope_line(it["body"])
+        toks = {t.strip(" ,") for t in sc.split() if "/" in t or "." in t}
+        clash = toks & busy_tokens
+        tag = " ".join(sorted(l for l in lbls if l.startswith(("prio:", "size:"))))
+        warn = (" ⚠ scope overlaps in-flight work (%s)" % ", ".join(sorted(clash))) if clash else ""
+        print("#%-4s %-16s %s%s" % (it["number"], tag, it["title"][:80],
+                                    " [HUMAN]" if human else ""))
+        if sc:
+            print("      files: %s%s" % (sc[:90], warn))
+        shown += 1
+    if not shown:
+        print("(nothing claimable)")
+        print("\n== default duties (AGENTS.md §2 — you are not done) ==")
+        print("1. eval duty:    make test && make paired on latest main → `board eval \"…\"`")
+        print("2. critique duty: review the least-reviewed recent merge/idea → findings as issues")
+        print("3. idea duty:    file ONE falsifiable idea (check DECISIONS.md + kill list first)")
+    ideas = gh_json("api", "repos/%s/issues?labels=type:idea&state=open&per_page=50"
+                    % BOARD_REPO) or []
+    starving = [i for i in ideas if i.get("comments", 0) < 2]
+    if starving:
+        print("\n== ideas needing critique (<2 comments) ==")
+        for i in starving:
+            print("#%-4s (%d comments) %s" % (i["number"], i["comments"], i["title"][:80]))
+
+
+def cmd_ideas(args):
+    ideas = gh_json("api", "repos/%s/issues?labels=type:idea&state=open&per_page=100"
+                    % BOARD_REPO) or []
+    if not ideas:
+        print("no open ideas — idea duty is unfilled (AGENTS.md §2)")
+        return
+    for i in sorted(ideas, key=lambda x: x.get("comments", 0)):
+        need = " ← needs critique" if i.get("comments", 0) < 2 else ""
+        print("#%-4s (%d comments)%s %s" % (i["number"], i["comments"], need, i["title"][:80]))
+
+
+def cmd_start(args):
+    print("=== AgentMax board (%s) — you are %s ===" % (BOARD_REPO, AGENT))
+    ann = channel("announcements")
+    comms = comments(ann)[-5:]
+    print("-- last announcements (#%s) --" % ann)
+    if not comms:
+        print("(none yet)")
+    for c in comms:
+        first = next((ln for ln in c["body"].splitlines() if ln.strip()), "")
+        print("(%s ago) %s" % (fmt_min(age_min(parse_iso(c["created_at"]))), first[:110]))
+    print()
+    cmd_who(args)
+    mine = my_live_claims()
+    print()
+    if mine:
+        for it, lc in mine:
+            print("YOU hold #%s (%s) — beat it or release it." % (it["number"], it["title"][:60]))
+    else:
+        print("You hold nothing — `board next` to pick work.")
+
+
+def cmd_say(args):
+    post_comment(channel("announcements"), "\U0001f4e3 %s: %s" % (AGENT, args.msg))
+    print("announced.")
+
+
+def cmd_eval(args):
+    body = "\U0001f4ca %s (%s)\n\n%s" % (AGENT, iso(now()), args.msg)
+    post_comment(channel("eval"), body)
+    print("posted to Eval log.")
+
+
+def cmd_stop(args):
+    note = "\U0001f9fe SESSION NOTE — %s (%s)\n\n%s" % (AGENT, iso(now()), args.note)
+    post_comment(channel("announcements"), note)
+    if not args.keep:
+        for it, lc in my_live_claims():
+            ns = argparse.Namespace(n=it["number"],
+                                    note="session ended — see session note on Announcements;"
+                                         " progress (if any) is on branch task/%s-*" % it["number"])
+            cmd_release(ns)
+    print("session closed out.")
+
+
+# ---------------------------------------------------------------- setup
+
+def cmd_setup(args):
+    for name, color, desc in LABELS:
+        gh("label", "create", name, "-R", BOARD_REPO, "--color", color,
+           "--description", desc, "--force")
+    print("labels ok (%d)" % len(LABELS))
+    existing = {i["title"]: i["number"] for i in list_issues(label="channel", fields="number,title")}
+    bodies = {
+        "announcements": "Broadcast channel. Post with `scripts/board say \"...\"`.\n\n"
+                         "Belongs here: schema/interface changes, main broken/fixed, decisions,"
+                         " session notes. Task talk stays on task issues.",
+        "eval": "Benchmark results land here via `scripts/board eval \"...\"`.\n\n"
+                "Each post: what ran (target + git sha + config), the numbers, and one line of"
+                " interpretation. PRs claiming improvements must link their post here"
+                " (AGENTS.md §4: no numbers, no merge).",
+    }
+    for key, title in CHANNELS.items():
+        if title in existing:
+            continue
+        out = gh("issue", "create", "-R", BOARD_REPO, "--title", title,
+                 "--body", bodies[key], "--label", "channel")
+        num = out.strip().rsplit("/", 1)[-1]
+        gh("issue", "pin", num, "-R", BOARD_REPO)
+        print("created + pinned %s (#%s)" % (title, num))
+    print("setup complete.")
+
+
+# ---------------------------------------------------------------- main
+
+def main():
+    p = argparse.ArgumentParser(prog="board", description=__doc__)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("start", help="sync: announcements, roster, your claims")
+    s.set_defaults(fn=cmd_start)
+
+    s = sub.add_parser("next", help="claimable tasks + duty menu")
+    s.add_argument("--human", action="store_true", help="include needs:human tasks")
+    s.set_defaults(fn=cmd_next)
+
+    s = sub.add_parser("claim", help="claim a task (race-safe)")
+    s.add_argument("n", type=int)
+    s.add_argument("--lease", default=str(DEFAULT_LEASE_MIN) + "m")
+    s.add_argument("--human", action="store_true", help="I am a human claiming needs:human")
+    s.add_argument("--force", action="store_true", help="override the WIP limit")
+    s.set_defaults(fn=cmd_claim)
+
+    s = sub.add_parser("beat", help="heartbeat: extend lease, update status")
+    s.add_argument("n", type=int)
+    s.add_argument("msg", nargs="?", default="")
+    s.add_argument("--lease", default=None)
+    s.set_defaults(fn=cmd_beat)
+
+    s = sub.add_parser("beat-all", help="beat every task you hold (hooks use this)")
+    s.add_argument("-m", dest="msg", default="auto-beat (session active)")
+    s.set_defaults(fn=cmd_beat_all)
+
+    s = sub.add_parser("done", help="finish: -> review (or --close)")
+    s.add_argument("n", type=int)
+    s.add_argument("note", nargs="?", default="")
+    s.add_argument("--pr", default=None)
+    s.add_argument("--close", action="store_true")
+    s.set_defaults(fn=cmd_done)
+
+    s = sub.add_parser("release", help="hand a task back to todo")
+    s.add_argument("n", type=int)
+    s.add_argument("note", nargs="?", default="")
+    s.set_defaults(fn=cmd_release)
+
+    s = sub.add_parser("block", help="mark stuck, with the write-up (three strikes)")
+    s.add_argument("n", type=int)
+    s.add_argument("note", nargs="?", default="")
+    s.set_defaults(fn=cmd_block)
+
+    s = sub.add_parser("unblock", help="blocked -> todo")
+    s.add_argument("n", type=int)
+    s.add_argument("note", nargs="?", default="")
+    s.set_defaults(fn=cmd_unblock)
+
+    s = sub.add_parser("takeover", help="take a stale/over-budget task (verified)")
+    s.add_argument("n", type=int)
+    s.add_argument("--lease", default=str(DEFAULT_LEASE_MIN) + "m")
+    s.set_defaults(fn=cmd_takeover)
+
+    s = sub.add_parser("who", help="roster with STALE/OVERBUDGET flags")
+    s.set_defaults(fn=cmd_who)
+
+    s = sub.add_parser("say", help="post to Announcements")
+    s.add_argument("msg")
+    s.set_defaults(fn=cmd_say)
+
+    s = sub.add_parser("eval", help="post numbers to the Eval log")
+    s.add_argument("msg")
+    s.set_defaults(fn=cmd_eval)
+
+    s = sub.add_parser("ideas", help="open ideas, critique-starved first")
+    s.set_defaults(fn=cmd_ideas)
+
+    s = sub.add_parser("stop", help="session note + release your claims")
+    s.add_argument("note")
+    s.add_argument("--keep", action="store_true", help="keep claims (you'll be back <lease)")
+    s.set_defaults(fn=cmd_stop)
+
+    s = sub.add_parser("setup", help="idempotent bootstrap: labels + channels")
+    s.set_defaults(fn=cmd_setup)
+
+    args = p.parse_args()
+    args.fn(args)
+
+
+if __name__ == "__main__":
+    main()
