@@ -27,9 +27,9 @@ def test_clip_export(fake, tmp_path):
     r = run("clip_export.py", fake, "--out", str(tmp_path))
     assert r.returncode == 0, r.stderr
     data = json.load(open(tmp_path / "clips.json"))
-    assert data["candidates"] == ["v1", "v3", "v5", "v6"] and data["clips"]
+    assert data["candidates"] == ["v1", "v11", "v3", "v5", "v6"] and data["clips"]
     frame = data["clips"][0]["frames"][0]
-    assert set(frame["labels"]) == {"v1", "v3", "v5", "v6"}
+    assert set(frame["labels"]) == {"v1", "v3", "v5", "v6", "v11"}
     assert all(len(p) == 3 for p in frame["players"])
 
 

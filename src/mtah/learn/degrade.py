@@ -58,8 +58,19 @@ def base_rates(match, cfg, mcfg):
     return hazard_rates(cfg)[ebin, sbin, cbin]
 
 
-def ball_missing(match, cfg, mcfg, rng, q, f_mean, s, base=None):
-    """(T,) bool: frames where the degraded ATD has no ball (always outside the halves)."""
+def ball_missing(match, cfg, mcfg, rng, q, f_mean, s, base=None, r=None, sbin=None):
+    """(T,) bool: frames where the degraded ATD has no ball (always outside the halves).
+
+    Two P3(a) repairs (handoff/REPLY.md), each active only when its input exists so the committed
+    sim recipe (configs/sim.yaml) reproduces byte-identically:
+      - r (fitted r_frames): a stoppage loss that reaches the stretch end spills PAST the restart
+        by up to 2r frames (the real tracker often re-finds the ball only in flight; the old clip
+        made the ball always reappear before the restart - why q saturated at 1.0 and the
+        collective-speed ratio target was missed, and why the lost-through-restart case was
+        unrepresentable in every stress arm);
+      - gap_length_hist_by_speed: open-play gap lengths drawn from the onset-speed-conditioned
+        real histogram instead of the pooled one (89% of pooled mass is >= 101 frames - stoppage
+        gaps - planted into live play, inventing alive-inside-gap frames)."""
     graded = match.graded()
     missing = ~graded.copy()
     lag = cfg["stoppage_lag_frames"]
@@ -70,12 +81,29 @@ def ball_missing(match, cfg, mcfg, rng, q, f_mean, s, base=None):
     off = rng.integers(0, lag + 1, len(starts))
     for a, n, l_, fr, o in zip(starts, lengths, lose, f, off):
         if l_:
-            missing[a + o:min(a + n, a + o + int(round(fr * n)))] = True
+            end = a + o + int(round(fr * n))
+            if r is None:
+                end = min(a + n, end)           # legacy: the ball reappears before the restart
+            elif end >= a + n:
+                end = a + n + int(rng.integers(0, 2 * r + 1))
+            missing[a + o:end] = True
 
     p = s * (base_rates(match, cfg, mcfg) if base is None else base)
     u = rng.random(len(p))
-    lengths = sample_lengths(rng, cfg["gap_length_hist"], mcfg["gap_length_edges"], len(p),
-                             cfg["gap_length_cap"])
+    by_speed = cfg.get("gap_length_hist_by_speed")
+    if by_speed is None:
+        lengths = sample_lengths(rng, cfg["gap_length_hist"], mcfg["gap_length_edges"], len(p),
+                                 cfg["gap_length_cap"])
+    else:
+        if sbin is None:
+            sbin, _, _ = stats.covariates(match.players, match.ball, match.pitch, mcfg, match.fps)
+        lengths = np.empty(len(p), dtype=int)
+        for b, hist in enumerate(by_speed):
+            at = np.flatnonzero(sbin == b)
+            if at.size:
+                hist = hist if sum(hist) else cfg["gap_length_hist"]
+                lengths[at] = sample_lengths(rng, hist, mcfg["gap_length_edges"], at.size,
+                                             cfg["gap_length_cap"])
     n = len(p)
     candidates = np.flatnonzero(graded & match.alive & (u < p))
     for t in candidates:
@@ -154,7 +182,8 @@ def degrade(match, cfg, mcfg, seed):
     """(slots (T,S,2) m, ball (T,2) m, team_of_slot (S,)) for one seed."""
     rng = rng_for(seed, match.name)
     p = cfg["fitted"]
-    missing = ball_missing(match, cfg, mcfg, rng, p["q"], p["f_mean"], p["s"])
+    missing = ball_missing(match, cfg, mcfg, rng, p["q"], p["f_mean"], p["s"],
+                           r=p.get("r_frames"))
     ball = match.ball.copy()
     ball[missing] = np.nan
     slots = player_slots(match, cfg, mcfg, rng, p["g_frames"])

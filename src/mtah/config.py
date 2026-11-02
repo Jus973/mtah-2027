@@ -22,7 +22,10 @@ def _merge(base, over):
 
 
 def load(name="base.yaml"):
-    path = name if os.path.isabs(name) or os.path.exists(name) else os.path.join(CONFIG_DIR, name)
+    # A bare file name always resolves inside configs/: a stray same-named file in the current
+    # directory must not silently change the loaded config and its hash. Paths (anything with a
+    # separator, or absolute) are taken as given.
+    path = name if os.path.isabs(name) or os.sep in name else os.path.join(CONFIG_DIR, name)
     with open(path) as handle:
         cfg = yaml.safe_load(handle) or {}
     parent = cfg.pop("inherit", None)

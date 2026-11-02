@@ -1,0 +1,33 @@
+# P3(a) repaired sim recipe (handoff/REPLY.md): a CERTIFICATION LENS, never the selection basis.
+# The committed sim (configs/sim.yaml -> ~/opendata/sim) stays the §6.4 evidence for every paired
+# run; this recipe builds a second sim into a separate folder (make sim CFG=configs/sim_repaired.yaml
+# OUT=~/opendata/sim_repaired) to check how conclusions transfer when two measured sim defects are
+# repaired:
+#   1. open-play gap lengths come from the onset-speed-conditioned real histogram below
+#      (make airlock T=atd-stats, 1 Nov 2026: "gap lengths by onset speed") instead of the pooled
+#      one, which planted stoppage-length gaps into live play;
+#   2. a stoppage ball loss that reaches the stretch end spills past the restart by a fitted
+#      reappearance lag (fitted.r_frames; the old clip meant the ball always reappeared before
+#      the restart - the lost-through-restart case, where v8 actually failed, was unrepresentable).
+# fitted: refit by make sim-fit CFG=configs/sim_repaired.yaml (same label-free targets).
+inherit: sim.yaml
+
+degrade:
+  # Real gap lengths BY ONSET SPEED over measure.gap_length_edges (rows: <2, 2-6, 6-12, 12-20,
+  # >=20, unknown m/s; airlock atd-stats, 1 Nov 2026, 149 gaps). An all-zero row falls back to
+  # the pooled histogram.
+  gap_length_hist_by_speed:
+    - [0, 2, 0, 1, 0, 0, 0, 1, 0, 0, 0, 7, 13, 6, 15, 3, 5, 1, 0]
+    - [0, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 9, 11, 10, 10, 0, 1, 1, 1]
+    - [2, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 6, 5, 8, 5, 2, 2, 0, 1]
+    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 1, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  # Refit 1 Nov 2026 (make sim-fit CFG=configs/sim_repaired.yaml): missing 0.398 (real 0.407),
+  # gaps/frame 0.00085 (0.00094), median gap 356 (268), speed ratio 0.582 (0.517), p11 0.627
+  # (0.649). The fit REJECTED the reappearance lag (r_frames 0 of {0..250}): spilling loss past
+  # the restart raises the missing-frames player-speed ratio away from the real 0.517, so the
+  # label-free targets do not ask for it. The lost-through-restart case therefore lives in
+  # configs/sim_stress_restart.yaml as a deliberate stress arm (like the picked/lost ball), not
+  # in the fitted recipe.
+  fitted: {q: 1.0, f_mean: 0.7, s: 0.3, g_frames: 100, r_frames: 0}

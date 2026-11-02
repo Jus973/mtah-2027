@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps train-dead paired sim-latency sim-ablate sim-costs score autopsy clips candidate sync submission doc audit docker-build check-data
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps train-dead train-hybrid paired sim-latency sim-ablate sim-costs score autopsy clips candidate dend-stats sync submission doc audit docker-build check-data metrica-data metrica-sim
 
 setup:
 	python3.11 -m venv .venv
@@ -52,11 +52,13 @@ open-data:
 	$(PY) scripts/fetch_open_data.py
 
 # Sim on degraded open data (PLAN.md §6.1): fit degradation, build DFL-* bundles, acceptance test.
+# CFG/OUT: an alternative recipe (configs/sim_repaired.yaml) builds into its own folder and never
+# overwrites the committed sim.
 sim-fit:
-	$(PY) scripts/fit_sim.py
+	$(PY) scripts/fit_sim.py $(if $(CFG),--config $(CFG))
 
 sim:
-	$(PY) scripts/build_sim.py
+	$(PY) scripts/build_sim.py $(if $(CFG),--config $(CFG)) $(if $(OUT),--out $(OUT))
 
 sim-check:
 	$(PY) scripts/sim_check.py
@@ -78,6 +80,10 @@ train-gaps:
 
 train-dead:
 	$(PY) scripts/train_dead.py --config $(or $(CFG),configs/rules_v8.yaml)
+
+# P3e hybrid dead model (causal features; boundary refinement) -> deadhybrid.model
+train-hybrid:
+	$(PY) scripts/train_hybrid.py --config $(or $(CFG),configs/rules_v11.yaml)
 
 # PLAN.md §6.4: paired per-match comparison on the sim, learned parts cross-fitted
 paired:
@@ -103,6 +109,10 @@ score:
 # make candidate CFG=configs/rules.yaml NAME=v1 (humans; agents use make airlock T=candidate ...)
 candidate: check-data
 	$(PY) scripts/run_candidate.py --game $(GAME) --config $(or $(CFG),configs/rules.yaml) --name $(NAME)
+
+# Anchor-free D-boundary aggregates of a candidate (agents: make airlock T=dend-stats CFG=...)
+dend-stats: check-data
+	$(PY) scripts/dend_stats.py --game $(GAME) --config $(or $(CFG),configs/final.yaml)
 
 # The reproduction image (Dockerfile; PLATFORM=linux/amd64 for x86); agents then run it with
 # make airlock T=submission-docker
@@ -132,3 +142,12 @@ clips: check-data
 # Broadcast -> tactical sync and the T3 falsifier (agents: make airlock T=sync)
 sync: check-data
 	$(PY) scripts/sync_stats.py --game $(GAME)
+
+# Metrica Sports Sample Game 3 (P5 second validation family): pinned-commit fetch (~55 MB,
+# no formal LICENSE - README terms; sha256-verified) to $$MTAH_METRICA_DIR (default ~/opendata/metrica)
+metrica-data:
+	$(PY) scripts/fetch_metrica.py
+
+# Degrade Game 3 (mechanical event-derived GT) into MET-G3 under the sim dir + acceptance check
+metrica-sim:
+	$(PY) scripts/build_metrica.py

@@ -1,0 +1,12 @@
+# Rules v10 (P2 d', handoff/REPLY.md): v6 (the FINAL parent) with the takeover training-label
+# repair. Legacy training reads the GT owner exactly label_lag_frames after a contact ends, so a
+# label frame that lands on D or X - exactly where restart decisions live - is a systematic
+# false 0 (learn/takeover.py training_rows). alive_lag reads the first ALIVE graded frame >= the
+# lag instead (a row with no alive frame left in the half is dropped). Models are not committed
+# until the §6.4 gate passes: make paired cross-fits them per fold. Ladder and gate
+# pre-registered in submissions/LOG.md (1 Nov 2026) before any result was read; rung 2
+# (alive_lag_restarts: also train on stretch-opening contacts) runs only if this rung fails.
+inherit: final.yaml
+
+owner:
+  label_policy: alive_lag

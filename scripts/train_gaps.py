@@ -37,8 +37,9 @@ class Gaps:
         self.q = q
         self.gap = gapstate.long_gaps(m.observed, m.graded, gc["min_frames"])
         self.F = gapstate.features(m.players, m.atd.team_of_slot,
-                                   gapstate.home_direction(m.atd, m.spec, {}), m.atd.pitch, gc,
-                                   m.fps)
+                                   gapstate.home_direction(m.atd, m.spec, {},
+                                                           q.cfg["direction"]["window_frames"]),
+                                   m.atd.pitch, gc, m.fps)
         self.rows = gapstate.training_rows(self.F, self.gap, m.gt, gc["step_frames"])
         self.idx = np.flatnonzero(self.gap)
 

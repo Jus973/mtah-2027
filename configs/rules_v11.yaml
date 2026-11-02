@@ -1,0 +1,49 @@
+# Rules v11 (P3e, handoff/REPLY.md): v6 with the learned-D HYBRID - the dead model refines each
+# evidence-rule boundary within +/- window_frames (decode/dead.py refine_runs, a changepoint per
+# boundary), and nothing else: the runs are v6's, the gap decoder and owner path are untouched,
+# and the model reads NO future-speed features (learn/deadstate.py causal_ball). This is v8's
+# lesson inverted: v8's free per-frame decode moved D boundaries wholesale on the real match
+# (median 2.0 s, 56% of ends > 2 s from v6's - the 1 Nov disagreement decomposition) with
+# future-ball-speed features as the likely mechanism; the hybrid cannot create, delete or
+# relocate a run by construction. Trained exactly as v8 (realistic-dead-ball variants of the fit
+# matches); make paired cross-fits per fold, so no model is committed before adoption.
+# Grid and gates pre-registered in submissions/LOG.md (1 Nov 2026) before any result was read.
+# Adopted as FINAL 1 Nov 2026 (one-way sign-off recorded in LOG.md). Re-parented from final.yaml
+# onto rules_v6.yaml at adoption so final.yaml can inherit this file without a cycle; the
+# deadball.kinds line below carries the v6 FINAL's M3 simplification, and the resolved config is
+# verbatim-identical (hash 5f1e728257d1, checked at adoption).
+inherit: rules_v6.yaml
+
+deadball:
+  kinds: [oob, gap]  # the v6 FINAL's M3 simplification (stillness removed), unchanged
+
+deadhybrid:
+  enabled: true
+  model: models/dead_hybrid_v1.txt  # committed only on adoption (make train-hybrid writes it)
+  window_frames: 75                 # +/- 3 s: the nested-OOF pick, all five folds agreeing.
+                                    # NOTE: 75 is the registered grid's edge {50, 62, 75} - the
+                                    # optimum may lie beyond, and a wider window is more freedom
+                                    # for the v8 failure mode; the real-match displacement and
+                                    # alignment guards adjudicate, never a wider grid post hoc.
+  train_conditions: [jitter, pickup, lost]
+  jitter_m: 0.02
+  pickup_radius_m: 1.0
+  carry_noise_m: 0.3
+  step_frames: 5                    # training rows every this many graded frames
+
+dead_model:                         # LightGBM, single-threaded and seeded (v8's parameters)
+  learning_rate: 0.05
+  num_leaves: 31
+  min_data_in_leaf: 100
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  feature_fraction: 0.8
+  seed: 0
+  num_boost_round: 300
+
+stability:
+  params: [ball.max_interp_gap, ball.outside_m, ball.v_max_mps, touch.r_touch_m, touch.min_frames,
+           touch.min_turn_deg, touch.min_dv_mps, owner.contact_r_m, owner.alpha,
+           deadball.oob_margin_m, deadball.oob_min_frames, deadball.gap_min_frames,
+           deadball.merge_frames, kickoff.tolerance_frames, gaps.min_frames, gaps.step_frames,
+           gaps.lam_dead, gaps.lam_owner, deadhybrid.window_frames]

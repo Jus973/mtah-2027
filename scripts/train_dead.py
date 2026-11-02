@@ -95,8 +95,9 @@ def main():
     for n, g in enumerate(ids):
         m0 = simeval.SimMatch("DFL-" + g, cfg)
         F = gapstate.features(m0.players, m0.atd.team_of_slot,
-                              gapstate.home_direction(m0.atd, m0.spec, {}), m0.atd.pitch, gc,
-                              m0.fps)
+                              gapstate.home_direction(m0.atd, m0.spec, {},
+                                                      cfg["direction"]["window_frames"]),
+                              m0.atd.pitch, gc, m0.fps)
         del m0
         for c, cond in conds.items():
             M[c].append(Match("DFL-" + g, cfg, cond, n, F))

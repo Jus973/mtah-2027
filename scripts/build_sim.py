@@ -18,8 +18,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--match", action="append", help="default: all fit + holdout matches")
+    parser.add_argument("--config", default="sim.yaml")
+    parser.add_argument("--out", default=None,
+                        help="bundle root (default SIM_DIR; a repaired-recipe build goes to its "
+                             "own folder and never overwrites the committed sim)")
     args = parser.parse_args()
-    cfg = config.load("sim.yaml")
+    cfg = config.load(args.config)
     dcfg, mcfg, targets = cfg["degrade"], cfg["measure"], cfg["targets"]
     ids = args.match or cfg["matches"]["fit"] + cfg["matches"]["holdout"]
     print("{:<12} {:>8} {:>10} {:>8} {:>6} {:>6} {:>7}".format(
@@ -29,7 +33,7 @@ def main():
         targets["gap_median_frames"], *targets["p11_given_7to11"], "20.49"))
     for mid in ids:
         match = idsse.load(mid)
-        out, meta = degrade.write_sim(match, dcfg, mcfg, args.seed)
+        out, meta = degrade.write_sim(match, dcfg, mcfg, args.seed, out_root=args.out)
         atd, _ = load_game(meta["game"], out)
         graded = registry.graded_mask(registry.spec(meta["game"], out))
         s = stats.atd_stats(atd.players_m()[..., :2].astype(float), atd.ball_m(), atd.team_of_slot,

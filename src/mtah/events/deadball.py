@@ -100,11 +100,14 @@ def evidence(ball_raw, ball, observed, players, graded, pitch, cfg, fps=25):
     return {"oob": oob, "gap": gap, "still": still, "flight": flight}
 
 
-def dead_runs(ev, touches, graded, cfg, kinds=KINDS, out_restarts=None):
+def dead_runs(ev, touches, graded, cfg, kinds=KINDS, out_restarts=None, out_meta=None):
     """[(start, end_inclusive, kinds)] D runs from the evidence kinds used, ended at the restart.
 
     out_restarts: if a list, each release used as a restart is appended to it as a one-frame
-    Touch by the taker's team, for the owner decoder."""
+    Touch by the taker's team, for the owner decoder.
+    out_meta: if a list, one dict per returned run is appended: {"start", "end" (as returned),
+    "evidence_end" (last frame of the run's merged evidence, before the restart search)}. The
+    postprocess backshift (mtah/postprocess.py) reads how late the restart touch fired from it."""
     any_ev = np.zeros(len(graded), dtype=bool)
     for k in kinds:
         any_ev |= ev[k]
@@ -123,6 +126,7 @@ def dead_runs(ev, touches, graded, cfg, kinds=KINDS, out_restarts=None):
         W = cfg["restart_window_frames"]
         flight = ev.get("flight")
         v_go = cfg.get("restart_min_speed_mps", 0.0)
+        last_release = None                    # out_restarts index of the release ending out[-1]
         for a, b in merged:
             i = np.searchsorted(starts, b + 1)
             if v_go > 0:                       # a restart sends the ball away (kick or throw)
@@ -135,22 +139,46 @@ def dead_runs(ev, touches, graded, cfg, kinds=KINDS, out_restarts=None):
                 while g + 1 <= half_end and flight[g + 1]:
                     g += 1
                 restart = min(restart, g + 1)
+            release = None
             if W is not None:
-                inside = [t for t in touches[np.searchsorted(starts, a):i] if t.end >= b - W]
+                # Only touches that STARTED inside the evidence qualify (with restart_min_speed
+                # the touch index i has moved past slow post-evidence touches, which must not
+                # become releases).
+                j0, j1 = np.searchsorted(starts, [a, b + 1])
+                inside = [t for t in touches[j0:j1] if t.end >= b - W]
                 if inside and inside[-1].end + 1 < restart:
                     t = inside[-1]
                     restart = t.end + 1
-                    if out_restarts is not None:
-                        out_restarts.append(Touch(start=restart, end=restart, team=t.team,
-                                                  n_frames=1, d_min=t.d_min,
-                                                  speed_before=np.nan,
-                                                  speed_after=t.speed_after, turn_deg=np.nan))
+                    release = Touch(start=restart, end=restart, team=t.team, n_frames=1,
+                                    d_min=t.d_min, speed_before=np.nan,
+                                    speed_after=t.speed_after, turn_deg=np.nan)
             end = restart - 1
-            if out and a <= out[-1][1]:          # previous run's restart lies past this start
-                out[-1] = (out[-1][0], max(out[-1][1], end), out[-1][2])
-                continue
             used = tuple(k for k in kinds if ev[k][a:b + 1].any())
+            if out and a <= out[-1][1]:          # previous run's restart lies past this start
+                extended = end > out[-1][1]
+                out[-1] = (out[-1][0], max(out[-1][1], end),
+                           tuple(k for k in kinds if k in out[-1][2] or k in used))
+                if out_meta is not None:         # the absorbed evidence ends later than the old
+                    out_meta[-1]["end"] = out[-1][1]
+                    out_meta[-1]["evidence_end"] = int(b)
+                if out_restarts is not None:
+                    if extended:                 # the old restart now lies inside the run
+                        if last_release is not None:
+                            out_restarts.pop(last_release)
+                            last_release = None
+                        if release is not None:  # this run's release ends the merged run
+                            out_restarts.append(release)
+                            last_release = len(out_restarts) - 1
+                    # not extended: the previous restart still ends the run; this run's release
+                    # (if any) lies inside it and is dropped
+                continue
             out.append((int(a), int(end), used))
+            if out_meta is not None:
+                out_meta.append({"start": int(a), "end": int(end), "evidence_end": int(b)})
+            last_release = None
+            if release is not None and out_restarts is not None:
+                out_restarts.append(release)
+                last_release = len(out_restarts) - 1
     return out
 
 

@@ -11,6 +11,7 @@ fragile. Aggregates only; works on the real match (airlock) and on sim matches.
 """
 
 import copy
+import math
 import os
 import sys
 import tempfile
@@ -36,10 +37,12 @@ def compare(ref, other, graded):
 
 
 def moved(value, sign, frac):
+    """Perturb by AT LEAST frac: integer steps round up (banker's rounding moved 25-valued params
+    by 8% while the report claimed 10%), so the check only ever gets stricter."""
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, int):
-        step = max(1, int(round(abs(value) * frac)))
+        step = max(1, math.ceil(round(abs(value) * frac, 6)))
         return value + sign * step
     return value * (1 + sign * frac)
 
@@ -72,18 +75,45 @@ def seed_gap_models(cfg, seeds, folder):
     return out
 
 
+def seed_dead_models(cfg, seeds, folder, section):
+    """{seed: model path}: the learned dead model (deadstate or deadhybrid) retrained on the sim
+    fit matches' realistic-dead-ball variants with that seed (the train_dead.py protocol, via
+    paired.py's shared builders)."""
+    import paired
+    import train_takeover as tt
+    from mtah.learn import deadstate, gapstate
+    Q = [tt.Prepared("DFL-" + g, cfg) for g in cfg["matches"]["fit"]]
+    causal = section == "deadhybrid"
+    names = (deadstate.causal_names if causal else deadstate.feature_names)(
+        gapstate.feature_names(cfg["gaps"]))
+    ball_fn = deadstate.causal_ball if causal else (lambda B: B)
+    rows, _ = paired.dead_training_rows(cfg, Q, len(Q), section, ball_fn)
+    out = {}
+    for seed in seeds:
+        booster = paired.train_dead_on(dict(cfg, dead_model=dict(cfg["dead_model"], seed=seed)),
+                                       rows, tuple(range(len(Q))), names)
+        out[seed] = os.path.join(folder, "{}_seed{}.txt".format(section, seed))
+        booster.save_model(out[seed])
+    return out
+
+
 args = game_args(add=add)
 cfg = config.load(os.path.abspath(args.config))
 st = cfg["stability"]
+# Coverage is loud, never silent: a listed param that is not in the config under test would be
+# skipped and the run would claim stability for a threshold it never perturbed. Candidate configs
+# re-list stability.params with their new thresholds (e.g. postprocess.*) appended.
+missing = [p for p in st["params"] if p.split(".", 1)[1] not in cfg.get(p.split(".", 1)[0], {})]
+if missing:
+    sys.exit("stability: {} lists params missing from the config: {}. Register the real keys "
+             "(or drop them) before trusting this run.".format(args.config, missing))
 sp = registry.spec(args.game, args.data_dir)
 graded = registry.graded_mask(sp)
 atd, _ = load_game(args.game, args.data_dir)
 ref, _ = pipeline.run(args.game, cfg, args.data_dir, atd=atd)
 
 rows, spells = {}, []
-for section, name in (p.split(".") for p in st["params"]):
-    if name not in cfg.get(section, {}):
-        continue
+for section, name in (p.split(".", 1) for p in st["params"]):
     row = []
     for sign in (-1, 1):
         value = moved(cfg[section][name], sign, st["perturb_frac"])
@@ -122,6 +152,19 @@ if cfg.get("gaps", {}).get("enabled") and st["seeds"]:
             seeds["seed {}".format(seed)] = [agree, spell]
             spells.append(spell)
     put("gap models retrained with other seeds: [agree, spell]", seeds)
+
+for section in ("deadstate", "deadhybrid"):
+    if cfg.get(section, {}).get("enabled") and st["seeds"]:
+        with tempfile.TemporaryDirectory() as folder:
+            seeds = {}
+            for seed, path in seed_dead_models(cfg, st["seeds"], folder, section).items():
+                variant = copy.deepcopy(cfg)
+                variant[section]["model"] = path
+                labels, _ = pipeline.run(args.game, variant, args.data_dir, atd=atd)
+                agree, spell = compare(ref, labels, graded)
+                seeds["seed {}".format(seed)] = [agree, spell]
+                spells.append(spell)
+        put("{} model retrained with other seeds: [agree, spell]".format(section), seeds)
 
 put("spell agreement over all variants (min, median)",
     [float(np.min(spells)), float(np.median(spells))])

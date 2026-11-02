@@ -64,3 +64,12 @@ degrade:
 matches:
   fit: [J03WMX, J03WN1, J03WOH, J03WOY, J03WPY]
   holdout: [J03WQQ, J03WR9]          # selection only (PLAN.md §6.1)
+  # Second validation family (handoff/REPLY.md P5): Metrica Sample Game 3, mechanical
+  # event-derived GT (io/metrica.py, scripts/build_metrica.py). NEVER move these into fit or
+  # holdout: no training script may pick them up; the match-score use is veto-only,
+  # pre-registered, executed once.
+  metrica: [MET-G3]
+
+# Acceptance band for the metrica family's official-baseline smooth50 (scripts/build_metrica.py);
+# the same band scripts/sim_check.py applies to the DFL sims (full-match reference 0.2433).
+metrica_accept: [0.18, 0.30]

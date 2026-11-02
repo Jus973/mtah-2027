@@ -1,0 +1,24 @@
+# Rules v9d: the dflick composition rule's survivor (ladder rung 4) - conditional dend ONLY.
+# The pre-registered rule (submissions/LOG.md, 1 Nov 2026) fired on the real match: the
+# dflick-eligible census is below the 10-run floor (5 runs, 128 frames), so dflick is dropped and
+# the shippable variant is the conditional restart backshift alone: a D run whose END sits more
+# than backshift_min_late_frames past its evidence end is ended restart_backshift_frames earlier
+# (never back into the evidence, never a pre-kick-off frame). Constants = rung 4's nested-OOF
+# 5-fit pick (handoff/fable/exp_post7.py: mean +0.0095, 6/7 with J03WPY -0.0035, held-out
+# +0.0124). Like v9, this candidate is 6/7 under the strict §6.4 rule: adoption waits on the
+# human's Q3 decision; v6 stays FINAL until then.
+inherit: final.yaml
+
+postprocess:
+  enabled: true
+  d_flicker_max_frames: null     # dflick OFF (composition rule, real-match census < 10 runs)
+  restart_backshift_frames: 20   # dend k, frames
+  backshift_min_late_frames: 5   # dend m, frames (END more than m past the evidence end)
+
+stability:
+  params: [ball.max_interp_gap, ball.outside_m, ball.v_max_mps, touch.r_touch_m, touch.min_frames,
+           touch.min_turn_deg, touch.min_dv_mps, owner.contact_r_m, owner.alpha,
+           deadball.oob_margin_m, deadball.oob_min_frames, deadball.gap_min_frames,
+           deadball.merge_frames, kickoff.tolerance_frames, gaps.min_frames, gaps.step_frames,
+           gaps.lam_dead, gaps.lam_owner,
+           postprocess.restart_backshift_frames, postprocess.backshift_min_late_frames]

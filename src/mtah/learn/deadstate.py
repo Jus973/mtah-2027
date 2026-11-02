@@ -69,6 +69,17 @@ def feature_names(gap_names):
     return list(gap_names) + list(BALL)
 
 
+def causal_ball(B):
+    """B without the future-speed columns (speed_+25, speed_+50): the P3e hybrid never reads
+    the ball's future - v8's likely wholesale-shift mechanism (handoff/REPLY.md)."""
+    keep = [i for i, n in enumerate(BALL) if not n.startswith("speed_+")]
+    return B[:, keep]
+
+
+def causal_names(gap_names):
+    return list(gap_names) + [n for n in BALL if not n.startswith("speed_+")]
+
+
 def realistic_dead_ball(atd, kind, cfg, seed):
     """A copy of a sim atd whose frozen (dead-time) ball is made realistic. kind: "jitter" (tracker
     noise of cfg jitter_m), "pickup" (fetched by the first player within pickup_radius_m, then

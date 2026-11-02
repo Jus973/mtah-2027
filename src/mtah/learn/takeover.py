@@ -75,19 +75,38 @@ def shape_features(events, F, names):
     return out
 
 
-def training_rows(events, gt, graded, lag):
+def training_rows(events, gt, graded, lag, policy="legacy"):
     """(indices, labels) of contacts by the team that does not own the ball in the GT just before
-    it: label 1 if the GT owner lag frames after the contact ends is the toucher's team."""
+    it: label 1 if the GT owner lag frames after the contact ends is the toucher's team.
+
+    owner.label_policy (P2 d', handoff/REPLY.md):
+      legacy             the label frame is end + lag as is - when it lands on D or X (exactly
+                         where restart decisions live) the row is a systematic false 0;
+      alive_lag          the label reads the GT owner at the first ALIVE graded frame >= end +
+                         lag within the half (no alive frame left: the row is dropped);
+      alive_lag_restarts alive_lag, plus rows for stretch-opening contacts (the frame before
+                         them is GT D), which the decoder scores at every stretch opening but
+                         legacy training never saw. The prior-owner filter cannot apply there;
+                         the label is simply whether the toucher's team owns at the label frame.
+    """
     idx, y = [], []
     T = len(gt)
+    alive_label = policy in ("alive_lag", "alive_lag_restarts")
     for i, e in enumerate(events):
         if e.start == 0 or not graded[e.start] or gt[e.start] == "D":
             continue
         before, team = gt[e.start - 1], "HA"[e.team]
-        if before not in ("H", "A") or before == team:
+        opening = before == "D" and policy == "alive_lag_restarts"
+        if not opening and (before not in ("H", "A") or before == team):
             continue
+        j = min(e.end + lag, T - 1)
+        if alive_label:
+            while j < T and graded[j] and gt[j] not in ("H", "A"):
+                j += 1
+            if j >= T or not graded[j] or gt[j] not in ("H", "A"):
+                continue
         idx.append(i)
-        y.append(float(gt[min(e.end + lag, T - 1)] == team))
+        y.append(float(gt[j] == team))
     return np.array(idx, dtype=np.int64), np.array(y)
 
 
@@ -115,8 +134,11 @@ def predict(booster, X):
     return booster.predict(X, num_threads=1)
 
 
-def with_restarts(events, p, restarts):
-    """Contacts plus release restarts (events/deadball.py), which take the ball for certain."""
+def with_restarts(events, p, restarts, prob=1.0):
+    """Contacts plus release restarts (events/deadball.py). prob is the injected takeover
+    probability (deadball.restart_takeover_p): 1.0 makes the taker's ownership certain, which
+    with alpha-sharpening makes the flip mandatory - v4's corners (3/10 right) are the warning
+    that forced attribution is sometimes wrong, so a release candidate tunes this out of fold."""
     merged = sorted([(e.start, 0, e, q) for e, q in zip(events, p)]
-                    + [(r.start, 1, r, 1.0) for r in restarts], key=lambda x: (x[0], x[1]))
+                    + [(r.start, 1, r, prob) for r in restarts], key=lambda x: (x[0], x[1]))
     return [m[2] for m in merged], np.array([m[3] for m in merged])

@@ -7,6 +7,7 @@ P(11 tracks | 7-11 tracks) per team. Loss: weighted squared relative errors (WEI
 achieved statistics next to the targets. Open data only: no match-bundle access.
 """
 
+import argparse
 import warnings
 
 import numpy as np
@@ -16,7 +17,10 @@ from mtah.learn import degrade, idsse, stats
 
 GRID = {"q": [0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0],
         "f_mean": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
-        "s": [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 1.5, 2.0]}
+        "s": [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 1.5, 2.0],
+        # Stoppage reappearance lag (P3a, configs/sim_repaired.yaml): fitted only when the
+        # config's fitted dict carries r_frames.
+        "r_frames": [0, 12, 25, 50, 100, 150, 250]}
 # Where the ball goes missing matters more for possession than the exact gap-length shape.
 WEIGHT = {"ball_missing_frac": 2.0, "collective_speed_ratio": 2.0, "gaps_per_frame": 1.0,
           "gap_median_frames": 0.5}
@@ -45,16 +49,20 @@ def ball_summary(match, missing, speed):
 
 
 def main():
-    cfg = config.load("sim.yaml")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="sim.yaml")
+    cfg = config.load(parser.parse_args().config)
     dcfg, mcfg, targets = cfg["degrade"], cfg["measure"], cfg["targets"]
     matches = [idsse.load(m) for m in cfg["matches"]["fit"]]
-    prep = [(m, degrade.base_rates(m, dcfg, mcfg), frame_speed(m)) for m in matches]
+    prep = [(m, degrade.base_rates(m, dcfg, mcfg), frame_speed(m),
+             stats.covariates(m.players, m.ball, m.pitch, mcfg, m.fps)[0]) for m in matches]
     keys = ["ball_missing_frac", "gaps_per_frame", "gap_median_frames", "collective_speed_ratio"]
 
     def summary(p):
         rows = [ball_summary(m, degrade.ball_missing(m, dcfg, mcfg, degrade.rng_for(SEED, m.name),
-                                                      p["q"], p["f_mean"], p["s"], base), speed)
-                for m, base, speed in prep]
+                                                      p["q"], p["f_mean"], p["s"], base,
+                                                      r=p.get("r_frames"), sbin=sbin), speed)
+                for m, base, speed, sbin in prep]
         return {k: float(np.mean([r[k] for r in rows])) for k in keys}
 
     def loss(p):
@@ -64,6 +72,8 @@ def main():
     best = dict(dcfg["fitted"])
     for _ in range(3):
         for name, grid in GRID.items():
+            if name not in best:
+                continue
             scores = [(loss(dict(best, **{name: v})), v) for v in grid]
             best[name] = min(scores)[1]
     got = summary(best)
@@ -84,7 +94,8 @@ def main():
     g_scores = [(abs(p11(g) - target_p11), g) for g in G_GRID]
     best["g_frames"] = min(g_scores)[1]
 
-    print("fitted: {{q: {q}, f_mean: {f_mean}, s: {s}, g_frames: {g_frames}}}".format(**best))
+    line = "fitted: {{q: {q}, f_mean: {f_mean}, s: {s}, g_frames: {g_frames}".format(**best)
+    print(line + (", r_frames: {}}}".format(best["r_frames"]) if "r_frames" in best else "}"))
     for k in keys:
         print("  {:<24} sim {:.6g}  real {:.6g}".format(k, got[k], targets[k]))
     print("  {:<24} sim {:.4f}  real {:.4f}".format("p11_given_7to11", p11(best["g_frames"]), target_p11))

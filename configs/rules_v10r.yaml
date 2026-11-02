@@ -1,0 +1,9 @@
+# Rules v10r (P2 d' rung 2, handoff/REPLY.md): rules_v10's alive-lag label repair PLUS training
+# rows for stretch-opening contacts (the frame before them is GT D) - the population the decoder
+# scores at every stretch opening but legacy training never saw (learn/takeover.py training_rows,
+# B7). Pre-registered in submissions/LOG.md (1 Nov 2026); run because rung 1 (alive_lag alone,
+# rules_v10.yaml) failed the §6.4 gate: mean -0.0016, 4/7, held-out 0.6270 -> 0.6205.
+inherit: final.yaml
+
+owner:
+  label_policy: alive_lag_restarts

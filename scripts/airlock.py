@@ -33,6 +33,7 @@ JOBS = {
     "public-check": "public_check.py",
     "touch-stats": "touch_stats.py",
     "dead-stats": "dead_stats.py",
+    "dend-stats": "dend_stats.py",
     "candidate": "run_candidate.py",
     "submission": "make_submission.py",
     "stability": "stability.py",
@@ -49,8 +50,9 @@ JOBS = {
 DOCKER_IMAGE = "mtah"
 # Extra options a job may take: CSV=..., CFG=..., NAME=... (anything else is refused).
 JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"},
-               "submission": {"config", "name"}, "stability": {"config"},
-               "submission-cold": {"config", "name"}, "submission-docker": {"name"}}
+               "dend-stats": {"config"}, "submission": {"config", "name"},
+               "stability": {"config"}, "submission-cold": {"config", "name"},
+               "submission-docker": {"name"}}
 REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3

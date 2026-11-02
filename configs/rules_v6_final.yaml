@@ -1,0 +1,13 @@
+# The v6 FINAL exactly as selected 1 Nov 2026, preserved verbatim when v11 was adopted later the
+# same day (submissions/LOG.md). This is what configs/final.yaml resolved to from the v6 selection
+# until the v11 adoption — rules_v6.yaml alone is NOT it (stillness kinds). Used by clipviewer and
+# as the standing v6 reference (resolved hash c2cb8428d835); never edit it.
+inherit: rules_v6.yaml
+
+# M3 simplification (make sim-ablate): stillness evidence removed. It is inert on this match
+# (the output without it is byte-identical) and worth -0.003 on the held-out sim (< 0.01).
+# Out-of-bounds evidence (-0.005 on sim) stays: it is the one D evidence that does not lean on
+# the sim's stoppage-gap assumption, and without it fewer D runs meet set-piece tags on this match
+# (25% vs 32% within 2 s of the aligned restart).
+deadball:
+  kinds: [oob, gap]

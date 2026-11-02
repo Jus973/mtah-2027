@@ -35,14 +35,26 @@ def feature_names(cfg):
     return names
 
 
-def home_direction(atd, sp, kicks):
+def home_direction(atd, sp, kicks, window_frames=125):
     """(T,) +1 where the home team attacks towards x = 1, -1 where it attacks x = 0, 0 outside
-    the graded halves. Each half from its kick-off, or its first graded frame (sim)."""
+    the graded halves. Each half from its kick-off, or its first graded frame (sim).
+
+    A wrong direction mirrors ~27/44 gap features and 7/10 shape features for the whole half
+    while passing every validator, so the estimate is checked, loudly: teams swap ends at
+    half-time, and two halves resolving to the same direction mean one estimate is wrong
+    (an undetected kick-off falling back to the half's first frame, or a line-up failure)."""
     out = np.zeros(sp["n_frames"])
     with warnings.catch_warnings():          # frames where a team has no visible player
         warnings.simplefilter("ignore", RuntimeWarning)
         found = attacking_direction(atd, {h: kicks.get(h, first)
-                                          for h, first, _ in sp["half_blocks"]})
+                                          for h, first, _ in sp["half_blocks"]},
+                                    window_frames)
+    halves = [h for h, _, _ in sp["half_blocks"]]
+    if len(halves) == 2 and found[halves[0]]["H"] == found[halves[1]]["H"]:
+        raise ValueError("home_direction: both halves resolve to the home team attacking {:+d}; "
+                         "teams swap ends at half-time, so one half's estimate is wrong "
+                         "(kick-offs found: {})".format(found[halves[0]]["H"],
+                                                        sorted(kicks) or "none"))
     for h, first, last in sp["half_blocks"]:
         out[first:last + 1] = found[h]["H"]
     return out

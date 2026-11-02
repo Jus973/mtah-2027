@@ -48,6 +48,7 @@ def bands(labels, sp, cfg, kickoffs=None, kickoff_team=None, tol=0):
         "n_d_runs": int(d_runs),
         "home_share_alive": float(np.mean(labels[alive] == "H")) if alive.any() else 0.0,
         "x_frac_graded": float(np.mean(labels[graded] == "X")),
+        "d_share_graded": float(np.mean(labels[graded] == "D")),
     }
     b = cfg
     checks = {
@@ -73,6 +74,14 @@ def bands(labels, sp, cfg, kickoffs=None, kickoff_team=None, tol=0):
                 alive = w[np.isin(w, ["H", "A"])]
                 checks["kickoff_team_half{}".format(half)] = bool(
                     len(alive) and alive[0] == kickoff_team[half])
+    # Advisory bands flag but never fail: no band bounded the D share at all until 1 Nov 2026
+    # (a candidate halving D would have passed everything), so the new bound runs one adoption
+    # cycle as advice before it hardens. It never enters "pass".
+    advisory = {}
+    if "d_share_graded_advisory" in b:
+        lo, hi = b["d_share_graded_advisory"]
+        advisory["d_share_graded"] = bool(lo <= stats["d_share_graded"] <= hi)
     stats["checks"] = checks
+    stats["advisory"] = advisory
     stats["pass"] = all(checks.values())
     return stats

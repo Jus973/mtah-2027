@@ -51,6 +51,9 @@ b = bands(labels, sp, cfg["bands"], kicks, team, tol=cfg["kickoff"]["tolerance_f
 passed = check("structural bands (PLAN.md 6.3)", b["pass"],
                failed=",".join(k for k, v in b["checks"].items() if not v) or "none")
 ok &= passed or not real          # the bands describe the real match, not a short synthetic one
+for name, v in b.get("advisory", {}).items():
+    check("band {} (advisory this cycle, never gates)".format(name), v,
+          d_share_graded=b["d_share_graded"])
 
 hash_file = os.path.join(FINAL, args.name + ".sha256")
 line = "{}  {}.csv\n".format(digest, args.name)

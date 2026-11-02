@@ -21,7 +21,8 @@ from _guard import check, game_args, put  # noqa: E402
 
 from mtah import config, pipeline, registry  # noqa: E402
 from mtah.eval.bands import bands  # noqa: E402
-from mtah.eval.consistency import phase_cover, set_piece_checks, tag_consistency  # noqa: E402
+from mtah.eval.consistency import (phase_cover, set_piece_alignment, set_piece_checks,  # noqa: E402
+                                   tag_consistency)
 from mtah.eval.score import public_check, score  # noqa: E402
 from mtah.io.tags import load_tags  # noqa: E402
 from mtah.submit.write import sha256, validate, write_csv  # noqa: E402
@@ -58,6 +59,9 @@ graded = registry.graded_mask(sp)
 put("pipeline", {"touches": info["touches"], "d_runs_from_evidence": info["d_runs_evidence"],
                  "d_share_graded": info["d_share_graded"],
                  "kickoffs_found": sorted(info["kickoffs"])})
+if "postprocess" in info:
+    put("postprocess (mtah/postprocess.py rules applied to the final labels)",
+        dict(info["postprocess"], d_share_graded_final=info["d_share_graded_final"]))
 if "gap_frames" in info:
     put("gap decoder", {"long_gap_share_graded": info["gap_frames"] / int(graded.sum()),
                         "alive_share_in_gaps": info["gap_alive_share"],
@@ -70,9 +74,12 @@ kicks = {int(k): v for k, v in pub["kickoff_frames"].items()} if real else None
 team = {int(k): v for k, v in pub["kickoff_team"].items()} if real else None
 b = bands(labels, sp, cfg["bands"], kicks, team, tol=cfg["kickoff"]["tolerance_frames"])
 put("structure", {k: b[k] for k in ("n_spells", "frac_lt_2s", "frac_lt_6s", "mean_spell_s",
-                                    "n_d_runs", "home_share_alive", "x_frac_graded")})
+                                    "n_d_runs", "home_share_alive", "x_frac_graded",
+                                    "d_share_graded")})
 for name, passed in b["checks"].items():
     ok &= check("band " + name, passed)
+for name, passed in b.get("advisory", {}).items():
+    check("band {} (advisory this cycle, never gates the exit code)".format(name), passed)
 
 tag_path = registry.asset_paths(args.game, args.data_dir)["smart_tagging"]
 consistency = None
@@ -87,6 +94,21 @@ if os.path.isfile(tag_path):
         set_piece_checks(labels, tags, cfg["tag_team_map"], registry.graded_mask(sp),
                          tc["set_piece_restart_after_start_s"], tc["set_piece_window_s"],
                          tc["set_piece_match_s"], sp["fps"]))
+    # Amended alignment (§6.2a): the raw anchor is the median of v1's OWN restart lags, so a
+    # candidate that fixes the restart lag is judged at the config-corrected anchor (raw - k/fps,
+    # k a config constant, never fitted), with the raw number and a candidate-matched chance
+    # baseline reported beside it. Half-end pseudo-restarts cannot score here.
+    raw = tc["set_piece_restart_after_start_s"]
+    put("set-piece alignment, raw (v1-fitted) anchor",
+        set_piece_alignment(labels, tags, cfg["tag_team_map"], graded, raw,
+                            tc["set_piece_window_s"], sp["fps"]))
+    ppc = cfg.get("postprocess") or {}
+    k_shift = (ppc.get("restart_backshift_frames") or 0) if ppc.get("enabled") else 0
+    if k_shift:
+        put("set-piece alignment, config-corrected anchor (raw - {}/{} s)".format(k_shift,
+                                                                                  sp["fps"]),
+            set_piece_alignment(labels, tags, cfg["tag_team_map"], graded,
+                                raw - k_shift / sp["fps"], tc["set_piece_window_s"], sp["fps"]))
     if "gap_mask" in info:
         gap = info["gap_mask"]
         put("smart-tagging consistency, gap frames decoded alive",
@@ -106,7 +128,7 @@ if real:
     verdict = r["verdict"]
     put("public bug check verdict", verdict)
     ok &= check("public bug check passes (verdict only)", verdict == "pass")
-    check("team sign: H/A as written beats swapped", r["swap_scores_higher"] is False)
+    ok &= check("team sign: H/A as written beats swapped", r["swap_scores_higher"] is False)
 
 sim_scores = []
 for mid in cfg["matches"]["holdout"]:

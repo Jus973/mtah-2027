@@ -18,13 +18,14 @@ make cache                                  # parse the ATD into an npz cache ou
 make submission                             # -> "submissions/final/Berkeley Sports Research Group.csv"
 ```
 
-`make submission` runs `configs/final.yaml` (the selected candidate, v6), the official validator
+`make submission` runs `configs/final.yaml` (the selected candidate, v11 — adopted 1 Nov with
+the one-way sign-off recorded in `submissions/LOG.md`), the official validator
 and the structural bands on the exact file. It records the file's sha256 in
 `submissions/final/<team>.sha256`, or checks it against that file when it exists. The team name
 (`team` in `configs/base.yaml`; override with `TEAM="..."`) is the file name. The
-submitted file has sha256 `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc`
+submitted file has sha256 `7b83f3a89bb15fa880f75e568bf289cdfb9d2868b24bbb2aa6130b13e2164b83`
 (`submissions/final/Berkeley Sports Research Group.sha256`). Runs are deterministic: CPU only, no randomness at
-inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 13 s once the cache exists.
+inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 30 s once the cache exists.
 
 With Docker (the real bundle opens only at a terminal, hence `-t`). The image gives the same
 file on linux/arm64 and linux/amd64:
@@ -74,7 +75,9 @@ make doc REPO=<url>                         # technical document -> "docs/<team>
 Simulation data: Bassek, M., Rein, R., Weber, H. et al. *An integrated dataset of spatiotemporal
 and event data in elite soccer.* Scientific Data 12, 195 (2025),
 doi:10.6084/m9.figshare.28196177 (CC BY 4.0). Degraded copies are rebuilt by `make sim` and never
-committed. `models/takeover_v1.txt` is trained on that sim only.
+committed. Every committed model (`models/takeover_v1.txt`, `takeover_v2.txt`, the two
+`gap_*_v1.txt`, and `dead_hybrid_v1.txt` — the final's boundary model) is trained on that sim
+only.
 
 Layout: `src/mtah/` (pipeline), `configs/` (every threshold), `models/`, `fakedata/` (synthetic
 generator), `scripts/` (make-target entry points), `tools/clipviewer/`, plus `evaluation/`,

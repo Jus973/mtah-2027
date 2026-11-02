@@ -19,7 +19,7 @@ from mtah import config
 from mtah.decode.rules import decode_owner
 from mtah.decode.viterbi import decode_viterbi
 from mtah.eval.simeval import SimMatch, table_row
-from mtah.events.deadball import dead_mask, evidence
+from mtah.events.deadball import dead_runs, evidence
 from mtah.learn import gapstate, takeover
 
 ALPHA = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0]
@@ -29,25 +29,41 @@ PENALTY = [-0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
 class Prepared:
     def __init__(self, game, cfg):
         m = self.m = SimMatch(game, cfg)
+        self.cfg = cfg
         oc = cfg["owner"]
         self.events = takeover.contacts(m.ball, m.d, cfg["touch"], oc["contact_r_m"], m.fps)
         self.X = takeover.features(self.events, m.d, m.fps)
         if oc.get("shape_features"):
             gc = cfg["gaps"]
             self.F = gapstate.features(m.players, m.atd.team_of_slot,
-                                       gapstate.home_direction(m.atd, m.spec, {}), m.atd.pitch,
-                                       gc, m.fps)
+                                       gapstate.home_direction(m.atd, m.spec, {},
+                                                               cfg["direction"]["window_frames"]),
+                                       m.atd.pitch, gc, m.fps)
             self.X = np.hstack([self.X, takeover.shape_features(self.events, self.F,
                                                                 gapstate.feature_names(gc))])
         self.rows, self.y = takeover.training_rows(self.events, m.gt, m.graded,
-                                                   oc["label_lag_frames"])
+                                                   oc["label_lag_frames"],
+                                                   oc.get("label_policy", "legacy"))
         ev = evidence(m.ball_raw, m.ball, m.observed, m.players, m.graded, m.atd.pitch,
                       cfg["deadball"], m.fps)
-        self.dead = dead_mask(ev, m.touches(cfg["touch"]), m.graded, cfg["deadball"],
-                              tuple(cfg["deadball"]["kinds"]))
+        # As mtah.pipeline computes them: D runs with their evidence ends (postprocess backshift)
+        # and any release restarts (injected as certain takeovers, takeover.with_restarts).
+        self.restarts, self.runs_meta = [], []
+        self.dead_runs = dead_runs(ev, m.touches(cfg["touch"]), m.graded, cfg["deadball"],
+                                   tuple(cfg["deadball"]["kinds"]), out_restarts=self.restarts,
+                                   out_meta=self.runs_meta)
+        self.dead = np.zeros(len(m.graded), dtype=bool)
+        for a, b, _ in self.dead_runs:
+            self.dead[a:b + 1] = True
+        self.dead &= m.graded
 
-    def labels(self, p, alpha, penalty, dead=None):
-        return decode_viterbi(self.events, p, self.m.graded, self.dead if dead is None else dead,
+    def labels(self, p, alpha, penalty, dead=None, inject_restarts=True):
+        events = self.events
+        if inject_restarts and self.restarts:
+            events, p = takeover.with_restarts(events, p, self.restarts,
+                                               self.cfg["deadball"].get("restart_takeover_p",
+                                                                        1.0))
+        return decode_viterbi(events, p, self.m.graded, self.dead if dead is None else dead,
                               alpha, penalty)
 
 

@@ -1,17 +1,22 @@
 # PLAN_STATUS: running state
 
-Last updated: Sun 1 Nov 2026, agent session 3. **Every agent-side item of PLAN.md M0–M4 is done
-or closed with a measured reason, including the cold clean-clone and Docker (arm64 + amd64)
-reproductions, and the public repo (https://github.com/Jus973/mtah-2027). What is left is human:
-register the team name, and upload when the Form arrives (a daily Gmail watch will flag it;
-none by 1 Nov).** The final file is `make submission` from `configs/final.yaml` (candidate v6:
-learned takeovers with team shape + Viterbi, plus a ball-free decode inside long ball gaps),
-sha256 `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc`. A cold clean clone
-(twice) and Docker on arm64 and amd64 give the same file.
-- Held-out sim: 0.627 (v5 0.609, v3 0.581, v1 0.541). Each step won all 7 sim matches under the
-  paired §6.4 rule (`make paired`, every learned part cross-fitted).
-- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.742;
-  stable under ±10% threshold changes (min 0.867).
+Last updated: Mon 2 Nov 2026, agent session 3 (v11 adoption executed). **Every agent-side item of
+PLAN.md M0–M4 is done or closed with a measured reason, including cold-cache and Docker (arm64 +
+amd64) reproductions of the FINAL, and the public repo (https://github.com/Jus973/mtah-2027).
+What is left is human: commit the adoption working tree, register the team name (before 10 Nov),
+and upload when the Form arrives (a daily Gmail watch will flag it; none flagged by 2 Nov).** The
+final file is `make submission` from `configs/final.yaml` (candidate v11, adopted 1 Nov on the
+user's written sign-off — LOG.md adoption entry: the v6 pipeline — learned takeovers with team
+shape + Viterbi, plus a ball-free decode inside long ball gaps — with each dead-ball boundary
+refined in place by a causal changepoint model, ±75 frames), sha256
+`7b83f3a89bb15fa880f75e568bf289cdfb9d2868b24bbb2aa6130b13e2164b83`. A fresh parse cache (twice)
+and Docker on arm64 and amd64 give the same file. The v6 FINAL is preserved verbatim as
+`configs/rules_v6_final.yaml` (fallback = one inherit line in final.yaml); its retired sha is in
+the adoption entry.
+- Held-out sim: 0.664 (v6 0.627, v5 0.609, v3 0.581, v1 0.541). Each step won all 7 sim matches
+  under the paired §6.4 rule (`make paired`, every learned part cross-fitted).
+- Real match: validator, bands and the public check pass; Smart-Tagging consistency 0.730
+  (exclusive-alive 0.600, in-gap 0.686); stable under ±10% threshold changes (v11 min 0.917).
 - Technical document: `docs/technical.md` (≈ 6 pages; `make doc`).
 
 ## ⚠ Rule changes since PLAN.md was written (official repo, 22–23 Oct 2026, commit f8f2629)
@@ -350,6 +355,10 @@ Built (`learn/takeover.py`, `decode/viterbi.py`, `make train-takeover`):
 - **FINAL: v6.** sha256 `fe4b6878…01c7cc`, twice, from a fresh clean clone (cold, twice; 96 tests
   pass there) and in Docker (see the log). To go back to v5: `inherit: rules_v5.yaml` in
   `configs/final.yaml` with its sha256 `c1abb6e5…618d`.
+  *(Superseded 1 Nov evening: the FINAL moved to **v11** by the §6.4 paired rule plus the
+  pre-registered one-way sign-off — the adoption entry and FINAL row in `submissions/LOG.md`.
+  The v6 FINAL is preserved verbatim as `configs/rules_v6_final.yaml`; its sha is retired in the
+  adoption entry.)*
 - **Tried and dropped** (paired, cross-fitted):
   - all 88 shape features at contact start and end: +0.0145, 6/7 (a tie);
   - ball direction at contacts (position along the attack, forward ball speed): +0.0007, 4/7;
@@ -590,7 +599,8 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
 4. **When the Form arrives (by 14 Nov): upload, after you say go.**
    - CSV: `submissions/final/Berkeley Sports Research Group.csv`. Rebuild it right before
      uploading with `make submission`; its sha256 must be
-     `fe4b6878b3a22d6a57313f6574558e99867de680f0d6b53c4fe6fefab901c7cc` (v6, since 1 Nov).
+     `7b83f3a89bb15fa880f75e568bf289cdfb9d2868b24bbb2aa6130b13e2164b83` (v11, since 1 Nov
+     evening; v6's retired sha is in the LOG.md adoption entry).
    - Repo URL: https://github.com/Jus973/mtah-2027.
    - Document: `docs/Berkeley Sports Research Group.md`. Rebuild it with
      `make doc REPO=https://github.com/Jus973/mtah-2027` after any change to `docs/technical.md`.
@@ -604,8 +614,11 @@ The team name is **Berkeley Sports Research Group** (`team` in `configs/base.yam
    - *PDF of the document:* install pandoc plus a LaTeX engine, then `make doc` writes it.
 6. Review the revised PLAN.md (§1, §5, §6, the amended §6.4) and object to anything you
    disagree with. **New on 1 Nov:** under your goal to optimise for the win, the final moved
-   from v3 to v5 to v6, each by the §6.4 paired rule (sections above). Any earlier one is one
-   line in `configs/final.yaml` away.
+   from v3 to v5 to v6, each by the §6.4 paired rule (sections above), and then — on your
+   written "Adopt v11" — to v11 (§6.4 strict pass, 7/7, plus the pre-registered one-way
+   sign-off over the two v1-anchored guards; LOG.md adoption entry). v9d (+0.0095, 6/7, every
+   guard green) was the conservative alternative; it is NOT stacked with v11 (registered). Any
+   earlier final is one line in `configs/final.yaml` away (`rules_v6_final.yaml` is the v6 one).
 7. After the competition, delete every bundle copy and the caches (T&C).
 
 Done earlier (kept for the record):

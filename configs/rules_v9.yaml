@@ -1,0 +1,38 @@
+# Rules v9: v6 (the FINAL parent) plus metric-aligned label post-processing (mtah/postprocess.py):
+# dflick deletes predicted D runs shorter than d_flicker_max_frames whose flanking spells are the
+# same team; dend ends a D run restart_backshift_frames earlier when its END sits more than
+# backshift_min_late_frames past the evidence end - i.e. the restart touch started more than
+# m+1 frames after it (never shifted back into the evidence, never a frame of the pre-kick-off
+# block). Mechanism and sim evidence: handoff/REPLY.md §2.P1 - the
+# restart is the first confirmed touch STARTING after the evidence, so a taker whose touch starts
+# inside it is skipped and D runs to the receiver; GT D ends come median 17-31 frames before v6's
+# on every sim match, while ~25% of fit-match D ends are already exact (the conditional rule
+# exists so those are left alone).
+# Constants are picked nested-out-of-fold on the fit matches only (handoff/fable/exp_post7.py),
+# with the variant ladder pre-registered in submissions/LOG.md BEFORE any result was read.
+# Coupling: dend corrects the same lag a native restart fix (deadball.restart_window_frames, the
+# gap-tail seam) would remove - re-tune these constants inside any such combined candidate,
+# never stack frozen ones.
+inherit: final.yaml
+
+# Constants: the rung-1 nested-OOF 5-fit pick (exp_post7, 1 Nov 2026; per-fold picks agreed 4/5).
+# Ladder outcome: NO rung passed the strict gate - every variant lands 6/7 (J03WPY -0.0049 here;
+# mean +0.0121 nested-OOF, bootstrap P(delta<=0) = 0.0000). Adoption therefore waits on the
+# human's REPLY §6 Q3 decision recorded in submissions/LOG.md; v6 stays FINAL until then.
+postprocess:
+  enabled: true
+  d_flicker_max_frames: 38       # dflick L, frames: delete shorter same-team-flanked D runs
+  restart_backshift_frames: 20   # dend k, frames: shift late D ends this much earlier
+  backshift_min_late_frames: 5   # dend m, frames: shift only runs whose restart fired > m after
+                                 #   their evidence end; 0/null = uniform (the exp_post6 variant)
+
+stability:
+  # base.yaml's list plus the three postprocess thresholds (the whole list again: a child config
+  # replaces list values, and scripts/stability.py refuses missing names rather than skip them).
+  params: [ball.max_interp_gap, ball.outside_m, ball.v_max_mps, touch.r_touch_m, touch.min_frames,
+           touch.min_turn_deg, touch.min_dv_mps, owner.contact_r_m, owner.alpha,
+           deadball.oob_margin_m, deadball.oob_min_frames, deadball.gap_min_frames,
+           deadball.merge_frames, kickoff.tolerance_frames, gaps.min_frames, gaps.step_frames,
+           gaps.lam_dead, gaps.lam_owner,
+           postprocess.d_flicker_max_frames, postprocess.restart_backshift_frames,
+           postprocess.backshift_min_late_frames]

@@ -1,14 +1,8 @@
 # The final candidate (PLAN.md §6.4, M4): make submission runs exactly this config.
-# Selected 1 Nov 2026: v6 (configs/rules_v6.yaml), by the paired §6.4 rule (make paired): better
-# than v5 on all 7 sim matches, +0.014, sign test p = 0.0078. Before: v5 (over v3, +0.030, 7/7)
-# and v3 (over v1, 7/7). Change the parent only by the decision rule, and record it in
-# submissions/LOG.md.
-inherit: rules_v6.yaml
-
-# M3 simplification (make sim-ablate): stillness evidence removed. It is inert on this match
-# (the output without it is byte-identical) and worth -0.003 on the held-out sim (< 0.01).
-# Out-of-bounds evidence (-0.005 on sim) stays: it is the one D evidence that does not lean on
-# the sim's stoppage-gap assumption, and without it fewer D runs meet set-piece tags on this match
-# (25% vs 32% within 2 s of the aligned restart).
-deadball:
-  kinds: [oob, gap]
+# Selected 1 Nov 2026: v11 (configs/rules_v11.yaml, the P3e learned-D hybrid), by the paired §6.4
+# rule (make paired): better than v6 on all 7 sim matches, +0.029, sign test p = 0.0078, with the
+# pre-registered one-way-rule sign-off over the two confounded legacy guards and the P0.7 waiver
+# recorded in submissions/LOG.md (1 Nov adoption entry). Before: v6 (over v5, +0.014, 7/7,
+# preserved as configs/rules_v6_final.yaml), v5 (over v3, +0.030, 7/7) and v3 (over v1, 7/7).
+# Change the parent only by the decision rule, and record it in submissions/LOG.md.
+inherit: rules_v11.yaml

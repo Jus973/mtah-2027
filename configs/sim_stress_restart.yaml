@@ -1,0 +1,12 @@
+# The lost-through-restart stress arm (handoff/REPLY.md P3a): the repaired recipe with the
+# stoppage ball loss deliberately spilling past the restart by up to 2 x 100 frames. NOT fitted -
+# scripts/fit_sim.py rejected the lag against the label-free targets (see sim_repaired.yaml) -
+# but the real tracker demonstrably re-finds some balls only in flight (airlock dend-stats:
+# gap-ended D runs reappearing at >= 4 m/s), the fitted sim cannot represent that case at all,
+# and v8 passed every fitted-sim stress arm and failed the real match exactly there. Adversarial
+# by design, like the picked/lost dead-ball conditions.
+# Build: make sim CFG=configs/sim_stress_restart.yaml OUT=~/opendata/sim_stress_restart
+inherit: sim_repaired.yaml
+
+degrade:
+  fitted: {q: 1.0, f_mean: 0.7, s: 0.3, g_frames: 100, r_frames: 100}

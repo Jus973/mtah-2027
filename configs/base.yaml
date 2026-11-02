@@ -39,6 +39,12 @@ bands:  # PLAN.md §6.3, over graded frames
   d_runs: [60, 150]
   home_share_alive: [0.55, 0.72]
   max_x_frac: 0.02
+  # Advisory for one adoption cycle (added 1 Nov 2026), then hard: no band bounded the D share
+  # at all, so a candidate halving D to 25% passed every check (part of why v8's failure was
+  # undiagnosable). Derivation, label-free: real-match ball absence 40.7% of graded frames
+  # (make airlock T=atd-stats), sim GT D share 41-42%, logged candidates v1-v8 46.0-51.8%
+  # (submissions/LOG.md). Wide on purpose; never from the public window.
+  d_share_graded_advisory: [0.35, 0.57]
 
 public_check:  # PLAN.md §6.4: the public window is a pass/fail bug check, never a score
   floor: 0.35          # spellF1 below this = a bug or a wrong owner hypothesis (debug on the sim)
@@ -65,7 +71,13 @@ stability:  # PLAN.md §6.2c, scripts/stability.py: label-free self-consistency 
            gaps.lam_dead, gaps.lam_owner]
 
 disagreement:  # PLAN.md §6.5, scripts/disagreement.py (debugging only)
-  candidates: [v1, v3, v5, v6]   # v2 (rejected) left out
+  # The full back-catalog (1 Nov 2026): the amended exclusive-alive floors are calibrated on
+  # these rows, and the v8 decomposition settles HANDOFF §9.1. Names without a CSV are skipped.
+  candidates: [v1, v2, v3, v4, v5, v6, v7, v8, v9, v9d, v11]
+  # The PLAN §6.5 < 10% union check reads the ACTIVE set only (selected-line candidates plus the
+  # live challengers): rejected-era candidates in the calibration roster would fail it by design.
+  active: [v1, v3, v5, v6, v9d, v11]
+  reference: v6             # exclusive-alive consistency and D-end displacement judge against it
   min_frames: 5             # shorter disagreement runs are not worth a clip
 
 sync:  # PLAN.md M2 T3, scripts/sync_stats.py: broadcast -> tactical from audio
@@ -95,7 +107,8 @@ whistle:  # PLAN.md M2 T3, audio/whistle.py and scripts/whistle_stats.py
   gate: 0.7                 # ... of >= 70% of the anchors, else no whistle cue
 
 clipviewer:  # PLAN.md §6.5, scripts/clip_export.py + tools/clipviewer/ (humans, debugging only)
-  configs: {v1: rules.yaml, v3: rules_v3.yaml, v5: rules_v5.yaml, v6: final.yaml}
+  configs: {v1: rules.yaml, v3: rules_v3.yaml, v5: rules_v5.yaml, v6: rules_v6_final.yaml,
+            v11: final.yaml}
   min_frames: 5
   pad_s: 2.0
   max_clips: 300
