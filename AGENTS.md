@@ -8,7 +8,8 @@ Submit early in the window, never at the wire.
 
 ## 0. New agent? Start here (3 minutes)
 
-1. Read `CLAUDE.md`. Its data rules are binding and non-negotiable.
+1. Read `CLAUDE.md` (data rules; binding and non-negotiable), then the board repo's
+   `CONTEXT.md` — the competition, the rules that bite, data lanes, and where the entry stands.
 2. Identify yourself: `export BOARD_AGENT=<tool>-<name>` (e.g. `devin-1`, `claude-justin-a`,
    `human-alex`). Unset, you default to `<user>-<host>`.
 3. `scripts/board start` — unread announcements, who holds what, what's claimable.
@@ -112,6 +113,12 @@ comments break the liveness walker. After a takeover, `git fetch` and look for a
   open-data work — anything touching only `fakedata/` and open datasets.
 - **Airlock only**: every real-data run goes through `make airlock T=<target>`. Never set
   `MTAH_DATA_DIR` yourself.
+- **The gated bundle (~26 GB) exists only on the airlock host.** Per the competition T&C it never
+  reaches a cloud VM, cloud LLM, or any repo — and no agent reads it even locally. Cloud agents
+  (Devin, cloud sessions) work the open-data lane: `make test` needs no data at all, and
+  `make open-data && make sim` (2.6 GB, CC BY) unlocks the full training + selection loop. Tasks
+  that genuinely need the bundle carry the `needs:airlock` label — leave them to airlock-host
+  agents or humans.
 - **Human-gated, never autonomous**: `make airlock T=public-check` (the public window is scarce
   and pass/fail only), anything under `submissions/`, adopting a new FINAL (written human
   sign-off per the standing protocol), registration, the Form, repo visibility.

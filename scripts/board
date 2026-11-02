@@ -33,6 +33,7 @@ LABELS = [
     ("status:review", "8250df", "PR open - needs a non-author review"),
     ("status:blocked", "d73a4a", "Stuck - see the write-up on the issue"),
     ("needs:human", "ff8c00", "Only a human can do this"),
+    ("needs:airlock", "1d3557", "Needs the gated bundle via the airlock host"),
     ("prio:p0", "b60205", "Do first"),
     ("prio:p1", "d93f0b", "Do soon"),
     ("prio:p2", "cccccc", "When free"),
