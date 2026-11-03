@@ -628,3 +628,57 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     and its sha are unchanged (7b83f3a89bb15fa8…). Standing addition per IMPROVEMENT_PLAN §1d:
     the convention matrix is a MANDATORY arm for any future candidate that moves possession
     boundaries.
+- 2026-11-03: **Pre-registration: GT-convention regret matrix, three more axes (board #46; ledger
+  +1)** — written on board #46 (claude-fable-c, 3 Nov, after 2/2 critiques) before any new world
+  was scored, and mirrored here. Same frozen candidates (v6 = configs/rules_v6_final.yaml, v11 =
+  configs/rules_v11.yaml), same cached labels as Exp A (§6.4 cross-fitted on the 7 DFL sims,
+  committed-model on MET-G3; MET-G1/G2 supplementary), same official scorer; no re-fit, no config
+  change, nothing selected on any world. Each axis runs alone, never composed with another or
+  with the D-end shift; the published GT is the identity in every axis, asserted per match.
+  - **Axis 1, switch placement** (`shift_switches`, k ∈ {−10, −5, +5, +10, +25} frames): every
+    DIRECT H↔A boundary moves k frames (positive = later = the earlier spell grows); boundaries
+    through D untouched; moves computed from the original segments and capped so the losing
+    spell keeps ≥ 1 frame; spell and D-run counts preserved.
+  - **Axis 2, short-spell merge** (`merge_short`, s ∈ {1, 2} s): the shortest possession spell
+    (ties: earliest) shorter than s·fps frames whose immediate neighbours on both sides are
+    spells of the other team (no D between) is relabelled to that team, repeated to a fixed
+    point (deterministic, order-independent); the GT spell count falls by design.
+  - **Axis 3, D start** (`shift_dstarts`, k ∈ {−10, +10, +25} frames): every D run preceded by
+    an alive segment in the same valid run moves its start by k (positive = later = the
+    preceding spell grows into the run); capped so both keep ≥ 1 frame; counts preserved.
+  - Statistic: paired per-match Δ = spellF1(v11) − spellF1(v6); PRIMARY = the 8-match
+    equal-weight mean (7 DFL + MET-G3) plus the number of matches with Δ < 0.
+  - **Decision rule: a world FAILS iff its primary mean Δ < −0.010 AND v11 loses on ≥ 5 of the
+    8 matches** (multiplicity guard for 10 new worlds). No failing world → record "v11
+    convention-robust on D-end, switch placement, short-spell merge and D-start; keep FINAL".
+    Any failing world → escalate to the human naming the axis; the follow-up is a hedge
+    candidate with its own pre-registration and the full standing gates, never a re-tune on
+    that world. The script adopts nothing. Reporting duty regardless: the axis-2 s = 2 sign is
+    a mandatory row for any short-spell candidate; the cross-family check is by citation
+    against the frozen PFF result (board #48), PFF is not re-scored. Supplementary, never the
+    decision statistic: fit / held-out / MET-G3 split means; MET-G1/G2 rows.
+- 2026-11-03: **#46 results — all three new axes land in v11's favour; the FINAL stands**
+  (`scripts/regret_matrix.py --axes switch merge dstart --extra MET-G1 MET-G2`, ~1 min from the
+  Exp A label cache; full tables on board #46 and the Eval log; `make test` passes with
+  tests/test_regret_worlds.py added). The identity columns reproduce Exp A's k = 0 exactly
+  (primary mean +0.0291; MET-G3 v6 0.6845 / v11 0.7148) — the built-in reproduction check.
+  - **Switch placement:** primary mean Δ(v11 − v6) k=−10 +0.0328, −5 +0.0306, 0 +0.0291,
+    +5 +0.0305, +10 +0.0321, +25 +0.0311; 8/8 wins and 0 losses in every world. Absolute scores
+    fall for both candidates as the boundary moves either way (mean v11 0.627 at −10 → 0.512 at
+    +25); the gap does not move.
+  - **Short-spell merge:** s=1 +0.0315 (GT spells 3441 → 3065), s=2 +0.0352 (→ 2579); 8/8 in
+    both. v11's margin GROWS as the GT coarsens, consistent with board #36 step 0 (v11
+    under-segments, so a convention that removes short spells costs it less than v6). Cross-
+    family check by citation: PFF (board #48, coarse event-derived labels) frozen v11 − v6
+    +0.0094, 46/63 — the same sign as the DFL s=2 world, so the merge transform is a fair
+    stand-in for a coarser GT.
+  - **D start:** k=−10 +0.0331, +10 +0.0246, +25 +0.0231; 8/8 in every world. v11's margin
+    shrinks monotonically with later D starts (fit-5 +0.0193 at +25) but stays positive on every
+    match; MET-G3 is flat (+0.030…+0.034). Worst primary cell across all 10 new worlds:
+    J03WPY +0.0069 (dstart +10 / +25).
+  - Supplementary MET-G1/G2 (committed-model): positive in all 13 worlds; minimum +0.0009
+    (MET-G1, dstart +25) and +0.0014 (MET-G1, switch +5).
+  - **Pre-registered outcome: no world fails → "v11 convention-robust on D-end, switch
+    placement, short-spell merge and D-start; keep FINAL." Nothing fires.** Ledger: +1 outcome
+    recorded (robust). Configs untouched; the FINAL and its sha are unchanged. Standing
+    addition: the axis-2 s=2 sign is a mandatory reporting row for any short-spell candidate.
