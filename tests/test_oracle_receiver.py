@@ -89,3 +89,18 @@ def test_kinematic_is_invalid_for_a_slow_ball_or_an_immediate_next_contact():
     assert valid[0] == 0.0  # ball still at rest
     assert valid[2] == 0.0  # next contact a frame later: no flight to extrapolate
     assert (X[valid == 0, :2] == 3.5).all()
+
+
+def test_kinematic_intercepts_stop_at_the_next_contact_and_missing_velocity_means_standing():
+    ball = np.zeros((80, 2))
+    ball[10:] = np.arange(70)[:, None] * np.array([0.4, 0.0])
+    players = np.array([[[25.0, 0.5], [8.0, 0.5]]] * 80)  # own far along the path, opp near
+    players[5, 1] = np.nan  # opp's track starts inside the look-back
+    tos = np.array([0, 1])
+    far = kinematic_features([ev(0, 8, 10)], ball, players, tos)
+    row = dict(zip(KINEMATIC_FEATURES, far[0]))
+    assert row["kn_t_own"] < 3.5 and row["kn_t_opp"] < 3.5  # the standing opp still intercepts
+    soon = kinematic_features([ev(0, 8, 10), ev(1, 30, 31)], ball, players, tos)
+    row = dict(zip(KINEMATIC_FEATURES, soon[0]))
+    assert row["kn_t_own"] == 3.5  # own's intercept lies past the next contact (0.8 s)
+    assert row["kn_t_opp"] < 0.8 and row["kn_first"] == -1.0

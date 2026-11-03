@@ -38,6 +38,7 @@ FLIGHT_FEATURES = ("fl_log_s", "land_d_own", "land_d_opp", "land_margin", "land_
                    "fl_min_own", "fl_min_opp", "fl_own_nearer", "m10_margin", "m25_margin")
 CORRIDOR_FEATURES = ("rc_perp_own", "rc_perp_opp", "rc_margin", "rc_first", "rc_valid")
 KINEMATIC_FEATURES = ("kn_t_own", "kn_t_opp", "kn_margin", "kn_first", "kn_valid")
+ARMS = ("receiver", "flight", "corridor", "kinematic", "perfect")
 CAP_M = 10.0
 FLIGHT_CAP_S = 4.0
 
@@ -120,7 +121,8 @@ def kinematic_features(events, ball, players, team_of_slot, fps=25, look=5, v_mi
     from the toucher's perspective (offline). The ball runs straight on at its velocity over the
     first look frames after the contact (bounded before the next contact; valid only at >= v_min
     m/s). Each player keeps their velocity (the look frames BEFORE the contact) for react_s, then
-    runs at v_max: a player intercepts at the first tau on the grid where they arrive in time. Each
+    runs at v_max (standing when that velocity is unavailable): a player intercepts at the first
+    tau on the grid, before the next contact, where they arrive in time. Each
     team's earliest intercept time (cap_s if none), the margin (opponent - own) and the first team
     to intercept (+1 own, -1 opp, 0 none)."""
     T, n = len(ball), len(events)
@@ -137,12 +139,14 @@ def kinematic_features(events, ball, players, team_of_slot, fps=25, look=5, v_mi
         if sp < v_min:
             continue
         vp = (players[a] - players[a - look]) * fps / look
+        vp[~np.isfinite(vp).all(axis=1)] = 0.0  # no track 5 frames back: treat as standing
         start = players[a] + vp * react_s
-        path = ball[a][None, :] + taus[:, None] * v[None, :]
+        flight = (events[i + 1].start - a) / fps if i + 1 < n else np.inf
+        tt = taus[taus < flight]  # the path ends where the next contact begins
+        path = ball[a][None, :] + tt[:, None] * v[None, :]
         dist = np.linalg.norm(path[None, :, :] - start[:, None, :], axis=2)
-        ok = np.isfinite(dist) & ((react_s + dist / v_max) <= taus[None, :])
-        t_int = np.where(ok.any(axis=1), taus[np.argmax(ok, axis=1)], cap_s)
-        t_int[~np.isfinite(dist).all(axis=1)] = cap_s
+        ok = np.isfinite(dist) & ((react_s + dist / v_max) <= tt[None, :])
+        t_int = np.where(ok.any(axis=1), tt[np.argmax(ok, axis=1)] if tt.size else cap_s, cap_s)
         best = []
         for t in (e.team, 1 - e.team):
             m = team_of_slot == t
@@ -193,9 +197,13 @@ def sign_p(d):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/final.yaml")
-    ap.add_argument("--arms", default="receiver,flight,corridor,kinematic,perfect",
+    ap.add_argument("--arms", default=",".join(ARMS),
                     help="comma list of arms to score beside base")
     args = ap.parse_args()
+    want = {a.strip() for a in args.arms.split(",") if a.strip()}
+    unknown = want - set(ARMS)
+    if unknown:
+        ap.error("unknown --arms {}; choose from {}".format(sorted(unknown), ",".join(ARMS)))
     cfg = config.load(os.path.abspath(args.config))
     check_sections(cfg, args.config)
     if (cfg.get("deadstate") or {}).get("enabled") or (cfg.get("postprocess") or {}).get("enabled"):
@@ -240,7 +248,6 @@ def main():
         return p
 
     arms = {}
-    want = set(args.arms.split(","))
     arms["base"] = score(crossfit([q.X for q in Q], names))
     if "receiver" in want:
         Xr = [np.hstack([q.X, oracle_receiver(q.events, q.m.gt, q.m.graded, lag)[:, None]])
