@@ -36,8 +36,12 @@ def main():
         path = os.path.join(OUT, g + ".json")
         if os.path.isfile(path):
             continue
-        f = {os.path.basename(c): score(committed_labels(g, c), "sim:" + g)["spell_f1_mean"]
-             for c in (V6, V11)}
+        try:
+            f = {os.path.basename(c): score(committed_labels(g, c), "sim:" + g)["spell_f1_mean"]
+                 for c in (V6, V11)}
+        except ValueError as e:
+            print("FAILED", g, e, flush=True)
+            continue
         with open(path, "w") as fh:
             json.dump(f, fh)
         print("scored", g, flush=True)
