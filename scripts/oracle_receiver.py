@@ -10,6 +10,8 @@ toucher's team, and every other learned part (dead hybrid, gap models) is shared
             half ends or only D follows
   flight    + flight_features (tracking only, no GT): the real feature family
   corridor  + corridor_features (tracking only): who stands in the ball's path
+  kinematic + kinematic_features (tracking only, board #27): who can first reach the ball's
+            path given their current velocity (time-to-intercept)
   perfect   no model: p = 1 - 1e-3 / 1e-3 by the training-label rule itself on every contact - the
             ceiling of ANY takeover feature with this decoder, contacts and D
 
@@ -35,6 +37,8 @@ from train_takeover import Prepared
 FLIGHT_FEATURES = ("fl_log_s", "land_d_own", "land_d_opp", "land_margin", "land_missing",
                    "fl_min_own", "fl_min_opp", "fl_own_nearer", "m10_margin", "m25_margin")
 CORRIDOR_FEATURES = ("rc_perp_own", "rc_perp_opp", "rc_margin", "rc_first", "rc_valid")
+KINEMATIC_FEATURES = ("kn_t_own", "kn_t_opp", "kn_margin", "kn_first", "kn_valid")
+ARMS = ("receiver", "flight", "corridor", "kinematic", "perfect")
 CAP_M = 10.0
 FLIGHT_CAP_S = 4.0
 
@@ -111,6 +115,49 @@ def corridor_features(events, ball, players, team_of_slot, fps=25, look=5, v_min
     return out
 
 
+def kinematic_features(events, ball, players, team_of_slot, fps=25, look=5, v_min=3.0,
+                       react_s=0.3, v_max=7.0, tau=(0.3, 3.0), step_s=0.04, cap_s=3.5):
+    """(n_events, len(KINEMATIC_FEATURES)): who can first reach the ball's path after the contact,
+    from the toucher's perspective (offline). The ball runs straight on at its velocity over the
+    first look frames after the contact (bounded before the next contact; valid only at >= v_min
+    m/s). Each player keeps their velocity (the look frames BEFORE the contact) for react_s, then
+    runs at v_max (standing when that velocity is unavailable): a player intercepts at the first
+    tau on the grid, before the next contact, where they arrive in time. Each
+    team's earliest intercept time (cap_s if none), the margin (opponent - own) and the first team
+    to intercept (+1 own, -1 opp, 0 none)."""
+    T, n = len(ball), len(events)
+    out = np.zeros((n, len(KINEMATIC_FEATURES)))
+    out[:, :2] = cap_s
+    taus = np.arange(tau[0], tau[1] + 1e-9, step_s)
+    for i, e in enumerate(events):
+        a = e.end
+        b = min(a + look, T - 1, events[i + 1].start - 1 if i + 1 < n else T - 1)
+        if b <= a or a - look < 0:
+            continue
+        v = (ball[b] - ball[a]) * fps / (b - a)
+        sp = float(np.hypot(*v)) if np.isfinite(v).all() else 0.0
+        if sp < v_min:
+            continue
+        vp = (players[a] - players[a - look]) * fps / look
+        vp[~np.isfinite(vp).all(axis=1)] = 0.0  # no track 5 frames back: treat as standing
+        start = players[a] + vp * react_s
+        flight = (events[i + 1].start - a) / fps if i + 1 < n else np.inf
+        tt = taus[taus < flight]  # the path ends where the next contact begins
+        path = ball[a][None, :] + tt[:, None] * v[None, :]
+        dist = np.linalg.norm(path[None, :, :] - start[:, None, :], axis=2)
+        ok = np.isfinite(dist) & ((react_s + dist / v_max) <= tt[None, :])
+        t_int = np.where(ok.any(axis=1), tt[np.argmax(ok, axis=1)] if tt.size else cap_s, cap_s)
+        best = []
+        for t in (e.team, 1 - e.team):
+            m = team_of_slot == t
+            best.append(float(t_int[m].min()) if m.any() else cap_s)
+        first = 0.0
+        if min(best) < cap_s:
+            first = 1.0 if best[0] <= best[1] else -1.0
+        out[i] = [best[0], best[1], best[1] - best[0], first, 1.0]
+    return out
+
+
 def oracle_receiver(events, gt, graded, lag):
     out = np.full(len(events), 0.5)
     T = len(gt)
@@ -150,7 +197,13 @@ def sign_p(d):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/final.yaml")
+    ap.add_argument("--arms", default=",".join(ARMS),
+                    help="comma list of arms to score beside base")
     args = ap.parse_args()
+    want = {a.strip() for a in args.arms.split(",") if a.strip()}
+    unknown = want - set(ARMS)
+    if unknown:
+        ap.error("unknown --arms {}; choose from {}".format(sorted(unknown), ",".join(ARMS)))
     cfg = config.load(os.path.abspath(args.config))
     check_sections(cfg, args.config)
     if (cfg.get("deadstate") or {}).get("enabled") or (cfg.get("postprocess") or {}).get("enabled"):
@@ -196,18 +249,25 @@ def main():
 
     arms = {}
     arms["base"] = score(crossfit([q.X for q in Q], names))
-    Xr = [np.hstack([q.X, oracle_receiver(q.events, q.m.gt, q.m.graded, lag)[:, None]])
-          for q in Q]
-    arms["receiver"] = score(crossfit(Xr, names + ("oracle_recv",)))
-    Xf = [np.hstack([q.X, flight_features(q.events, q.m.d, q.m.fps)]) for q in Q]
-    arms["flight"] = score(crossfit(Xf, names + FLIGHT_FEATURES))
-    Xc = [np.hstack([q.X, corridor_features(q.events, q.m.ball, q.m.players,
-                                                      q.m.atd.team_of_slot, q.m.fps)])
-          for q in Q]
-    arms["corridor"] = score(crossfit(Xc, names + CORRIDOR_FEATURES))
-    policy = oc.get("label_policy", "legacy")
-    arms["perfect"] = score([np.clip(oracle_label(q.events, q.m.gt, q.m.graded, lag, policy),
-                                     1e-3, 1 - 1e-3) for q in Q])
+    if "receiver" in want:
+        Xr = [np.hstack([q.X, oracle_receiver(q.events, q.m.gt, q.m.graded, lag)[:, None]])
+              for q in Q]
+        arms["receiver"] = score(crossfit(Xr, names + ("oracle_recv",)))
+    if "flight" in want:
+        Xf = [np.hstack([q.X, flight_features(q.events, q.m.d, q.m.fps)]) for q in Q]
+        arms["flight"] = score(crossfit(Xf, names + FLIGHT_FEATURES))
+    if "corridor" in want:
+        Xc = [np.hstack([q.X, corridor_features(q.events, q.m.ball, q.m.players,
+                                                q.m.atd.team_of_slot, q.m.fps)]) for q in Q]
+        arms["corridor"] = score(crossfit(Xc, names + CORRIDOR_FEATURES))
+    if "kinematic" in want:
+        Xk = [np.hstack([q.X, kinematic_features(q.events, q.m.ball, q.m.players,
+                                                 q.m.atd.team_of_slot, q.m.fps)]) for q in Q]
+        arms["kinematic"] = score(crossfit(Xk, names + KINEMATIC_FEATURES))
+    if "perfect" in want:
+        policy = oc.get("label_policy", "legacy")
+        arms["perfect"] = score([np.clip(oracle_label(q.events, q.m.gt, q.m.graded, lag, policy),
+                                         1e-3, 1 - 1e-3) for q in Q])
     agree = np.concatenate([(oracle_receiver(q.events, q.m.gt, q.m.graded, lag)[q.rows] == q.y)
                             for q in Q[nf:]]).mean()
     print("held-out takeover rows where oracle_recv == training label: {:.3f}".format(agree))
@@ -217,7 +277,7 @@ def main():
         print("{:<12}".format(g) + "".join("{:>10.4f}".format(v[i]) for v in arms.values())
               + ("  held-out" if i >= nf else ""))
     b = arms["base"]
-    for k in ("receiver", "flight", "corridor", "perfect"):
+    for k in [a for a in arms if a != "base"]:
         d = arms[k] - b
         w, p = sign_p(d)
         print("{:<9} vs base: mean {:+.4f}, wins {}/{}, p = {:.4f}; held-out {:.4f} -> {:.4f} "
