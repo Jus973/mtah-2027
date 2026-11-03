@@ -44,23 +44,27 @@ def flight_features(events, d, fps=25):
     perspective (offline - reads the future). The flight runs from the contact's end to the frame
     before the next contact (capped at FLIGHT_CAP_S): its length, each team's distance to the ball
     at its end (the landing), their minima over it, the share of it the toucher's team is nearer,
-    and the distance margin (opponent - own) 10 and 25 frames after the contact."""
+    and the distance margin (opponent - own) 10 and 25 frames after the contact (0 when that
+    frame is past the flight). No flight at all (adjacent contacts) is encoded as a missing
+    landing."""
     T, n = len(d), len(events)
     cap = int(FLIGHT_CAP_S * fps)
     out = np.zeros((n, len(FLIGHT_FEATURES)))
 
-    def margin(j, t):
-        if j >= T or not np.isfinite(d[j]).all():
+    def margin(j, t, stop):
+        if j > stop or not np.isfinite(d[j]).all():
             return 0.0
         return float(np.clip(d[j, 1 - t] - d[j, t], -CAP_M, CAP_M))
 
     for i, e in enumerate(events):
         t = e.team
-        stop = events[i + 1].start - 1 if i + 1 < n else T - 1
-        j = int(min(stop, e.end + cap, T - 1))
-        j = max(j, min(e.end + 1, T - 1))
+        stop = int(min(events[i + 1].start - 1 if i + 1 < n else T - 1, T - 1))
+        j = int(min(stop, e.end + cap))
+        if j <= e.end:  # the next contact follows at once: no flight, landing unobserved
+            out[i] = [0.0, CAP_M, CAP_M, 0.0, 1.0, CAP_M, CAP_M, 0.5, 0.0, 0.0]
+            continue
         seg = d[e.end + 1:j + 1]
-        own, opp = (seg[:, t], seg[:, 1 - t]) if len(seg) else (np.zeros(0), np.zeros(0))
+        own, opp = seg[:, t], seg[:, 1 - t]
         ok = np.isfinite(own) & np.isfinite(opp)
         land = d[j]
         miss = not np.isfinite(land).all()
@@ -70,7 +74,7 @@ def flight_features(events, d, fps=25):
                   min(float(np.nanmin(own)), CAP_M) if np.isfinite(own).any() else CAP_M,
                   min(float(np.nanmin(opp)), CAP_M) if np.isfinite(opp).any() else CAP_M,
                   float((own[ok] < opp[ok]).mean()) if ok.any() else 0.5,
-                  margin(e.end + 10, t), margin(e.end + 25, t)]
+                  margin(e.end + 10, t, stop), margin(e.end + 25, t, stop)]
     return out
 
 
@@ -120,9 +124,22 @@ def oracle_receiver(events, gt, graded, lag):
     return out
 
 
-def oracle_label(events, gt, graded, lag):
+def oracle_label(events, gt, graded, lag, policy="legacy"):
+    """The training-label rule (takeover.training_rows) on every contact: 1 if the toucher's team
+    owns at the label frame. Under the alive_lag policies the label frame is the first alive
+    graded frame >= end + lag (0.5 when none is left, where training drops the row)."""
     T = len(gt)
-    return np.array([float(gt[min(e.end + lag, T - 1)] == "HA"[e.team]) for e in events])
+    out = np.empty(len(events))
+    for i, e in enumerate(events):
+        j = min(e.end + lag, T - 1)
+        if policy in ("alive_lag", "alive_lag_restarts"):
+            while j < T and graded[j] and gt[j] not in ("H", "A"):
+                j += 1
+            if j >= T or not graded[j] or gt[j] not in ("H", "A"):
+                out[i] = 0.5
+                continue
+        out[i] = float(gt[j] == "HA"[e.team])
+    return out
 
 
 def sign_p(d):
@@ -136,6 +153,10 @@ def main():
     args = ap.parse_args()
     cfg = config.load(os.path.abspath(args.config))
     check_sections(cfg, args.config)
+    if (cfg.get("deadstate") or {}).get("enabled") or (cfg.get("postprocess") or {}).get("enabled"):
+        raise SystemExit("{}: this harness shares only the deadhybrid / evidence-D and gap stages "
+                         "of paired.labels_for; deadstate and postprocess configs are refused so "
+                         "base cannot silently differ from make paired".format(args.config))
     oc, gc, tm = cfg["owner"], cfg["gaps"], cfg["takeover_model"]
     fit, held = cfg["matches"]["fit"], cfg["matches"]["holdout"]
     prefix = cfg["matches"].get("prefix", "DFL-")
@@ -184,8 +205,9 @@ def main():
                                                       q.m.atd.team_of_slot, q.m.fps)])
           for q in Q]
     arms["corridor"] = score(crossfit(Xc, names + CORRIDOR_FEATURES))
-    arms["perfect"] = score([np.where(oracle_label(q.events, q.m.gt, q.m.graded, lag) > 0,
-                                      1 - 1e-3, 1e-3) for q in Q])
+    policy = oc.get("label_policy", "legacy")
+    arms["perfect"] = score([np.clip(oracle_label(q.events, q.m.gt, q.m.graded, lag, policy),
+                                     1e-3, 1 - 1e-3) for q in Q])
     agree = np.concatenate([(oracle_receiver(q.events, q.m.gt, q.m.graded, lag)[q.rows] == q.y)
                             for q in Q[nf:]]).mean()
     print("held-out takeover rows where oracle_recv == training label: {:.3f}".format(agree))
