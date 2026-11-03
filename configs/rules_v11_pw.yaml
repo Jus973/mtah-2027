@@ -1,0 +1,6 @@
+# Board #25 experiment: v11 with possession-equal takeover row weights (learn/takeover.py
+# possession_weights). Compare with make paired A=configs/final.yaml B=configs/rules_v11_pw.yaml.
+inherit: final.yaml
+takeover_model:
+  possession_weight_s: 8.0           # weight = 8 s / interrupted GT spell length ...
+  possession_weight_clip: [0.25, 4.0]  # ... clipped to this range

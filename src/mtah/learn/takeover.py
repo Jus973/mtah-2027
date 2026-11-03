@@ -110,12 +110,40 @@ def training_rows(events, gt, graded, lag, policy="legacy"):
     return np.array(idx, dtype=np.int64), np.array(y)
 
 
-def train(X, y, params, names=FEATURES):
+def possession_weights(events, rows, gt, params, fps=25):
+    """Per training row: ref_s / (length in s of the GT spell the contact interrupts), clipped to
+    takeover_model.possession_weight_clip, so short contested spells weigh more (board #25).
+    The interrupted spell is the GT run holding frame e.start - 1, so the weight never reads the
+    row's label; rows opening a stretch (the frame before is D) keep weight 1."""
+    ref = params.get("possession_weight_s", 0.0)
+    w = np.ones(len(rows))
+    if not ref or not len(rows):
+        return w
+    lo, hi = params.get("possession_weight_clip", (0.25, 4.0))
+    change = np.flatnonzero(gt[1:] != gt[:-1]) + 1
+    starts = np.concatenate(([0], change))
+    ends = np.concatenate((change, [len(gt)]))
+    for k, i in enumerate(rows):
+        f = events[i].start - 1
+        if gt[f] not in ("H", "A"):
+            continue
+        r = np.searchsorted(starts, f, side="right") - 1
+        w[k] = np.clip(ref * fps / (ends[r] - starts[r]), lo, hi)
+    return w
+
+
+NOT_LGB = ("num_boost_round", "possession_weight_s", "possession_weight_clip")
+
+
+def train(X, y, params, names=FEATURES, weight=None):
     """A LightGBM booster; params: the takeover_model section of the config."""
     import lightgbm as lgb
-    p = {k: v for k, v in params.items() if k != "num_boost_round"}
+    if params.get("possession_weight_s") and weight is None:
+        raise ValueError("takeover_model.possession_weight_s is set but this caller passes no "
+                         "row weights - it would silently train unweighted")
+    p = {k: v for k, v in params.items() if k not in NOT_LGB}
     p.update(objective="binary", num_threads=1, deterministic=True, verbose=-1)
-    return lgb.train(p, lgb.Dataset(X, y, feature_name=list(names)),
+    return lgb.train(p, lgb.Dataset(X, y, weight=weight, feature_name=list(names)),
                      num_boost_round=params["num_boost_round"])
 
 

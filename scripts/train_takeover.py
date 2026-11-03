@@ -44,6 +44,8 @@ class Prepared:
         self.rows, self.y = takeover.training_rows(self.events, m.gt, m.graded,
                                                    oc["label_lag_frames"],
                                                    oc.get("label_policy", "legacy"))
+        self.w = takeover.possession_weights(self.events, self.rows, m.gt,
+                                             cfg["takeover_model"], m.fps)
         ev = evidence(m.ball_raw, m.ball, m.observed, m.players, m.graded, m.atd.pitch,
                       cfg["deadball"], m.fps)
         # As mtah.pipeline computes them: D runs with their evidence ends (postprocess backshift)
@@ -71,8 +73,10 @@ def fit_on(prepared, params):
     q0 = prepared[0]
     names = takeover.FEATURES + (takeover.SHAPE_FEATURES if q0.X.shape[1] > len(takeover.FEATURES)
                                  else ())
+    weight = (np.concatenate([q.w for q in prepared]) if params.get("possession_weight_s")
+              else None)
     return takeover.train(np.concatenate([q.X[q.rows] for q in prepared]),
-                          np.concatenate([q.y for q in prepared]), params, names)
+                          np.concatenate([q.y for q in prepared]), params, names, weight)
 
 
 def predict(booster, q):
