@@ -1,32 +1,59 @@
 """Board #48: frozen v6 vs v11 on the PFF WC2022 evaluation family (scripts/build_pff.py output).
 
 Committed models only (trained on the DFL fit matches); nothing is fitted, tuned or selected on
-PFF. Prints per-match spellF1 and the paired summary (mean, median, sign test). Aggregates only.
+PFF. Per-match spellF1 is cached under MTAH_PFF_DIR/eval (outside the repo) so `--shard k/n`
+runs can split the work; every run then prints the per-match table and the paired summary
+(mean, median, sign test) over whatever is cached. Aggregates only.
 """
 
+import argparse
+import json
 import os
 import sys
 
 import numpy as np
 
 from mtah import registry
+from mtah.io import pff
 
 sys.path.insert(0, os.path.join(registry.ROOT, "scripts"))
 from oracle_receiver import sign_p                      # noqa: E402
 from regret_matrix import V6, V11, committed_labels     # noqa: E402
 from mtah.eval.score import score                       # noqa: E402
 
+OUT = os.path.join(pff.OPEN_DIR, "eval")
+
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--shard", default="0/1", help="k/n: score every n-th match from k")
+    ap.add_argument("--summary", action="store_true", help="only print what is cached")
+    args = ap.parse_args()
+    k, n = (int(x) for x in args.shard.split("/"))
+    os.makedirs(OUT, exist_ok=True)
     games = sorted(g for g in os.listdir(registry.SIM_DIR) if g.startswith("PFF-"))
+    for g in ([] if args.summary else games[k::n]):
+        path = os.path.join(OUT, g + ".json")
+        if os.path.isfile(path):
+            continue
+        f = {os.path.basename(c): score(committed_labels(g, c), "sim:" + g)["spell_f1_mean"]
+             for c in (V6, V11)}
+        with open(path, "w") as fh:
+            json.dump(f, fh)
+        print("scored", g, flush=True)
     rows = []
     print("{:<12}{:>10}{:>10}{:>10}".format("match", "v6", "v11", "d"))
     for g in games:
-        f = [score(committed_labels(g, c), "sim:" + g)["spell_f1_mean"] for c in (V6, V11)]
-        rows.append(f)
-        print("{:<12}{:>10.4f}{:>10.4f}{:>+10.4f}".format(g, f[0], f[1], f[1] - f[0]), flush=True)
+        path = os.path.join(OUT, g + ".json")
+        if not os.path.isfile(path):
+            continue
+        with open(path) as fh:
+            f = json.load(fh)
+        r = (f[os.path.basename(V6)], f[os.path.basename(V11)])
+        rows.append(r)
+        print("{:<12}{:>10.4f}{:>10.4f}{:>+10.4f}".format(g, r[0], r[1], r[1] - r[0]))
     if not rows:
-        raise SystemExit("no PFF-* sims under {}; run scripts/build_pff.py".format(registry.SIM_DIR))
+        raise SystemExit("nothing scored; run scripts/build_pff.py first")
     r = np.array(rows)
     d = r[:, 1] - r[:, 0]
     w, p = sign_p(d)
