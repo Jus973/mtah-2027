@@ -90,6 +90,29 @@ end; the census requires this to happen only for END HALF (no_restart_found == 0
 25 Hz is asserted; a source at an integer multiple of 25 Hz would be decimated (positions and
 event frames), anything else raises. Parsed once and cached as npz beside the data
 (~/opendata/metrica_cache/), like io DFL/IDSSE.
+
+CSV format (Sample Games 1-2, match ids "G1"/"G2"; added 2 Nov 2026 for the pre-registered
+mechanism replication, submissions/LOG.md Exp B). Two per-team tracking CSVs (3 header rows:
+team, jersey numbers, column names; then Period, Frame, Time [s], x,y pairs, ball x,y; normalised
+coordinates, 25 Hz asserted, frames contiguous 1..N in both files with identical Period and ball
+columns - all asserted) and one events CSV (Team "Home"/"Away", Type, Subtype, 1-based frames on
+the tracking clock). The SAME mechanical derive() produces the GT. Format differences from the
+Game 3 JSON, each verified on both games before any result was read:
+  - Multi-part subtypes are "-"-joined ("HEAD-ON TARGET-GOAL"); split on "-" (no subtype name
+    contains a hyphen; "KICK OFF", "GOAL KICK" etc. contain spaces, never hyphens).
+  - No CARRY events: the owner flips only at SET PIECE / PASS / SHOT / controlled RECOVERY, so
+    e.g. a keeper holding a parried shot flips at his next controlled event, not at the pick-up.
+  - ADVANTAGE exists (G1: 5, G2: 11) but ONLY as a CHALLENGE subtype, and CHALLENGE neither
+    flips nor stops play under the mechanical rules - the played-advantage reading is automatic,
+    derive() is unchanged.
+  - END HALF appears once per game (a BALL LOST subtype ending H1); H2 simply ends with the
+    tracking, so no end-of-match D tail is derived there.
+  - One event has End Frame 0 < Start Frame (G1's frame-1 KICK OFF): ends are normalised to
+    max(start, end).
+  - No metadata XML: the pitch is the provider's nominal 105 x 68 and the half ends come from
+    the tracking Period column; team ids are "Home"/"Away" (home file first, as in the EPTS
+    order). The source ball is NaN on ~39-41% of frames (G3: 31.9%), so the degradation's
+    missing fraction overshoots the real target even more than G3's.
 """
 
 import json
@@ -106,6 +129,8 @@ FPS = 25
 
 FILES = {"meta": "Sample_Game_3_metadata.xml", "raw": "Sample_Game_3_tracking.txt",
          "events": "Sample_Game_3_events.json"}
+CSV_STEMS = {"G1": "Sample_Game_1", "G2": "Sample_Game_2"}
+CSV_PITCH = (105.0, 68.0)   # the provider's nominal pitch; the CSV games publish no metadata
 
 CONTROLLED_TYPES = ("SET PIECE", "PASS", "CARRY", "SHOT", "RECOVERY")
 UNCONTROLLED_RECOVERY = frozenset(("SAVED", "BLOCKED"))   # deflected shot-stops
@@ -113,11 +138,18 @@ WHISTLE_SUBTYPES = frozenset(("FORCED", "VOLUNTARY", "HAND BALL", "OFFSIDE"))
 RESTART_SUBTYPES = frozenset(("GOAL KICK",))
 
 
-def files(open_dir=OPEN_DIR):
-    paths = {k: os.path.join(open_dir, v) for k, v in FILES.items()}
+def files(match_id="G3", open_dir=OPEN_DIR):
+    if match_id in CSV_STEMS:
+        stem = CSV_STEMS[match_id]
+        paths = {"events": os.path.join(open_dir, stem + "_RawEventsData.csv"),
+                 "home": os.path.join(open_dir, stem + "_RawTrackingData_Home_Team.csv"),
+                 "away": os.path.join(open_dir, stem + "_RawTrackingData_Away_Team.csv")}
+    else:
+        paths = {k: os.path.join(open_dir, v) for k, v in FILES.items()}
     missing = [p for p in paths.values() if not os.path.isfile(p)]
     if missing:
-        raise IOError("Metrica Sample Game 3 not found:\n  " + "\n  ".join(missing)
+        raise IOError("Metrica Sample Game {} not found:\n  ".format(match_id)
+                      + "\n  ".join(missing)
                       + "\nRun `make metrica-data` (scripts/fetch_metrica.py).")
     return paths
 
@@ -347,13 +379,85 @@ def decimate(arrays, events, half_end, src_fps):
     return arrays, events, half_end
 
 
+def load_events_csv(path):
+    """Events in load_events' shape from the CSV format: Team "Home"/"Away", "-"-joined
+    subtypes (no subtype name contains a hyphen), ends normalised to max(start, end)."""
+    import pandas as pd
+    table = pd.read_csv(path)
+    teams = {"Home": 0, "Away": 1}
+    team = [teams[v] for v in table["Team"]]
+    subs = [frozenset(p for p in str(v).split("-") if p)
+            for v in table["Subtype"].fillna("")]
+    start = table["Start Frame"].astype(int).tolist()
+    end = table["End Frame"].astype(int).tolist()
+    period = table["Period"].astype(int).tolist()
+    out = [{"type": str(t), "subs": s, "team": m, "start": a, "end": max(a, b), "period": p}
+           for t, s, m, a, b, p in zip(table["Type"], subs, team, start, end, period)]
+    if out != sorted(out, key=lambda v: (v["period"], v["start"])):
+        raise ValueError("events are not sorted by (period, start)")
+    return out
+
+
+def _read_tracking_csv(path):
+    """(period (T,) int, players (T,P,2) normalised, ball (T,2) normalised) from one per-team
+    tracking CSV (3 header rows; Period, Frame, Time [s], x,y pairs, ball x,y)."""
+    import pandas as pd
+    data = pd.read_csv(path, skiprows=3, header=None).to_numpy(dtype=float)
+    with open(path) as handle:
+        handle.readline()
+        handle.readline()
+        names = [c.strip() for c in handle.readline().rstrip("\n").split(",")][:data.shape[1]]
+    if names[:3] != ["Period", "Frame", "Time [s]"] or names[-2] != "Ball":
+        raise ValueError("{}: unexpected column layout {}..{}".format(path, names[:4], names[-2:]))
+    frame = data[:, 1].astype(int)
+    if not np.array_equal(frame, np.arange(1, len(frame) + 1)):
+        raise ValueError("{}: frames are not contiguous 1..{}".format(path, len(frame)))
+    dt = float(np.nanmedian(np.diff(data[:, 2])))
+    if abs(dt - 1.0 / FPS) > 1e-6:
+        raise ValueError("{}: {} s between frames; only 25 Hz CSVs are supported".format(path, dt))
+    n_players = (data.shape[1] - 5) // 2
+    players = data[:, 3:3 + 2 * n_players].reshape(len(frame), n_players, 2)
+    return data[:, 0].astype(int), players, data[:, 3 + 2 * n_players:3 + 2 * n_players + 2]
+
+
+def _build_csv(match_id, open_dir):
+    paths = files(match_id, open_dir)
+    events = load_events_csv(paths["events"])
+    period_h, players_h, ball_h = _read_tracking_csv(paths["home"])
+    period_a, players_a, ball_a = _read_tracking_csv(paths["away"])
+    if not np.array_equal(period_h, period_a):
+        raise ValueError("{}: home and away tracking disagree on frames/periods".format(match_id))
+    both = ~np.isnan(ball_h[:, 0]) & ~np.isnan(ball_a[:, 0])
+    if not (np.array_equal(np.isnan(ball_h), np.isnan(ball_a))
+            and np.allclose(ball_h[both], ball_a[both], atol=1e-9)):
+        raise ValueError("{}: home and away ball columns disagree".format(match_id))
+    scale = np.asarray(CSV_PITCH)
+    players = np.concatenate([players_h, players_a], axis=1) * scale
+    team_of_player = np.array([0] * players_h.shape[1] + [1] * players_a.shape[1], dtype=np.int8)
+    half_end = {int(p): int(np.flatnonzero(period_h == p)[-1] + 1)
+                for p in np.unique(period_h)}
+    if sorted(half_end) != [1, 2]:
+        raise ValueError("{}: expected periods 1 and 2, found {}".format(match_id,
+                                                                         sorted(half_end)))
+    return _finish(match_id, players, ball_h * scale, team_of_player, events, half_end,
+                   CSV_PITCH, ("Home", "Away"))
+
+
 def build(match_id="G3", open_dir=OPEN_DIR):
-    paths = files(open_dir)
+    if match_id in CSV_STEMS:
+        return _build_csv(match_id, open_dir)
+    paths = files(match_id, open_dir)
     info = read_info(paths["meta"])
     events = load_events(paths["events"], info["team_ids"])
     players, ball, team_of_player, n_src = parse_tracking(paths["meta"], paths["raw"], info)
     (players, ball), events, half_end = decimate([players, ball], events, info["half_end"],
                                                  info["fps"])
+    return _finish(match_id, players, ball, team_of_player, events, half_end, info["pitch"],
+                   info["names"])
+
+
+def _finish(match_id, players, ball, team_of_player, events, half_end, pitch, team_names):
+    """Derive the mechanical GT, cut the halves at [kick-off, half end], pad and assemble."""
     n_src = players.shape[0]
     alive_src, owner_src, _ = derive(events, half_end, n_src)
     kicks = kickoff_frames(events)
@@ -395,14 +499,22 @@ def build(match_id="G3", open_dir=OPEN_DIR):
         raise ValueError("both halves resolve to the home team attacking the same way")
 
     return clean.CleanMatch(
-        name=match_id, fps=FPS, pitch=info["pitch"], players=out_players,
+        name=match_id, fps=FPS, pitch=pitch, players=out_players,
         team_of_player=team_of_player, ball=out_ball, alive=alive, owner=owner, halves=halves,
-        team_names=info["names"])
+        team_names=team_names)
 
 
-def census(open_dir=OPEN_DIR):
+def census(match_id="G3", open_dir=OPEN_DIR):
     """The event->label derivation census (ambiguity counters) without building the tracking."""
-    paths = files(open_dir)
+    paths = files(match_id, open_dir)
+    if match_id in CSV_STEMS:
+        import pandas as pd
+        events = load_events_csv(paths["events"])
+        period = pd.read_csv(paths["home"], skiprows=3, header=None,
+                             usecols=[0])[0].to_numpy(dtype=int)
+        half_end = {int(p): int(np.flatnonzero(period == p)[-1] + 1) for p in np.unique(period)}
+        _, _, out = derive(events, half_end, len(period))
+        return out
     info = read_info(paths["meta"])
     events = load_events(paths["events"], info["team_ids"])
     _, _, out = derive(events, info["half_end"], info["half_end"][2])

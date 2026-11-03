@@ -1,9 +1,11 @@
-"""make metrica-data: download Metrica Sports Sample Game 3 (EPTS tracking + JSON events).
+"""make metrica-data: download Metrica Sports Sample Games 1-3 (CSV and EPTS formats).
 
 Source: github.com/metrica-sports/sample-data at the pinned commit COMMIT (master as of
-2026-11-01, "Added Sample Game 3", 2021-04-15). Only the three Sample_Game_3 files are fetched
-(Games 1-2 are the CSV format and are not used). Each file is verified against the SHA256
-recorded below (computed at first download) and skipped when already present and matching.
+2026-11-01, "Added Sample Game 3", 2021-04-15). Game 3 is the EPTS format (tracking txt + JSON
+events); Games 1-2 are the CSV format (per-team tracking CSVs + an events CSV), added 2 Nov 2026
+for the pre-registered mechanism replication (submissions/LOG.md, Exp B). Each file is verified
+against the SHA256 recorded below (computed at first download) and skipped when already present
+and matching.
 
 Licence: the repository has NO formal LICENSE file at the pinned commit - only README.md terms
 ("Legal stuff: Please be responsible with the use of this data. If you use it for anything
@@ -31,9 +33,21 @@ FILES = {
         81806, "009c7dcfcb66192014917ca1559c158f612353e390eafb85f8214b06a1c7dec1"),
     "data/Sample_Game_3/Sample_Game_3_tracking.txt": (
         53443115, "570e6ce82c2d93bc92723af331d93c31110bec1d6dc0be07c6d44ca3f981d658"),
+    "data/Sample_Game_1/Sample_Game_1_RawEventsData.csv": (
+        139446, "097dda6345e17390dca095331458fd00e47960c480c76f4356fd4edf2575ef05"),
+    "data/Sample_Game_1/Sample_Game_1_RawTrackingData_Home_Team.csv": (
+        32782961, "0a3d0eff7785950379c587d3597b86a2d91c2492281b4652e1abb97c99b6b364"),
+    "data/Sample_Game_1/Sample_Game_1_RawTrackingData_Away_Team.csv": (
+        32782073, "0a3df68a92af0290ede472e62de3b6489ddee29223da09bdf0cf76c8e0ab0618"),
+    "data/Sample_Game_2/Sample_Game_2_RawEventsData.csv": (
+        153897, "edf31a18599265b77a8baf150f2ce6d89456fb0324b62ea7a391229657a619ba"),
+    "data/Sample_Game_2/Sample_Game_2_RawTrackingData_Home_Team.csv": (
+        31890338, "3f9990ac204b07133e4202441d6fcbb386897c7c7f81e1bc3ce4d35bc8644694"),
+    "data/Sample_Game_2/Sample_Game_2_RawTrackingData_Away_Team.csv": (
+        29627711, "aa639f40762eade46c389020fe4458266b5ba14027b1e96e22e75db62803718b"),
 }
 
-TERMS = """Metrica Sports sample data, Sample Game 3 only.
+TERMS = """Metrica Sports sample data, Sample Games 1-3.
 Repository: https://github.com/metrica-sports/sample-data
 Pinned commit: {commit}
 No formal LICENSE file at that commit. README.md terms ("Legal stuff"):
