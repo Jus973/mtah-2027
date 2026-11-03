@@ -1,5 +1,12 @@
 """make metrica-sim: degrade Metrica Sample Game 3 into a synthetic bundle + acceptance check.
 
+FAMILY=csv builds Sample Games 1-2 instead (io/metrica_csv.py, configs/sim.yaml
+`matches.metrica_csv`), same mechanical labels and same degradation; NATIVE=1 skips the simulated
+ball loss and keeps the source tracker's own (the CSV release has the ball missing on most dead
+frames and few alive ones), writing MET-G1N/MET-G2N. The acceptance band gates the default family
+only; for csv it is reported, never the exit code (the matches are easier than the real ATD, so
+read their scores as an optimistic, out-of-sample second opinion).
+
 The second validation family (handoff/REPLY.md P5). io/metrica.py builds the CleanMatch with
 MECHANICAL event-derived GT (owner at controlled touches, D between out-of-play and restart);
 this script degrades it with the SAME machinery and the SAME fitted parameters as the DFL sims
@@ -25,7 +32,7 @@ import numpy as np
 from mtah import config, registry
 from mtah.eval.score import pm, score
 from mtah.features.baseline import nearest_player_codes
-from mtah.io import metrica
+from mtah.io import metrica, metrica_csv
 from mtah.io.atd import load_game
 from mtah.learn import degrade, stats
 
@@ -38,7 +45,12 @@ import sim_check            # noqa: E402  (spells + the official reference curve
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--family", choices=("g3", "csv"), default="g3")
+    parser.add_argument("--native", action="store_true",
+                        help="csv family: keep the source ball loss, add no simulated loss")
     args = parser.parse_args()
+    if args.native and args.family != "csv":
+        parser.error("--native applies to --family csv only")
     cfg = config.load("sim.yaml")
     dcfg, mcfg, targets = cfg["degrade"], cfg["measure"], cfg["targets"]
     accept = tuple(cfg["metrica_accept"])
@@ -50,8 +62,15 @@ def main():
         "real", targets["ball_missing_frac"], 1e3 * targets["gaps_per_frame"],
         targets["gap_median_frames"], *targets["p11_given_7to11"], "20.49"))
     rows = []
-    for game in cfg["matches"]["metrica"]:
-        match = metrica.load(game[len("MET-"):])
+    games = cfg["matches"]["metrica" if args.family == "g3" else "metrica_csv"]
+    if args.native:
+        games = [g + "N" for g in games]
+        degrade.ball_missing = lambda match, *a, **k: ~match.graded()
+    for game in games:
+        if args.family == "g3":
+            match = metrica.load(game[len("MET-"):])
+        else:
+            match = metrica_csv.load(int(game[len("MET-G"):].rstrip("N")))
         src_missing = float(np.isnan(match.ball[match.graded(), 0]).mean())
         out, meta = degrade.write_sim(match, dcfg, mcfg, args.seed, game=game)
         atd, _ = load_game(game, out)
@@ -93,6 +112,9 @@ def main():
           "curve order smooth50>125>25: {}".format("PASS" if ok else "FAIL", mean50,
                                                    accept[0], accept[1], order))
 
+    if args.family == "csv":
+        print("  (csv family: band reported, not gated)")
+        sys.exit(0)
     print("\n== event->label derivation census (io/metrica.py docstring) ==")
     for k, v in sorted(metrica.census().items()):
         print("  {:<34} {}".format(k, v))
