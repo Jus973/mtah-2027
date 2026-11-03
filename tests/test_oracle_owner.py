@@ -46,3 +46,11 @@ def test_cell_table_one_base_switch_recalls_one_turnover():
     lab = np.array(list("H" * 75 + "A" * 45))
     hits = [r[2] for r in cell_table(q, lab, np.zeros(120, bool), 25)]
     assert hits.count(True) == 1 and len(hits) == 3
+
+
+def test_cell_table_matching_is_maximum_for_overlapping_windows():
+    gt = np.array(list("H" * 60 + "A" * 10 + "H" * 10 + "A" * 40))
+    q = SimpleNamespace(m=SimpleNamespace(gt=gt, graded=np.ones(120, bool)), events=[])
+    lab = np.array(list("H" * 40 + "A" * 10 + "H" * 15 + "A" * 55))
+    hits = [r[2] for r in cell_table(q, lab, np.zeros(120, bool), 25)]
+    assert hits == [True, True, True]
