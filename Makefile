@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps train-dead train-hybrid paired sim-latency sim-ablate sim-costs score autopsy clips candidate dend-stats sync submission doc audit docker-build check-data metrica-data metrica-sim
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps train-dead train-hybrid paired sim-latency sim-ablate sim-costs score autopsy clips candidate dend-stats gap-stats sync submission doc audit docker-build check-data metrica-data metrica-sim
 
 setup:
 	python3.11 -m venv .venv
@@ -113,6 +113,10 @@ candidate: check-data
 # Anchor-free D-boundary aggregates of a candidate (agents: make airlock T=dend-stats CFG=...)
 dend-stats: check-data
 	$(PY) scripts/dend_stats.py --game $(GAME) --config $(or $(CFG),configs/final.yaml)
+
+# Label-free gap-decoder input distributions (agents: make airlock T=gap-stats; sims directly)
+gap-stats: check-data
+	$(PY) scripts/gap_stats.py --game $(GAME) --config $(or $(CFG),configs/final.yaml)
 
 # The reproduction image (Dockerfile; PLATFORM=linux/amd64 for x86); agents then run it with
 # make airlock T=submission-docker
