@@ -43,6 +43,17 @@ def kickoffs(game, atd, cfg, data_dir=None):
     return {h: r["frame"] for h, r in found.items() if r["frame"] is not None}
 
 
+def pre_kickoff_mask(sp, kicks, tol):
+    """(T,) bool: graded frames before a half's derived kick-off, where the half's graded block
+    opens more than tol frames before it; the pipeline holds these D and never gap-decodes them."""
+    pre_kick = np.zeros(sp["n_frames"], dtype=bool)
+    for half, first, last in sp["half_blocks"]:
+        k = kicks.get(half)
+        if k is not None and k - first > tol:
+            pre_kick[first:min(k, last + 1)] = True
+    return pre_kick
+
+
 def run(game, cfg, data_dir=None, atd=None):
     """(labels (T,) '<U1', info dict of counts) for one match under one config."""
     sp = registry.spec(game, data_dir)
@@ -64,12 +75,7 @@ def run(game, cfg, data_dir=None, atd=None):
     for a, b, _ in runs:
         dead[a:b + 1] = True
     kicks = kickoffs(game, atd, cfg, data_dir)
-    tol = cfg["kickoff"]["tolerance_frames"]
-    pre_kick = np.zeros(sp["n_frames"], dtype=bool)
-    for half, first, last in sp["half_blocks"]:
-        k = kicks.get(half)
-        if k is not None and k - first > tol:
-            pre_kick[first:min(k, last + 1)] = True
+    pre_kick = pre_kickoff_mask(sp, kicks, cfg["kickoff"]["tolerance_frames"])
     oc = cfg["owner"]
     gc = cfg.get("gaps")
     ds = cfg.get("deadstate")
