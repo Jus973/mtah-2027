@@ -25,7 +25,7 @@ from mtah.features.ball import clean_ball  # noqa: E402
 from mtah.io.atd import load_game  # noqa: E402
 from mtah.learn import gapstate  # noqa: E402
 from mtah.learn.stats import runs  # noqa: E402
-from mtah.pipeline import kickoffs  # noqa: E402
+from mtah.pipeline import kickoffs, pre_kickoff_mask  # noqa: E402
 
 QS = (10, 25, 50, 75, 90)
 
@@ -58,7 +58,11 @@ F = gapstate.features(players, atd.team_of_slot,
                       gapstate.home_direction(atd, sp, kicks, cfg["direction"]["window_frames"]),
                       atd.pitch, gc, fps)
 F_home = F[0]
-gap = gapstate.long_gaps(observed, graded, gc["min_frames"])
+# The decoder's own gap mask: frames before a derived kick-off stay D and are never gap-decoded
+# (pipeline.run), so they are not part of its input world.
+gap_raw = gapstate.long_gaps(observed, graded, gc["min_frames"])
+pre_kick = pre_kickoff_mask(sp, kicks, cfg["kickoff"]["tolerance_frames"])
+gap = gap_raw & ~pre_kick
 idx = np.flatnonzero(gap)
 _, lens = runs(gap)
 lens = np.asarray(lens, dtype=float)
@@ -70,6 +74,7 @@ put("long gaps (>= {} frames)".format(gc["min_frames"]), {
     "n": int(len(lens)),
     "in-gap graded frames": int(len(idx)),
     "share of graded": float(len(idx) / graded.sum()) if graded.sum() else 0.0,
+    "pre-kick-off in-gap frames excluded": int((gap_raw & pre_kick).sum()),
     "length quantiles (s) p10/25/50/75/90": quantiles(lens / fps),
 })
 
