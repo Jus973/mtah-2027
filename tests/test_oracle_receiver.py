@@ -46,3 +46,21 @@ def test_corridor_first_player_in_the_balls_path_and_slow_ball_is_invalid():
     assert row["rc_first"] == 1.0 and row["rc_valid"] == 1.0
     assert row["rc_perp_own"] == 1.0 and row["rc_perp_opp"] == 0.5 and row["rc_margin"] == -0.5
     assert X[1, CORRIDOR_FEATURES.index("rc_valid")] == 0.0  # ball still before frame 10
+
+
+def test_adjacent_contacts_have_no_flight_and_margins_stop_at_the_next_contact():
+    d = np.full((100, 2), 5.0)
+    d[9:] = [1.0, 9.0]  # the next contact's play must not leak into this one's flight
+    X = flight_features([ev(0, 5, 8), ev(1, 9, 12), ev(0, 30, 31)], d)
+    assert col(X, "fl_log_s")[0] == 0.0 and col(X, "land_missing")[0] == 1.0
+    assert col(X, "m10_margin")[0] == 0.0 and col(X, "m25_margin")[0] == 0.0
+    assert col(X, "m10_margin")[1] == -8.0 and col(X, "m25_margin")[1] == 0.0  # 37 > stop 29
+
+
+def test_oracle_label_follows_the_label_policy():
+    from oracle_receiver import oracle_label
+    gt = np.array(list("A" * 100 + "D" * 10 + "H" * 20))
+    graded = np.ones(len(gt), dtype=bool)
+    e = [ev(0, 95, 100)]
+    assert oracle_label(e, gt, graded, 5)[0] == 0.0
+    assert oracle_label(e, gt, graded, 5, "alive_lag")[0] == 1.0
