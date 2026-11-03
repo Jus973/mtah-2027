@@ -544,3 +544,87 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   "Push it"): `eedd4ef` on main → github.com/Jus973/mtah-2027 (50 files; the block-match-data
   pre-commit guard passed). Registration (before 10 Nov) and the Form (17 Nov) remain; the FINAL
   is not uploaded.
+- 2026-11-02: **Pre-registration: GT-convention regret matrix (Exp A, ledger +1) and Metrica
+  Games 1–2 mechanism replication (Exp B, diagnostics)** — the de-risk benchmark of
+  handoff/IMPROVEMENT_PLAN.md §1a/§1b, approved by the user ("Yes, run it", 2 Nov evening).
+  Written before any result below was computed. The FINAL stays frozen; neither experiment can
+  adopt or revert anything — the only firing action either can have is "escalate to the human".
+  - **Exp A — regret matrix (handoff/fable/exp_regret.py).** Worlds: the GT with every D-run end
+    shifted LATER by k ∈ {0, +10, +20, +38} frames (annotator-late restart worlds; k = 0 is the
+    published GT; +38 is v6's median MET-G3 lateness). Transformation, inside each valid (non-X)
+    GT run: for each maximal D run followed by an alive segment of length m, relabel that
+    segment's first min(k, m−1) frames as D — every spell keeps ≥ 1 frame, so spell and D-run
+    counts are preserved and k = 0 is the identity. D starts untouched (the recorded adoption
+    risk is restart timing). Candidates, frozen as adopted: v6 = configs/rules_v6_final.yaml,
+    v11 = configs/rules_v11.yaml. Outputs: the §6.4 cross-fitted protocol (scripts/paired.py
+    labels_for, the exact make-paired code path) on the 7 DFL sims; the committed-model pipeline
+    (mtah.pipeline.run) on MET-G3, which is in no fold. Scorer: the official pm.evaluate against
+    the transformed GT, unmodified. Statistic: paired per-match Δ = spellF1(v11) − spellF1(v6)
+    per world; PRIMARY = the 8-match equal-weight mean per world. **Decision rule: min over k of
+    the primary mean ≥ −0.010 → record "v11 convention-robust; keep FINAL", done. Otherwise →
+    escalate to the human with the hedged-v12 ladder (per-boundary shift fraction λ ∈
+    {0.5, 0.75} of the v11 refinement, or W ∈ {40, 55}), ranked by max-min across the four
+    worlds; any v12 then faces the FULL standing gates (§6.4 strict + stress arms + real-match
+    guards + one-way rule + written human sign-off).** Supplementary, reported but never the
+    decision statistic: fit/holdout split means, committed-model rows on the 7 DFL, and
+    MET-G1/G2 rows if Exp B builds them. Computing candidate spellF1 on MET-G3 here consumes the
+    P5 "candidate score on MET-G3" seal as audit evidence (the k = 0 column IS that score); the
+    P5 one-shot score VETO stays VOID (acceptance failed 1 Nov) and is NOT exercised — reviving
+    it still needs a fresh human-signed registration (IMPROVEMENT_PLAN §1c). Ledger: +1
+    pre-registered binary outcome to the ~20-test family.
+  - **Exp B — MET-G1/G2 (handoff/fable/exp_metrica_rep.py).** Fetch Metrica Sample Games 1–2
+    (the CSV format) from the same pinned commit, sha256 recorded in scripts/fetch_metrica.py at
+    first download; extend src/mtah/io/metrica.py with a CSV events/tracking reader feeding the
+    SAME mechanical derive(); build MET-G1/MET-G2 with the committed degradation (sim.yaml
+    degrade.fitted, seed 0) plus undegraded CLEAN variants. Configs untouched: the ids are
+    passed explicitly, never fit/holdout, and nothing globs the sim dir. Aggregates per match,
+    degraded + clean: (1) v6 D-run end − nearest GT restart (p25/50/75, late/early shares; G3
+    was +26/+38/+78 degraded); (2) v11 D-run end − restart, same stats (the adoption premise
+    says ≈ 0); (3) the label-free annotation-latency calibration (ball-kinematics onset vs
+    restart, undegraded); (4) GT structure + official-baseline curve (informational;
+    metrica_accept stays void for any score-veto use). **Interpretation rule, fixed now: v6
+    median ≥ +12 frames late with ≥ 70 % of ends late on BOTH games = the mechanical-lateness
+    premise replicates (n = 1 → 3); on EITHER game v6 median within ±12 frames, or v11's median
+    later than v6's = grounds to revisit the adoption, escalated to the human (revert path:
+    configs/rules_v6_final.yaml, preserved and reproducible).** CSV-vs-JSON taxonomy gaps (event
+    types the CSV format lacks, if any) are recorded in the io docstring and census before
+    results are read. Diagnostics, not selection tests: ledger +0, recorded.
+- 2026-11-02: **Exp A + Exp B results — both pre-registered outcomes land in v11's favour; the
+  FINAL stands** (scripts/regret_matrix.py — landed from the session runner — and the Exp B
+  runner on the airlock host; full tables on the board, #8/#9 and the Eval log; `make test` 116
+  passed after the io/metrica.py CSV extension).
+  - **Exp A (regret matrix): v11 CONVENTION-ROBUST.** Primary mean Δ(v11 − v6), cross-fitted on
+    the 7 DFL sims + committed-model MET-G3, per world: k=0 +0.0291 (8/8 wins), k=+10 +0.0213
+    (8/8), k=+20 +0.0117 (8/8), k=+38 +0.0010 (5/8). **Min over k = +0.0010 ≥ −0.010 → "keep
+    FINAL"; the hedged-v12 ladder does not fire.** The k=0 column reproduces the 1 Nov §6.4
+    evidence exactly (7-DFL mean +0.0289; held-out 0.6271 → 0.6636) — a built-in reproduction
+    check. Worst cells at k=+38: MET-G3 −0.0171, J03WPY −0.0090, J03WQQ −0.0057. The recorded
+    adoption risk is now a measured bound: even in a world where the private GT tags every
+    restart as late as v6's own median lateness (~1.5 s), v11's expected cost vs v6 is ≈ 0 on
+    average and ≤ ~0.02 on the worst match — against +0.012…+0.029 upside in the
+    mechanical-to-moderately-late worlds. MET-G3 candidate scores (the seal consumed exactly as
+    registered, audit evidence only): k=0 v6 0.6845, v11 0.7148.
+  - **Exp B (MET-G1/G2): the mechanical-lateness premise REPLICATES, n = 1 → 3.** v6 D-end −
+    nearest restart, degraded: G1 +25/+43/+92 frames p25/50/75 (83 % late > +12 f), G2
+    +24/+41/+83 (89 %), vs G3's +26/+38/+78 (93 %) — a provider-wide v6 signature, nearly
+    unchanged on the undegraded CLEAN variants (G1 +26/+43/+78, G2 +28/+39/+54), so not
+    degradation-induced. v11 on the same restarts, degraded: medians +4 / +3 / +2 frames
+    (0.08–0.16 s), 76–79 % of ends within ±2 s. The event clock is frame-accurate on all three
+    (ball-kinematics onset − restart median +1 frame; 97/97, 88/91, 91/92 onsets found), and the
+    source ball is NaN on ~50 % of frames within ±1 s of restarts on all three — the real-ATD
+    restart-gap hypothesis, three matches running. **Pre-registered interpretation: replicates
+    on BOTH games; no contradiction; nothing to escalate.** Caveats recorded: MET-G2's degraded
+    missing fraction overshoots the real target (0.542 vs 0.407; its source ball is already 41 %
+    missing), and the G1/G2 official-baseline s50 (0.3872 / 0.3203) sits above the void
+    metrica_accept band — the family stays mechanism evidence, never a score veto.
+  - Supplementary (reported, never the decision statistic): committed-model regret rows on the
+    NEW games — MET-G1 k=0 +0.0082 → k=+38 −0.0304, MET-G2 +0.0152 → −0.0080 (v6 0.7325/0.6258,
+    v11 0.7407/0.6410 at k=0). The residual exposure's shape: the private GT must BOTH be
+    ~1.5 s late-tagged AND Metrica-like in spell structure to cost v11 ~0.01–0.03, at absolute
+    scores far above any plausible τ20; under the organisers' published mechanical GT definition
+    (k ≈ 0) v11 won all 10 matches measured today.
+  - Ledger: Exp A +1 (outcome recorded: robust); Exp B +0 (diagnostics). The P5 one-shot veto
+    remains VOID and unexercised. Configs untouched; MET ids stay outside fit/holdout; the FINAL
+    and its sha are unchanged (7b83f3a89bb15fa8…). Standing addition per IMPROVEMENT_PLAN §1d:
+    the convention matrix is a MANDATORY arm for any future candidate that moves possession
+    boundaries.
