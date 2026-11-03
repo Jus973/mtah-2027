@@ -32,15 +32,16 @@ class Prepared:
         self.cfg = cfg
         oc = cfg["owner"]
         self.events = takeover.contacts(m.ball, m.d, cfg["touch"], oc["contact_r_m"], m.fps)
-        self.X = takeover.features(self.events, m.d, m.fps)
         if oc.get("shape_features"):
             gc = cfg["gaps"]
             self.F = gapstate.features(m.players, m.atd.team_of_slot,
                                        gapstate.home_direction(m.atd, m.spec, {},
                                                                cfg["direction"]["window_frames"]),
                                        m.atd.pitch, gc, m.fps)
-            self.X = np.hstack([self.X, takeover.shape_features(self.events, self.F,
-                                                                gapstate.feature_names(gc))])
+        F = getattr(self, "F", None)
+        self.X = takeover.design(self.events, m.d, F,
+                                 gapstate.feature_names(cfg["gaps"]) if F is not None else None,
+                                 cfg, m.fps)
         self.rows, self.y = takeover.training_rows(self.events, m.gt, m.graded,
                                                    oc["label_lag_frames"],
                                                    oc.get("label_policy", "legacy"))
@@ -68,9 +69,7 @@ class Prepared:
 
 
 def fit_on(prepared, params):
-    q0 = prepared[0]
-    names = takeover.FEATURES + (takeover.SHAPE_FEATURES if q0.X.shape[1] > len(takeover.FEATURES)
-                                 else ())
+    names = takeover.feature_names(prepared[0].cfg)
     return takeover.train(np.concatenate([q.X[q.rows] for q in prepared]),
                           np.concatenate([q.y for q in prepared]), params, names)
 

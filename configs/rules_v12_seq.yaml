@@ -1,0 +1,9 @@
+# Rules v12-seq (§3b, board #11): v11 plus contact-sequence context in the takeover model
+# (learn/takeover.py SEQUENCE_FEATURES: each team's run of consecutive contacts around the
+# contact, time since each team's last contact and to the opponent's next). Everything else -
+# decoder, alpha, flip_penalty, gap and dead-hybrid parts - is v11's. Evaluated with
+# make paired A=configs/final.yaml B=configs/rules_v12_seq.yaml (cross-fitted, no model committed).
+inherit: rules_v11.yaml
+
+owner:
+  sequence_features: true

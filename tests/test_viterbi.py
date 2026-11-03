@@ -109,3 +109,30 @@ def test_v6_pipeline_on_the_fake_match(fake, fake_atd):
     graded = registry.graded_mask(sp)
     assert set(a[graded]) <= {"H", "A", "D"} and set(a[~graded]) == {"X"}
     assert info["contacts"] > 0
+
+
+def test_sequence_features_runs_and_gaps():
+    events = [contact(0, 0), contact(25, 0), contact(50, 1), contact(75, 1), contact(100, 0)]
+    S = takeover.sequence_features(events)
+    col = {n: i for i, n in enumerate(takeover.SEQUENCE_FEATURES)}
+    assert S.shape == (5, len(takeover.SEQUENCE_FEATURES))
+    assert S[2, col["opp_run_before"]] == 2 and S[2, col["own_run_before"]] == 0
+    assert S[2, col["own_run_after"]] == 1 and S[3, col["own_run_before"]] == 1
+    assert S[4, col["opp_run_before"]] == 2 and S[4, col["prev2_same_team"]] == 0
+    assert S[1, col["own_run_before"]] == 1 and S[0, col["log_dt_last_opp"]] == np.log1p(10.0)
+    assert S[4, col["log_dt_last_own"]] == np.log1p((100 - events[1].end) / 25)
+    assert S[2, col["log_dt_next_opp"]] == np.log1p((100 - events[2].end) / 25)
+    swapped = [contact(e.start, 1 - e.team) for e in events]
+    np.testing.assert_array_equal(S, takeover.sequence_features(swapped))
+
+
+def test_design_matches_feature_names():
+    cfg = config.load("rules_v12_seq.yaml")
+    assert takeover.feature_names(cfg)[-len(takeover.SEQUENCE_FEATURES):] == \
+        takeover.SEQUENCE_FEATURES
+    from mtah.learn import gapstate
+    names = gapstate.feature_names(cfg["gaps"])
+    T, d = 200, np.full((200, 2), 2.0)
+    F = (np.zeros((T, len(names))), np.zeros((T, len(names))))
+    X = takeover.design([contact(20, 0), contact(80, 1)], d, F, names, cfg)
+    assert X.shape == (2, len(takeover.feature_names(cfg)))

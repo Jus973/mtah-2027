@@ -114,9 +114,8 @@ def run(game, cfg, data_dir=None, atd=None):
     dead &= graded
     if oc["decoder"] == "viterbi":
         events = takeover.contacts(ball, d, cfg["touch"], oc["contact_r_m"], fps)
-        X = takeover.features(events, d, fps)
-        if oc.get("shape_features"):
-            X = np.hstack([X, takeover.shape_features(events, F, gapstate.feature_names(gc))])
+        X = takeover.design(events, d, F, gapstate.feature_names(gc) if F is not None else None,
+                            cfg, fps)
         p = takeover.predict(takeover.load(cfg), X)
         if restarts:                     # a release restart is the taker's (restart_takeover_p)
             events, p = takeover.with_restarts(events, p, restarts,

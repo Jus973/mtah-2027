@@ -61,9 +61,8 @@ class Match:
             m = self.m = simeval.SimMatch(game, cfg)
         oc, gc = cfg["owner"], cfg["gaps"]
         self.events = takeover.contacts(m.ball, m.d, cfg["touch"], oc["contact_r_m"], m.fps)
-        X = takeover.features(self.events, m.d, m.fps)
-        self.X = np.hstack([X, takeover.shape_features(self.events, F,
-                                                       gapstate.feature_names(gc))])
+        self.X = takeover.design(self.events, m.d, F, gapstate.feature_names(gc),
+                                 dict(cfg, owner=dict(oc, shape_features=True)), m.fps)
         self.rows, self.y = takeover.training_rows(self.events, m.gt, m.graded,
                                                    oc["label_lag_frames"])
         ev = evidence(m.ball_raw, m.ball, m.observed, m.players, m.graded, m.atd.pitch,

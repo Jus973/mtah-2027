@@ -11,7 +11,10 @@ gaps, both teams' forward drift 1 s and 2 s after the contact, and both centroid
 2 s before to 2 s after it. A team that wins the ball spreads and moves forward. On the sim
 they raised spellF1 by 0.014 with v5's gap decoder, on all 7 matches. Pressure (players of each
 team within 3 m / 8 m) was tried and dropped: it left held-out AUC unchanged (0.913) and depends on
-track dropouts and duplicates. Gradient-boosted trees (LightGBM), single-threaded and seeded, so
+track dropouts and duplicates. With owner.sequence_features (§3b, board #11), seven contact-
+sequence signals are added: the toucher's team's run of consecutive contacts before and after the
+contact, the opponent's run just before it, the time since each team's last contact and to the
+opponent's next one, and whether the contact two back was the same team's. Gradient-boosted trees (LightGBM), single-threaded and seeded, so
 training and prediction are deterministic.
 """
 
@@ -27,11 +30,27 @@ FEATURES = ("log_frames", "d_min", "opp_d_min", "speed_before", "speed_before_mi
             "log_dt_prev", "prev_same_team", "log_dt_next", "next_same_team", "next2_same_team")
 SHAPE = ("x_sy", "y_sy", "dcu", "dspeed", "x_vu_+25", "x_vu_+50", "y_vu_+25", "y_vu_+50")
 SHAPE_FEATURES = SHAPE + ("x_cu_change", "y_cu_change")
+SEQUENCE_FEATURES = ("own_run_before", "opp_run_before", "own_run_after", "prev2_same_team",
+                     "log_dt_last_own", "log_dt_last_opp", "log_dt_next_opp")
 CAP_S = 10.0
+RUN_CAP = 5
 
 
 def feature_names(cfg):
-    return FEATURES + (SHAPE_FEATURES if cfg["owner"].get("shape_features") else ())
+    oc = cfg["owner"]
+    return (FEATURES + (SHAPE_FEATURES if oc.get("shape_features") else ())
+            + (SEQUENCE_FEATURES if oc.get("sequence_features") else ()))
+
+
+def design(events, d, F, gap_names, cfg, fps=25):
+    """The takeover model's input for cfg: features plus the enabled shape/sequence blocks."""
+    oc = cfg["owner"]
+    X = [features(events, d, fps)]
+    if oc.get("shape_features"):
+        X.append(shape_features(events, F, gap_names))
+    if oc.get("sequence_features"):
+        X.append(sequence_features(events, fps))
+    return np.hstack(X)
 
 
 def contacts(ball, d, touch_cfg, r, fps=25):
@@ -61,6 +80,44 @@ def features(events, d, fps=25):
                 float(nxt is not None and nxt.team == e.team),
                 float(nxt2 is not None and nxt2.team == e.team)]
     return X
+
+
+def sequence_features(events, fps=25):
+    """(n_events, len(SEQUENCE_FEATURES)): the contact sequence around each contact, relative to
+    the toucher's team. Runs count consecutive contacts (capped at RUN_CAP); times are in seconds
+    from the other contact's end to this one's start (or this end to the next start), capped at
+    CAP_S, log1p, with the cap standing in for "none in the half's sequence"."""
+    n = len(events)
+    out = np.zeros((n, len(SEQUENCE_FEATURES)))
+    team = np.array([e.team for e in events], dtype=np.int64)
+    cap = np.log1p(CAP_S)
+
+    def dt(a, b):
+        return np.log1p(min(max(b - a, 0) / fps, CAP_S))
+
+    for i, e in enumerate(events):
+        own = team == e.team
+        j = i - 1
+        while j >= 0 and own[j] and i - 1 - j < RUN_CAP:
+            j -= 1
+        own_before = i - 1 - j
+        k = i - 1
+        while k >= 0 and not own[k] and i - 1 - k < RUN_CAP:
+            k -= 1
+        opp_before = i - 1 - k
+        m = i + 1
+        while m < n and own[m] and m - i - 1 < RUN_CAP:
+            m += 1
+        own_after = m - i - 1
+        last_own = next((events[x] for x in range(i - 1, -1, -1) if own[x]), None)
+        last_opp = next((events[x] for x in range(i - 1, -1, -1) if not own[x]), None)
+        next_opp = next((events[x] for x in range(i + 1, n) if not own[x]), None)
+        out[i] = [own_before, opp_before, own_after,
+                  float(i >= 2 and own[i - 2]),
+                  dt(last_own.end, e.start) if last_own else cap,
+                  dt(last_opp.end, e.start) if last_opp else cap,
+                  dt(e.end, next_opp.start) if next_opp else cap]
+    return out
 
 
 def shape_features(events, F, names):
