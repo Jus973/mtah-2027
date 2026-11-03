@@ -45,18 +45,25 @@ def turnovers(gt, graded):
 
 
 def cell_table(q, lab, gap, fps):
+    """One row per GT open-play turnover: (new-team contact within +-1 s, inside a long gap, hit).
+    Hits match GT turnovers one-to-one to base switches into the same team within +-1 s (nearest
+    unused switch, GT turnovers in time order), so one base switch never recalls two turnovers."""
     gt, graded = np.asarray(q.m.gt), q.m.graded
     w = int(fps)
     starts = np.array([e.start for e in q.events])
     teams = np.array([e.team for e in q.events])
+    switches = {k: np.flatnonzero((lab[1:] == k) & (lab[:-1] != k)) + 1 for k in ("H", "A")}
+    used = {k: np.zeros(len(v), bool) for k, v in switches.items()}
     rows = []
     for t in turnovers(gt, graded):
         k = "HA".index(gt[t])
         near = np.abs(starts - t) <= w
         contact = bool(np.any(near & (teams == k)))
-        a, b = max(t - w, 1), min(t + w, len(lab) - 1)
-        seg_prev, seg = lab[a - 1:b], lab[a:b + 1]
-        hit = bool(np.any((seg == gt[t]) & (seg_prev != gt[t])))
+        s, u = switches[gt[t]], used[gt[t]]
+        cand = np.flatnonzero((np.abs(s - t) <= w) & ~u)
+        hit = bool(len(cand))
+        if hit:
+            u[cand[np.argmin(np.abs(s[cand] - t))]] = True
         rows.append((contact, bool(gap[t]), hit))
     return rows
 

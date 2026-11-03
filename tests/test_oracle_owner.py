@@ -38,3 +38,11 @@ def test_cell_table_contact_gap_and_recall():
     gap[40:60] = True
     lab = np.array(list("H" * 100))
     assert cell_table(q, lab, gap, 25) == [(False, True, False)]
+
+
+def test_cell_table_one_base_switch_recalls_one_turnover():
+    gt = np.array(list("H" * 60 + "A" * 10 + "H" * 10 + "A" * 40))
+    q = SimpleNamespace(m=SimpleNamespace(gt=gt, graded=np.ones(120, bool)), events=[])
+    lab = np.array(list("H" * 75 + "A" * 45))
+    hits = [r[2] for r in cell_table(q, lab, np.zeros(120, bool), 25)]
+    assert hits.count(True) == 1 and len(hits) == 3
