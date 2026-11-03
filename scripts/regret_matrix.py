@@ -15,8 +15,24 @@ Decision rule (pre-registered): min over k of the 8-match primary mean of spellF
 spellF1(v6) ≥ −0.010 → "v11 convention-robust; keep FINAL"; otherwise escalate to the human with
 the hedged-v12 ladder ranked by max-min across worlds. This script only prints; it adopts nothing.
 
+Extension (board #46, pre-registered 3 Nov 2026 on the issue and in submissions/LOG.md): three
+more GT-convention axes, each run on its own against the SAME cached frozen labels, never
+composed with another axis —
+  switch  direct H<->A boundaries moved by k in {-10, -5, 0, +5, +10, +25} frames (positive =
+          later = the earlier spell grows); boundaries through D untouched; counts preserved;
+  merge   sandwiched possession spells shorter than s in {0, 1, 2} seconds (both neighbours are
+          spells of the other team, no D between) folded into that team, shortest first, to a
+          fixed point; the GT spell count falls by design;
+  dstart  D-run starts moved by k in {-10, 0, +10, +25} frames (positive = later = the preceding
+          spell grows into the D run); capped so both sides keep >= 1 frame; counts preserved.
+Decision rule for those axes (pre-registered): a world FAILS iff its 8-match primary mean
+delta < -0.010 AND v11 loses on >= 5 of the 8 matches; any failing world escalates to the human
+naming the axis; none failing records "convention-robust on all axes". The default run (no
+--axes) is the original D-end matrix and its decision print, unchanged.
+
 Usage: .venv/bin/python scripts/regret_matrix.py [--rebuild] [--committed]
                                                  [--extra MET-G1 MET-G2]
+                                                 [--axes dend switch merge dstart]
 """
 
 import argparse
@@ -56,6 +72,117 @@ def shift_dends(gt, k):
             if c == pm.D and c2 in (pm.H, pm.A):
                 out[b:b + min(k, (b2 - a2) - 1)] = "D"
     return out
+
+
+def shift_switches(gt, k, fps=None):
+    """Copy of the GT with every DIRECT H<->A boundary moved k frames (k > 0 later: the earlier
+    spell grows into the later one; k < 0 earlier). Boundaries through D are untouched. Moves
+    come from the ORIGINAL segments and are capped so the spell losing frames keeps >= 1 of its
+    own, so spell and D-run counts are preserved and k = 0 is the identity."""
+    out = gt.copy()
+    if k == 0:
+        return out
+    codes = pm.label_codes(gt)
+    for run in pm.valid_runs(codes):
+        segs = pm.segments(codes, [run])
+        for (a1, b1, c1), (a2, b2, c2) in zip(segs, segs[1:]):
+            if {c1, c2} != {pm.H, pm.A}:
+                continue
+            if k > 0:
+                n = min(k, (b2 - a2) - 1)
+                out[a2:a2 + n] = pm.LABELS[c1]
+            else:
+                n = min(-k, (b1 - a1) - 1)
+                out[b1 - n:b1] = pm.LABELS[c2]
+    return out
+
+
+def shift_dstarts(gt, k, fps=None):
+    """Copy of the GT with every D run that follows an alive segment (same valid run) starting k
+    frames later (k > 0: the preceding spell grows into the D run) or earlier (k < 0: the D run
+    eats the spell's tail). Capped so the D run and the spell both keep >= 1 frame; counts
+    preserved; k = 0 is the identity. Never composed with shift_dends."""
+    out = gt.copy()
+    if k == 0:
+        return out
+    codes = pm.label_codes(gt)
+    for run in pm.valid_runs(codes):
+        segs = pm.segments(codes, [run])
+        for (a1, b1, c1), (a2, b2, c2) in zip(segs, segs[1:]):
+            if c2 != pm.D or c1 not in (pm.H, pm.A):
+                continue
+            if k > 0:
+                n = min(k, (b2 - a2) - 1)
+                out[a2:a2 + n] = pm.LABELS[c1]
+            else:
+                n = min(-k, (b1 - a1) - 1)
+                out[b1 - n:b1] = pm.LABELS[pm.D]
+    return out
+
+
+def merge_short(gt, s, fps):
+    """Copy of the GT with every SANDWICHED possession spell shorter than s seconds folded into
+    its neighbours' team: a spell is sandwiched when the segments immediately before and after it
+    (same valid run) are both spells of the other team, with no D between. Shortest spell first
+    (ties: earliest), repeated to a fixed point, so the result is deterministic and
+    order-independent. The GT spell count can only fall; s = 0 is the identity."""
+    out = gt.copy()
+    if s == 0:
+        return out
+    thr = s * fps
+    codes = pm.label_codes(gt)
+    for run in pm.valid_runs(codes):
+        segs = [list(x) for x in pm.segments(codes, [run])]
+        while True:
+            best = None
+            for i in range(1, len(segs) - 1):
+                a, b, c = segs[i]
+                if c not in (pm.H, pm.A) or (b - a) >= thr:
+                    continue
+                cp, cn = segs[i - 1][2], segs[i + 1][2]
+                if cp == cn and cp in (pm.H, pm.A) and cp != c:
+                    if best is None or (b - a) < (segs[best][1] - segs[best][0]):
+                        best = i
+            if best is None:
+                break
+            segs[best - 1:best + 2] = [[segs[best - 1][0], segs[best + 1][1], segs[best - 1][2]]]
+        for a, b, c in segs:
+            out[a:b] = pm.LABELS[c]
+    return out
+
+
+# axis -> (title, symbol, transform, grid, counts preserved?)
+AXES = {
+    "dend": ("D-run ends shifted later", "k", lambda gt, k, fps=None: shift_dends(gt, k),
+             SHIFTS, True),
+    "switch": ("direct H<->A boundaries shifted (+ = later)", "k", shift_switches,
+               (-10, -5, 0, 5, 10, 25), True),
+    "merge": ("sandwiched short spells merged (< s seconds)", "s", merge_short, (0, 1, 2), False),
+    "dstart": ("D-run starts shifted (+ = later)", "k", shift_dstarts, (-10, 0, 10, 25), True),
+}
+NEW_AXES = ("switch", "merge", "dstart")
+MIN_LOSSES = 5                                # of the 8 primary matches (#46 rule)
+
+
+def fps_of(game):
+    import json
+    with open(os.path.join(registry.data_dir_for(game), registry.FAKE_META)) as handle:
+        return int(json.load(handle)["fps"])
+
+
+def check_world(axis, base_codes, new_codes, game):
+    """The per-match structural assertions behind every world: counts preserved (or, for the
+    merge axis, spells non-increasing and D runs preserved)."""
+    runs = pm.valid_runs(base_codes)
+    assert pm.valid_runs(new_codes) == runs, game
+    n0 = len(pm.possession_spells(base_codes, runs))
+    n1 = len(pm.possession_spells(new_codes, runs))
+    d0 = sum(1 for _, _, c in pm.segments(base_codes, runs) if c == pm.D)
+    d1 = sum(1 for _, _, c in pm.segments(new_codes, runs) if c == pm.D)
+    if AXES[axis][4]:
+        assert n1 == n0 and d1 == d0, (axis, game, n0, n1, d0, d1)
+    else:
+        assert n1 <= n0 and d1 == d0, (axis, game, n0, n1, d0, d1)
 
 
 def gt_of(game):
@@ -117,37 +244,43 @@ def load_or_build(extra, committed, rebuild):
     return data
 
 
-def score_table(games, gt_by_game, a_by_game, b_by_game, title):
+def score_table(games, gt_by_game, a_by_game, b_by_game, title, axis="dend"):
     """Per-world per-match spellF1 for both candidates; returns {k: (a, b)} arrays over games."""
+    _, sym, transform, grid, _ = AXES[axis]
     out = {}
-    for k in SHIFTS:
+    for k in grid:
         a_row, b_row = [], []
         for g in games:
-            gt_k = shift_dends(gt_by_game[g], k)
+            gt_k = transform(gt_by_game[g], k, fps_of(g))
             codes = pm.label_codes(gt_k)
+            base = pm.label_codes(gt_by_game[g])
             if k:
-                base = pm.label_codes(gt_by_game[g])
-                runs = pm.valid_runs(base)
-                assert len(pm.possession_spells(codes, runs)) == \
-                    len(pm.possession_spells(base, runs)), g
+                check_world(axis, base, codes, g)
+            else:
+                assert (codes == base).all(), (axis, g)
             a_row.append(pm.evaluate(codes, pm.label_codes(a_by_game[g]))["spell_f1_mean"])
             b_row.append(pm.evaluate(codes, pm.label_codes(b_by_game[g]))["spell_f1_mean"])
         out[k] = (np.array(a_row), np.array(b_row))
 
     print("\n== {} ==".format(title))
     print("{:<12} {}".format("match", "  ".join(
-        "k={:<2} v6     v11    Δ      ".format(k) for k in SHIFTS)))
+        "{}={:<3} v6     v11    Δ     ".format(sym, k) for k in grid)))
     for i, g in enumerate(games):
         cells = ["{:>7.4f} {:>6.4f} {:>+7.4f}".format(out[k][0][i], out[k][1][i],
                                                       out[k][1][i] - out[k][0][i])
-                 for k in SHIFTS]
+                 for k in grid]
         print("{:<12} {}".format(g, "  ".join(cells)))
     print("{:<12} {}".format("mean", "  ".join(
         "{:>7.4f} {:>6.4f} {:>+7.4f}".format(out[k][0].mean(), out[k][1].mean(),
-                                             (out[k][1] - out[k][0]).mean()) for k in SHIFTS)))
+                                             (out[k][1] - out[k][0]).mean()) for k in grid)))
     print("{:<12} {}".format("wins (Δ>0)", "  ".join(
         "{:>21}".format("{}/{}".format(int(((out[k][1] - out[k][0]) > 0).sum()), len(games)))
-        for k in SHIFTS)))
+        for k in grid)))
+    if not AXES[axis][4]:
+        print("{:<12} {}".format("GT spells", "  ".join("{:>21}".format(sum(
+            len(pm.possession_spells(pm.label_codes(transform(gt_by_game[g], k, fps_of(g))),
+                                     pm.valid_runs(pm.label_codes(gt_by_game[g]))))
+            for g in games)) for k in grid)))
     return out
 
 
@@ -158,10 +291,15 @@ def main():
                         help="also score committed-model outputs on the 7 DFL sims")
     parser.add_argument("--extra", nargs="*", default=[],
                         help="additional committed-model matches (e.g. MET-G1 MET-G2)")
+    parser.add_argument("--axes", nargs="*", default=["dend"], choices=sorted(AXES),
+                        help="GT-convention axes to score (default: the #8 D-end matrix)")
     args = parser.parse_args()
     data = load_or_build(args.extra, args.committed, args.rebuild)
     dfl, nf = data["dfl"], data["nf"]
     primary_games = dfl + list(PRIMARY_EXTRA)
+
+    if "dend" not in args.axes:
+        return new_axes(args, data, primary_games)
 
     res = score_table(primary_games, data["gt"], data["v6"], data["v11"],
                       "PRIMARY: cross-fitted on {} DFL sims + committed-model on {} "
@@ -201,6 +339,56 @@ def main():
         score_table(dfl, data["gt"], data["v6_cm"], data["v11_cm"],
                     "SUPPLEMENTARY: committed-model outputs on the 7 DFL sims (in-sample on "
                     "the 5 fit matches)")
+
+    if [a for a in args.axes if a != "dend"]:
+        new_axes(args, data, primary_games)
+
+
+def new_axes(args, data, primary_games):
+    """The #46 axes: one table per axis on the primary 8, the pre-registered fail rule per
+    world, supplementary split means and MET-G1/G2 rows. Prints only; adopts nothing."""
+    dfl, nf = data["dfl"], data["nf"]
+    axes = [a for a in args.axes if a != "dend"]
+    failing = []
+    for axis in axes:
+        title, sym, _, grid, _ = AXES[axis]
+        res = score_table(primary_games, data["gt"], data["v6"], data["v11"],
+                          "PRIMARY, axis '{}': {} — cross-fitted on {} DFL sims + "
+                          "committed-model on {}".format(axis, title, len(dfl),
+                                                         ", ".join(PRIMARY_EXTRA)), axis)
+        print("\n-- splits (mean Δ per world) --")
+        idx_fit = list(range(nf))
+        idx_held = list(range(nf, len(dfl)))
+        idx_g3 = [len(dfl) + i for i in range(len(PRIMARY_EXTRA))]
+        for name, idx in (("fit (5, OOF)", idx_fit), ("held-out (2)", idx_held),
+                          ("MET-G3", idx_g3)):
+            cells = ["{}={}: {:+.4f}".format(sym, k, float((res[k][1] - res[k][0])[idx].mean()))
+                     for k in grid]
+            print("  {:<14} {}".format(name, "  ".join(cells)))
+        print("-- pre-registered rule (#46): FAIL iff mean Δ < {:+.3f} AND v11 loses on >= {} "
+              "of {} --".format(THRESHOLD, MIN_LOSSES, len(primary_games)))
+        for k in grid:
+            d = res[k][1] - res[k][0]
+            losses = int((d < 0).sum())
+            fail = d.mean() < THRESHOLD and losses >= MIN_LOSSES
+            print("  {}={:<3} mean Δ {:+.4f}  losses {}/{}  -> {}".format(
+                sym, k, d.mean(), losses, len(primary_games), "FAIL" if fail else "ok"))
+            if fail:
+                failing.append((axis, k))
+        extra_present = [g for g in args.extra if g in data["gt"]]
+        if extra_present:
+            score_table(extra_present, data["gt"], data["v6"], data["v11"],
+                        "SUPPLEMENTARY, axis '{}': committed-model on {}".format(
+                            axis, ", ".join(extra_present)), axis)
+
+    print("\n== PRE-REGISTERED DECISION (board #46 / submissions/LOG.md, 3 Nov 2026) ==")
+    if failing:
+        print("  FAILING worlds: {} — ESCALATE to the human naming the axis; the follow-up is a "
+              "hedge candidate with its own pre-registration. Nothing is adopted or reverted "
+              "by this script.".format(", ".join("{}:{}".format(a, k) for a, k in failing)))
+    else:
+        print("  No world fails on {} — v11 convention-robust on these axes; keep FINAL. "
+              "Nothing fires.".format(", ".join(axes)))
 
 
 if __name__ == "__main__":
