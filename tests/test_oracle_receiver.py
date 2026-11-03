@@ -7,7 +7,8 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 "scripts"))
 from oracle_receiver import (CORRIDOR_FEATURES, FLIGHT_FEATURES,  # noqa: E402
-                             corridor_features, flight_features)
+                             KINEMATIC_FEATURES, corridor_features, flight_features,
+                             kinematic_features)
 
 
 def ev(team, start, end):
@@ -64,3 +65,27 @@ def test_oracle_label_follows_the_label_policy():
     e = [ev(0, 95, 100)]
     assert oracle_label(e, gt, graded, 5)[0] == 0.0
     assert oracle_label(e, gt, graded, 5, "alive_lag")[0] == 1.0
+
+
+def test_kinematic_a_player_running_at_the_path_beats_a_standing_one_at_the_same_spot():
+    ball = np.zeros((60, 2))
+    ball[10:] = np.arange(50)[:, None] * np.array([0.4, 0.0])  # 10 m/s along +x from frame 10
+    players = np.array([[[20.0, 8.0], [20.0, 8.0]]] * 60)
+    players[:11, 1] = np.linspace(11.0, 8.0, 11)[:, None] * np.array([0.0, 1.0]) + [20.0, 0.0]
+    X = kinematic_features([ev(0, 8, 10)], ball, players, np.array([0, 1]))
+    row = dict(zip(KINEMATIC_FEATURES, X[0]))
+    assert row["kn_valid"] == 1.0 and row["kn_first"] == -1.0
+    assert row["kn_t_opp"] < row["kn_t_own"] and row["kn_margin"] < 0
+
+
+def test_kinematic_is_invalid_for_a_slow_ball_or_an_immediate_next_contact():
+    ball = np.zeros((60, 2))
+    ball[10:] = np.arange(50)[:, None] * np.array([0.4, 0.0])
+    players = np.array([[[20.0, 1.0], [30.0, 1.0]]] * 60)
+    tos = np.array([0, 1])
+    X = kinematic_features([ev(0, 0, 6), ev(1, 7, 7), ev(0, 8, 10), ev(1, 11, 12)], ball,
+                           players, tos)
+    valid = X[:, KINEMATIC_FEATURES.index("kn_valid")]
+    assert valid[0] == 0.0  # ball still at rest
+    assert valid[2] == 0.0  # next contact a frame later: no flight to extrapolate
+    assert (X[valid == 0, :2] == 3.5).all()
