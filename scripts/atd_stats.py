@@ -82,7 +82,7 @@ put("contact episodes per 1e3 graded frames (final touch rules)",
 def _q(vals):
     v = np.array([x for x in vals if np.isfinite(x)], dtype=float)
     return [float(np.percentile(v, q)) for q in (10, 50, 90)] if v.size else None
-put("contact kinematics p10/p50/p90: d_min m, speed_before, speed_after, abs dv m/s, turn deg",
+put("contact kinematics quantiles p10 p50 p90 (see atd_stats.py)",
     {"d_min": _q([e.d_min for e in ev]), "speed_before": _q([e.speed_before for e in ev]),
      "speed_after": _q([e.speed_after for e in ev]),
      "abs_dv": _q([abs(e.speed_after - e.speed_before) for e in ev]), "turn_deg": _q([e.turn_deg for e in ev]),
