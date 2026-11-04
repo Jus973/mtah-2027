@@ -170,34 +170,56 @@ from mtah.features.ball import clean_ball, velocity  # noqa: E402
 fps = sp["fps"]
 cfg_final = config.load(os.path.join(registry.ROOT, "configs", "final.yaml"))
 T = len(graded)
-live_runs, last_o, unscorable = [], None, 0
+# Offsets are per half (the halftime cut shifts the broadcast clock): a main offset is admissible
+# for a run only if it maps the run into (or next to) a graded block, never across halftime.
+blocks = sorted(sp["half_blocks"], key=lambda b: b[1])
+margin = 60 * fps
+def admissible(a0, b0, o):
+    t0, t1 = a0 + o, b0 + o
+    return any(t1 >= first - margin and t0 <= last + margin for _, first, last in blocks)
+live_runs, last_o, unscorable, inadmissible = [], None, 0, 0
 for a0, n0 in zip(starts_v, lengths_v):
+    b0 = a0 + n0 - 1
     frames = np.arange(a0, a0 + n0)
+    opts = [o for o in main_offsets if admissible(a0, b0, o)]
+    if not opts:
+        inadmissible += 1
+        continue
     cand = []
-    for o in main_offsets:
+    for o in opts:
         ag, nb_ = validate(ball_t, ball_b, o, frames, cfg["tol_m"])
         if ag is not None and nb_ >= 10:
             cand.append((ag, o))
     if cand:
         last_o = max(cand)[1]
-    else:
+    elif last_o in opts:
         unscorable += 1
-    if last_o is None:
-        continue
-    live_runs.append((int(a0), int(a0 + n0 - 1), int(last_o)))
+    else:
+        last_o = opts[0]; unscorable += 1
+    live_runs.append((int(a0), int(b0), int(last_o)))
 live_t = np.zeros(T, dtype=bool)
 for a0, b0, o in live_runs:
     live_t[max(0, a0 + o):min(T, b0 + o + 1)] = True
 cut_t = np.zeros(T, dtype=bool)
 brackets = []
+too_long = 0
 for (pa, pb, po), (na, nb2, no) in zip(live_runs[:-1], live_runs[1:]):
     t0, t1 = max(0, pb + po + 1), min(T - 1, na + no - 1)
-    if t1 >= t0:
-        brackets.append((t0, t1)); cut_t[t0:t1 + 1] = True
+    if t1 < t0:
+        continue
+    if t1 - t0 + 1 > 120 * fps:          # a broadcast discontinuity, not a replay: not a cut-away
+        too_long += 1
+        continue
+    brackets.append((t0, t1)); cut_t[t0:t1 + 1] = True
 cut_t &= graded; live_t &= graded
 blen = np.array([(b - a + 1) / fps for a, b in brackets])
+near = np.zeros(T, dtype=bool)
+for a, b in brackets:
+    near[max(0, a - 10 * fps):min(T, b + 10 * fps + 1)] = True
 put("cut-aways: coverage", {"live_runs": len(live_runs), "unscorable_runs_inheriting_offset": unscorable,
+                            "inadmissible_runs": inadmissible, "brackets_over_120s_dropped": too_long,
                             "brackets": len(brackets),
+                            "graded_share_within_10s_of_a_bracket (chance for the tag overlap)": float((near & graded).sum() / max(1, graded.sum())),
                             "bracket_length_s_p50_p90": [float(np.percentile(blen, q)) for q in (50, 90)] if len(blen) else None,
                             "share_of_graded_frames": float(cut_t.sum() / max(1, graded.sum())),
                             "live_share_of_graded_frames": float(live_t.sum() / max(1, graded.sum()))})
