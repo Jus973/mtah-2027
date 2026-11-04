@@ -1,0 +1,23 @@
+name: board-gate
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  board-link:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/board_gate.py
+          sparse-checkout-cone-mode: false
+      - name: PR links a claimed board issue (AGENTS.md §4)
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ secrets.BOARD_TOKEN }}
+        run: python3 scripts/board_gate.py
