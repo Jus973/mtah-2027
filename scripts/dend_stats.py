@@ -18,6 +18,7 @@ Aggregates only; works on the real match (airlock) and on sim/fake matches.
 
 import os
 import sys
+import warnings
 
 import numpy as np
 
@@ -221,3 +222,34 @@ if tags:
             offsets.append((restarts[int(np.argmin(np.abs(restarts - anchor)))] - anchor) / fps)
     if offsets:
         put("nearest restart minus raw anchor: histogram, 1 s bins", hist(offsets, OFFSET_EDGES_S))
+
+# Graded-block tails (board #43 part 1): what the final labels do in the last seconds of each
+# half's graded block. On the real match the first-half block may run past the half-time whistle
+# (GROUND_TRUTH.md section 1, low-confidence inference); nothing in the pipeline knows a half has
+# ended, so a spell could be held alive into that tail. Label-free: alive share, ball visibility
+# and collective player speed (relative to the match median) in the last 30/60/90 s, the offset
+# of the last alive frame from the block end, and the first 30 s for symmetry (the pre-kick-off
+# rule should make it 0).
+lab = np.asarray(labels)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", RuntimeWarning)
+    pstep = np.full(players.shape[:2], np.nan)
+    pstep[1:] = np.linalg.norm(np.diff(players, axis=0), axis=-1) * fps
+    coll = np.nanmean(pstep, axis=1)
+    med_coll = float(np.nanmedian(coll[graded]))
+tails = {}
+for half, first, last in sp["half_blocks"]:
+    row = {}
+    for secs in (30, 60, 90):
+        seg = slice(max(first, last + 1 - secs * fps), last + 1)
+        row["alive_share_last_{}s".format(secs)] = float(np.isin(lab[seg], ("H", "A")).mean())
+        row["ball_seen_last_{}s".format(secs)] = float(np.isfinite(ball_raw[seg, 0]).mean())
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            row["collective_speed_ratio_last_{}s".format(secs)] = (
+                float(np.nanmedian(coll[seg]) / med_coll) if med_coll else None)
+    idx = np.flatnonzero(np.isin(lab[first:last + 1], ("H", "A")))
+    row["last_alive_before_block_end_s"] = float((last - first - idx[-1]) / fps) if idx.size else None
+    row["alive_share_first_30s"] = float(np.isin(lab[first:first + 30 * fps], ("H", "A")).mean())
+    tails["half {}".format(half)] = row
+put("graded-block tails (board #43): final labels near each block's end", tails)
