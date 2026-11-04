@@ -54,8 +54,8 @@ for team, name in ((HOME, "home"), (AWAY, "away")):
             {"n": r["n"], "mean_frames": r["mean"], "hist": [int(c) for c in r["hist"]]})
 put("collective player speed m/s (median, p75, p90)", s["collective_speed"])
 c = s["carrier"]
-put("carrier loss proxies (board #55): ball seen in pitch, no player within 1 m",
+put("carrier loss proxies: ball seen in pitch, no player within 1 m",
     {"n_frames": c["n_seen_inpitch"], "absent": c["absent"],
      "carry_speed_frames": c["n_carry"], "carry_absent": c["carry_absent"]})
-put("carrier loss proxies: kicks (dv > 3 m/s) with no player within 1.5 m",
+put("carrier loss proxies: kicks (dv gt 3 m/s) with no player within 1.5 m",
     {"n_kicks": c["n_kicks"], "kick_far": c["kick_far"]})
