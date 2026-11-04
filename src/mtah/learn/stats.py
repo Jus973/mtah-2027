@@ -78,9 +78,15 @@ def carrier_stats(players, ball, graded, pitch, fps=25, r_carry=1.0, r_kick=1.5,
     def frac(num, den):
         return float(num.sum() / den.sum()) if den.any() else None
 
+    edges = (0.5, 1.0, 1.5, 2.0, 3.0)
+    dc = dmin[carry]
+    hist = [int(np.sum(dc <= edges[0]))] + [int(np.sum((dc > a) & (dc <= b))) for a, b in zip(edges[:-1], edges[1:])] \
+        + [int(np.sum(dc > edges[-1])), int(np.sum(~np.isfinite(dc)))]
     return {"n_seen_inpitch": int(seen.sum()), "absent": frac(absent, seen),
             "n_carry": int(carry.sum()), "carry_absent": frac(carry & absent, carry),
-            "n_kicks": int(kick.sum()), "kick_far": frac(kick & seen & ~(dmin <= r_kick), kick)}
+            "carry_dmin_hist": hist,          # <=0.5, 0.5-1, 1-1.5, 1.5-2, 2-3, >3 m, no player seen
+            "n_kicks": int(kick.sum()), "kicks_per_1e3_seen": float(1e3 * kick.sum() / max(1, seen.sum())),
+            "kick_far": frac(kick & seen & ~(dmin <= r_kick), kick)}
 
 
 def atd_stats(players, ball, team_of_slot, graded, pitch, cfg, fps=25):

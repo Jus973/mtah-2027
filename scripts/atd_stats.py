@@ -57,5 +57,7 @@ c = s["carrier"]
 put("carrier loss proxies: ball seen in pitch, no player within 1 m",
     {"n_frames": c["n_seen_inpitch"], "absent": c["absent"],
      "carry_speed_frames": c["n_carry"], "carry_absent": c["carry_absent"]})
+put("carrier loss proxies: nearest player at carry speed, m (le0.5, 0.5-1, 1-1.5, 1.5-2, 2-3, gt3, none)",
+    c["carry_dmin_hist"])
 put("carrier loss proxies: kicks (dv gt 3 m/s) with no player within 1.5 m",
-    {"n_kicks": c["n_kicks"], "kick_far": c["kick_far"]})
+    {"n_kicks": c["n_kicks"], "kicks_per_1e3_seen": c["kicks_per_1e3_seen"], "kick_far": c["kick_far"]})
