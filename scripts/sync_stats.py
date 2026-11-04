@@ -156,12 +156,13 @@ check("T3-broadcast falsifier: >= 10% of tactical-missing graded frames recovere
       share >= 0.10, share=share)
 
 # Broadcast cut-aways as dead-ball evidence, step 1 (board idea 32; pre-registered there).
-# Cut-aways = runs of invalid broadcast homography, mapped onto the tactical clock by bracketing
-# each run between its neighbouring ACCEPTED live segments (prev segment's last frame + offset,
-# next segment's first frame + offset). Label-free aggregates: coverage, enrichment of the final
-# pipeline's D inside cut-aways vs inside live segments, set-piece tag overlap, the lag of the
-# bracket end past the D-run end (replays outlast restarts), the live-play tail and the long-gap
-# interior population an interior-only veto could ever move.
+# Every run of VALID broadcast homography (a live shot) is mapped onto the tactical clock with the
+# main offset whose ball agreement on that run is best (runs too short to score inherit the
+# previous run's offset). Cut-aways = the runs of invalid homography between two consecutive
+# mapped live runs, bracketed by their tactical ends. Label-free aggregates: coverage and bracket
+# lengths, enrichment of the final pipeline's D inside cut-aways vs live runs, set-piece tag
+# overlap, the lag of the bracket end past the D-run end (replays outlast restarts), the live-play
+# tail and the long-gap interior population an interior-only veto could ever move.
 from mtah.io.tags import load_tags  # noqa: E402
 from mtah.learn import gapstate  # noqa: E402
 from mtah.features.ball import clean_ball, velocity  # noqa: E402
@@ -169,37 +170,37 @@ from mtah.features.ball import clean_ball, velocity  # noqa: E402
 fps = sp["fps"]
 cfg_final = config.load(os.path.join(registry.ROOT, "configs", "final.yaml"))
 T = len(graded)
-live_t = np.zeros(T, dtype=bool)           # tactical frames covered by an accepted live segment
-seg_list = []                              # (broadcast first, broadcast last, offset)
-for c in accepted:
-    bf = np.sort(c["frames"]); starts_c, lengths_c = runs(np.isin(np.arange(nb), bf))
-    for a0, n0 in zip(starts_c, lengths_c):
-        seg_list.append((int(a0), int(a0 + n0 - 1), int(c["offset"])))
-        t0, t1 = a0 + c["offset"], a0 + n0 - 1 + c["offset"]
-        live_t[max(0, t0):min(T, t1 + 1)] = True
-seg_list.sort()
+live_runs, last_o, unscorable = [], None, 0
+for a0, n0 in zip(starts_v, lengths_v):
+    frames = np.arange(a0, a0 + n0)
+    cand = []
+    for o in main_offsets:
+        ag, nb_ = validate(ball_t, ball_b, o, frames, cfg["tol_m"])
+        if ag is not None and nb_ >= 10:
+            cand.append((ag, o))
+    if cand:
+        last_o = max(cand)[1]
+    else:
+        unscorable += 1
+    if last_o is None:
+        continue
+    live_runs.append((int(a0), int(a0 + n0 - 1), int(last_o)))
+live_t = np.zeros(T, dtype=bool)
+for a0, b0, o in live_runs:
+    live_t[max(0, a0 + o):min(T, b0 + o + 1)] = True
 cut_t = np.zeros(T, dtype=bool)
-brackets, dropped = [], {"no_neighbour": 0, "empty": 0}
-inv_starts, inv_lengths = runs(~valid)
-for a0, n0 in zip(inv_starts, inv_lengths):
-    b1 = a0 + n0 - 1
-    prev = [s for s in seg_list if s[1] < a0]
-    nxt = [s for s in seg_list if s[0] > b1]
-    if not prev or not nxt:
-        dropped["no_neighbour"] += 1
-        continue
-    pl, pr = prev[-1], nxt[0]
-    t0, t1 = pl[1] + pl[2] + 1, pr[0] + pr[2] - 1
-    t0, t1 = max(0, t0), min(T - 1, t1)
-    if t1 < t0:
-        dropped["empty"] += 1
-        continue
-    brackets.append((t0, t1))
-    cut_t[t0:t1 + 1] = True
+brackets = []
+for (pa, pb, po), (na, nb2, no) in zip(live_runs[:-1], live_runs[1:]):
+    t0, t1 = max(0, pb + po + 1), min(T - 1, na + no - 1)
+    if t1 >= t0:
+        brackets.append((t0, t1)); cut_t[t0:t1 + 1] = True
 cut_t &= graded; live_t &= graded
-put("cut-aways: coverage", {"brackets": len(brackets), "dropped_runs": dropped,
+blen = np.array([(b - a + 1) / fps for a, b in brackets])
+put("cut-aways: coverage", {"live_runs": len(live_runs), "unscorable_runs_inheriting_offset": unscorable,
+                            "brackets": len(brackets),
+                            "bracket_length_s_p50_p90": [float(np.percentile(blen, q)) for q in (50, 90)] if len(blen) else None,
                             "share_of_graded_frames": float(cut_t.sum() / max(1, graded.sum())),
-                            "live_segment_share_of_graded_frames": float(live_t.sum() / max(1, graded.sum()))})
+                            "live_share_of_graded_frames": float(live_t.sum() / max(1, graded.sum()))})
 is_d = np.asarray(labels) == "D"
 enrich = {}
 for name, mask in (("pooled", graded),) + tuple(("half {}".format(h), np.isin(np.arange(T), np.arange(a, b + 1)))
