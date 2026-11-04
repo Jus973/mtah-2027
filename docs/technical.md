@@ -330,14 +330,19 @@ pre-registered).** Three families of stress test, none of which changed the fina
 
 - *Ground-truth conventions.* The DFL possession flag is one convention among several; a target
   labeller that places `D` starts, `D` ends or owner switches elsewhere, or that absorbs short
-  spells, is a bias the sim cannot see directly. So the held-out and cross-fitted outputs were
-  re-scored against transformed ground truths: `D` ends moved up to +38 frames, `D` starts moved
-  −10 to +25 frames, direct H↔A boundaries moved −10 to +25 frames, and sandwiched spells shorter
-  than 1 s or 2 s folded into their neighbours. In every one of the 13 worlds the final beats the
-  previous configuration on all 8 primary matches (margin +0.023 to +0.035; it grows when short
-  spells are merged and shrinks when `D` starts move later), and the Metrica builds stay positive
-  in all 13. The final's own absolute score peaks at the untransformed ground truth on all three
-  boundary types, so no post-hoc boundary shift is applied.
+  spells, is a bias the sim cannot see directly. So the outputs on the 8 primary matches (the 7
+  DFL sims, cross-fitted, plus Metrica Game 3) were re-scored against transformed ground truths,
+  one axis at a time. With direct H↔A boundaries moved −10 to +25 frames, `D` starts moved −10 to
+  +25 frames, or sandwiched spells shorter than 1 s or 2 s folded into their neighbours, the final
+  beats the previous configuration on all 8 matches in each of the 10 worlds (margin +0.023 to
+  +0.035; it grows when short spells are merged and shrinks as `D` starts move later), and stays
+  ahead on Metrica Games 1–2. Moving `D` ends later is the one axis that erodes the lead: +0.029
+  at 0 frames, +0.021 at +10, +0.012 at +20 and +0.001 at +38 (about v6's measured lateness,
+  §5.6), where the final wins only 5 of 8 and loses on the Metrica builds (Game 3 −0.017, Games
+  1–2 −0.030 / −0.008). That is still above the pre-registered −0.010 bar, so the final is kept,
+  but a late, whistle-timed `D`-end convention is its main residual exposure. Among the shifts
+  tested (`D` ends only later), the final's own absolute score is highest at the untransformed
+  ground truth on all three boundary axes, so no post-hoc boundary shift is applied.
 - *Degradation redraw floor.* Re-degrading the two held-out matches with three more random
   draws moves a configuration's absolute spellF1 by ±0.020 per match (SD) while the paired
   difference between two configurations moves by only ±0.004; a paired held-out gain below
@@ -347,13 +352,20 @@ pre-registered).** Three families of stress test, none of which changed the fina
   random gap draw stays identical and only the tested property changes, then scored with
   cross-fitted models (per-cell noise ≈ 0.006). A ±10% change of the match clock (every speed
   and frame-counted duration) costs ≤ 0.007; hiding one visible track per team inside every
-  long ball gap (the one visibility shift the real feed shows against the sim) costs 0.001;
-  hiding 10% of all slot tracklets costs 0.044, and that loss is contact loss when the player at
-  the ball is untracked. The sim's tracklet lengths and visible counts are fitted to the real
-  feed, and `make airlock T=atd-stats` now reports label-free carrier-loss proxies (share of
-  visible in-pitch ball frames with no player within 1 m, and of ball kicks with no player
-  within 1.5 m) so that this last sensitivity can be compared sim-vs-real without labels.
-
+  long ball gap costs 0.001; hiding 10% of all slot tracklets costs 0.044, and that loss is
+  contact loss when the player at the ball is untracked. Two label-free comparisons with this
+  match's feed (`make airlock T=atd-stats`) show where the sim departs from it. First, nobody
+  is near the ball more often here: on visible in-pitch ball frames at carry speed (0.5–4 m/s)
+  no player is within 1 m on 52.6% of frames, against 30.5–35.4% on the sims, and every
+  distance bin beyond 1.5 m holds about twice the sims' share, so the carrier-loss sensitivity
+  applies to this match and is not only a stress case. Second, the real ball track is
+  velocity-filtered: 2.6 kicks (speed change > 3 m/s) per 1,000 seen frames, against 21–43 on
+  the sims. On sims whose ball is smoothed to match (13 frames), the final loses 0.17 (0.09–0.23
+  for 7–25 frames, 7/7 matches), and every fix tried (retraining on smoothed-ball rows, relaxed
+  touch thresholds) recovers ≤ 0.003: the lost contacts are short dwell contacts that the
+  smoothed feed no longer shows. This hits any tracking-only method alike and does not change
+  the choice of configuration, but the absolute sim scores in this document overstate what to
+  expect on this match.
 
 ## 6. Limitations and next steps
 
@@ -375,8 +387,12 @@ pre-registered).** Three families of stress test, none of which changed the fina
 - **Restarts:** after tagged corners, the first spell is the corner team's 5 times in 11; fouls
   and offsides with the ball still tracked produce no evidence.
 - **Semantics:** the labels are DFL's notion of possession; a systematic mismatch with this
-  match's GT is bounded by the convention worlds of §5.7 (the final leads in every one) but
-  not removed, and is otherwise checked only by the bands and consistency.
+  match's GT is bounded by the convention worlds of §5.7 (the final leads in every one, by
+  only +0.001 when `D` ends are placed ~1.5 s late) but not removed, and is otherwise checked
+  only by the bands and consistency.
+- **Ball kinematics:** the sim matches this feed's gaps, visibility and tempo but not its ball
+  kinematics; the real ball track is about ten times smoother, which costs the final ~0.17 on
+  matched sims (§5.7). Expect the absolute score here to sit below the held-out sim estimate.
 - **Phase 2:** the pipeline is match-agnostic (matches in `games.py`, thresholds in `configs/`).
 
 ## 7. Reproduction
