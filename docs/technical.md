@@ -309,6 +309,11 @@ graded frames is 0.445, inside the advisory `D`-share band [0.35, 0.57] added 1 
    0.08% here (`make airlock T=atd-stats`). The gap models that decide `D` inside gaps read no
    ball kinematics at all; the v11 boundary model reads causal ball features, so it is trained
    only on fit matches rebuilt with a realistic dead-time ball (§4), never on the frozen one.
+5. No validation build contains a dead stretch with the ball visible: the Metrica sample
+   feeds blank the ball at dead time just as the degrader does (0 of 286 Metrica `D` runs have
+   the ball seen through the run), while this match's ATD sees the ball through whole dead
+   stretches. The visible-ball stoppage case therefore rests on the boundary model's synthetic
+   dead-time ball conditions (§4) and on the airlock `D` aggregates, not on a scored bench.
 
 **5.6 Mechanical cross-check (Metrica Game 3).** A second validation family, independent of DFL
 and of the sim recipe: Metrica Sports Sample Game 3 (pinned commit, checksummed), whose event
@@ -319,6 +324,36 @@ the restart pattern this match's own label-free profile shows (`make airlock T=d
 ball is missing on ~50% of frames within ±1 s of restarts, so evidence ends trail the restart
 touch). This is the documented mechanical basis for the §5.4 one-way adoption: v11's median
 `D`-end move (−1.72 s) is the size of the lateness the mechanical GT measures for v6.
+
+**5.7 Robustness to ground-truth conventions and feed shifts (3–4 Nov, open data, all
+pre-registered).** Three families of stress test, none of which changed the final configuration:
+
+- *Ground-truth conventions.* The DFL possession flag is one convention among several; a target
+  labeller that places `D` starts, `D` ends or owner switches elsewhere, or that absorbs short
+  spells, is a bias the sim cannot see directly. So the held-out and cross-fitted outputs were
+  re-scored against transformed ground truths: `D` ends moved up to +38 frames, `D` starts moved
+  −10 to +25 frames, direct H↔A boundaries moved −10 to +25 frames, and sandwiched spells shorter
+  than 1 s or 2 s folded into their neighbours. In every one of the 13 worlds the final beats the
+  previous configuration on all 8 primary matches (margin +0.023 to +0.035; it grows when short
+  spells are merged and shrinks when `D` starts move later), and the Metrica builds stay positive
+  in all 13. The final's own absolute score peaks at the untransformed ground truth on all three
+  boundary types, so no post-hoc boundary shift is applied.
+- *Degradation redraw floor.* Re-degrading the two held-out matches with three more random
+  draws moves a configuration's absolute spellF1 by ±0.020 per match (SD) while the paired
+  difference between two configurations moves by only ±0.004; a paired held-out gain below
+  +0.008 is therefore treated as a tie, and training on several draws of the same matches
+  (augmentation) was itself a tie under that rule.
+- *Feed shifts, paired.* The committed degraded sims were resampled or edited so that the
+  random gap draw stays identical and only the tested property changes, then scored with
+  cross-fitted models (per-cell noise ≈ 0.006). A ±10% change of the match clock (every speed
+  and frame-counted duration) costs ≤ 0.007; hiding one visible track per team inside every
+  long ball gap (the one visibility shift the real feed shows against the sim) costs 0.001;
+  hiding 10% of all slot tracklets costs 0.044, and that loss is contact loss when the player at
+  the ball is untracked. The sim's tracklet lengths and visible counts are fitted to the real
+  feed, and `make airlock T=atd-stats` now reports label-free carrier-loss proxies (share of
+  visible in-pitch ball frames with no player within 1 m, and of ball kicks with no player
+  within 1.5 m) so that this last sensitivity can be compared sim-vs-real without labels.
+
 
 ## 6. Limitations and next steps
 
@@ -340,7 +375,8 @@ touch). This is the documented mechanical basis for the §5.4 one-way adoption: 
 - **Restarts:** after tagged corners, the first spell is the corner team's 5 times in 11; fouls
   and offsides with the ball still tracked produce no evidence.
 - **Semantics:** the labels are DFL's notion of possession; a systematic mismatch with this
-  match's GT is a bias the sim cannot measure, checked only by the bands and consistency.
+  match's GT is bounded by the convention worlds of §5.7 (the final leads in every one) but
+  not removed, and is otherwise checked only by the bands and consistency.
 - **Phase 2:** the pipeline is match-agnostic (matches in `games.py`, thresholds in `configs/`).
 
 ## 7. Reproduction
