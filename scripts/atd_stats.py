@@ -59,5 +59,6 @@ put("carrier loss proxies: ball seen in pitch, no player within 1 m",
      "carry_speed_frames": c["n_carry"], "carry_absent": c["carry_absent"]})
 put("carrier loss proxies: nearest-player distance bins at carry speed (see stats.py)",
     c["carry_dmin_hist"])
+put("ball speed-vector change over k frames, m/s (p50, p90, p99, share gt 3)", c["accel_quantiles"])
 put("carrier loss proxies: kicks (dv gt 3 m/s) with no player within 1.5 m",
     {"n_kicks": c["n_kicks"], "kicks_per_1e3_seen": c["kicks_per_1e3_seen"], "kick_far": c["kick_far"]})

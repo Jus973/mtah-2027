@@ -82,7 +82,16 @@ def carrier_stats(players, ball, graded, pitch, fps=25, r_carry=1.0, r_kick=1.5,
     dc = dmin[carry]
     hist = [int(np.sum(dc <= edges[0]))] + [int(np.sum((dc > a) & (dc <= b))) for a, b in zip(edges[:-1], edges[1:])] \
         + [int(np.sum(dc > edges[-1])), int(np.sum(~np.isfinite(dc)))]
+    accel = {}
+    for kk in (3, 6, 12):
+        vk = np.full(ball.shape, np.nan)
+        vk[kk:-kk] = (ball[2 * kk:] - ball[:-2 * kk]) * fps / (2 * kk)
+        d = np.full(len(ball), np.nan)
+        d[kk:] = np.linalg.norm(vk[kk:] - vk[:-kk], axis=1)       # speed-vector change over kk frames
+        d = d[seen & np.isfinite(d)]
+        accel["k{}".format(kk)] = ([float(np.percentile(d, q)) for q in (50, 90, 99)] + [float((d > 3).mean())]) if d.size else None
     return {"n_seen_inpitch": int(seen.sum()), "absent": frac(absent, seen),
+            "accel_quantiles": accel,          # per window: p50, p90, p99 of |dv| m/s, share > 3 m/s
             "n_carry": int(carry.sum()), "carry_absent": frac(carry & absent, carry),
             "carry_dmin_hist": hist,          # <=0.5, 0.5-1, 1-1.5, 1.5-2, 2-3, >3 m, no player seen
             "n_kicks": int(kick.sum()), "kicks_per_1e3_seen": float(1e3 * kick.sum() / max(1, seen.sum())),
