@@ -62,3 +62,17 @@ put("carrier loss proxies: nearest-player distance bins at carry speed (see stat
 put("ball speed-vector change over k frames, m/s (p50, p90, p99, share gt 3)", c["accel_quantiles"])
 put("carrier loss proxies: kicks (dv gt 3 m/s) with no player within 1.5 m",
     {"n_kicks": c["n_kicks"], "kicks_per_1e3_seen": c["kicks_per_1e3_seen"], "kick_far": c["kick_far"]})
+
+# Contact episodes of the FINAL config's touch detector per 1,000 graded frames (label-free; the
+# takeover model's candidate set). Lets the real feed be placed against the sim worlds (board 19).
+from mtah.events.touches import touch_events  # noqa: E402
+from mtah.features.ball import clean_ball  # noqa: E402
+from mtah.features.players import team_distances  # noqa: E402
+cfg_final = config.load("final.yaml")
+ball_c, _, _ = clean_ball(atd.ball_m(), atd.pitch, cfg_final["ball"], sp["fps"])
+d_team, _ = team_distances(atd.players_m()[..., :2].astype(np.float64), ball_c, atd.team_of_slot)
+ev = touch_events(ball_c, d_team, dict(cfg_final["touch"], r_touch_m=cfg_final["owner"]["contact_r_m"], min_frames=1), sp["fps"])
+ev = [e for e in ev if graded[e.start]]
+put("contact episodes per 1e3 graded frames (final touch rules)",
+    {"n": len(ev), "per_1e3": float(1e3 * len(ev) / max(1, graded.sum())),
+     "median_frames": float(np.median([e.n_frames for e in ev])) if ev else None})
