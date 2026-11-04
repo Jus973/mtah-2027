@@ -252,4 +252,4 @@ for half, first, last in sp["half_blocks"]:
     row["last_alive_before_block_end_s"] = float((last - first - idx[-1]) / fps) if idx.size else None
     row["alive_share_first_30s"] = float(np.isin(lab[first:first + 30 * fps], ("H", "A")).mean())
     tails["half {}".format(half)] = row
-put("graded-block tails (board #43): final labels near each block's end", tails)
+put("graded-block tails: final labels near each block end (board 43)", tails)
