@@ -53,6 +53,36 @@ def _quantiles(x):
     return [float(q) for q in np.percentile(x, [50, 75, 90])] if len(x) else [None] * 3
 
 
+def carrier_stats(players, ball, graded, pitch, fps=25, r_carry=1.0, r_kick=1.5, kick_dv=3.0,
+                  k=3):
+    """Label-free proxies for 'the player at the ball is not tracked' (board #55). On ball-visible,
+    in-pitch graded frames: `absent` = share with no player within r_carry; `carry_absent` = the
+    same share over frames where the ball moves at carry speed (0.5-4 m/s); `kick_far` = among
+    kicks (ball velocity change > kick_dv over +/- k frames) the share with no player within
+    r_kick. The sims deal tracklets without regard to the ball, so these are the rows that say
+    whether a real tracker loses the carrier more often than the degrader does."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        seen = (np.isfinite(ball[:, 0]) & graded & (ball[:, 0] >= 0) & (ball[:, 0] <= pitch[0])
+                & (ball[:, 1] >= 0) & (ball[:, 1] <= pitch[1]))
+        dmin = np.nanmin(np.linalg.norm(players - ball[:, None, :], axis=-1), axis=1)
+        v = np.full(ball.shape, np.nan)
+        v[k:-k] = (ball[2 * k:] - ball[:-2 * k]) * fps / (2 * k)
+        speed = np.linalg.norm(v, axis=1)
+        dv = np.full(len(ball), np.nan)
+        dv[1:] = np.linalg.norm(np.diff(v, axis=0), axis=1)
+    absent = seen & ~(dmin <= r_carry)
+    carry = seen & (speed > 0.5) & (speed < 4.0)
+    kick = seen & (dv > kick_dv)
+
+    def frac(num, den):
+        return float(num.sum() / den.sum()) if den.any() else None
+
+    return {"n_seen_inpitch": int(seen.sum()), "absent": frac(absent, seen),
+            "n_carry": int(carry.sum()), "carry_absent": frac(carry & absent, carry),
+            "n_kicks": int(kick.sum()), "kick_far": frac(kick & seen & ~(dmin <= r_kick), kick)}
+
+
 def atd_stats(players, ball, team_of_slot, graded, pitch, cfg, fps=25):
     present = np.isfinite(ball[:, 0])
     seen = present & graded
@@ -132,4 +162,5 @@ def atd_stats(players, ball, team_of_slot, graded, pitch, cfg, fps=25):
         "low_runs": low,
         "high_runs": high,
         "collective_speed": collective,
+        "carrier": carrier_stats(players, ball, graded, pitch, fps),
     }
