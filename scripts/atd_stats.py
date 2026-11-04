@@ -76,3 +76,14 @@ ev = [e for e in ev if graded[e.start]]
 put("contact episodes per 1e3 graded frames (final touch rules)",
     {"n": len(ev), "per_1e3": float(1e3 * len(ev) / max(1, graded.sum())),
      "median_frames": float(np.median([e.n_frames for e in ev])) if ev else None})
+# Contact-episode kinematics (the takeover model's inputs), quantiles over the episodes above:
+# closest approach, ball speed before / after, speed change and heading turn. Places the real
+# feed against the sim worlds in the owner model's own feature space (board 19).
+def _q(vals):
+    v = np.array([x for x in vals if np.isfinite(x)], dtype=float)
+    return [float(np.percentile(v, q)) for q in (10, 50, 90)] if v.size else None
+put("contact kinematics p10/p50/p90: d_min m, speed_before, speed_after, abs dv m/s, turn deg",
+    {"d_min": _q([e.d_min for e in ev]), "speed_before": _q([e.speed_before for e in ev]),
+     "speed_after": _q([e.speed_after for e in ev]),
+     "abs_dv": _q([abs(e.speed_after - e.speed_before) for e in ev]), "turn_deg": _q([e.turn_deg for e in ev]),
+     "share_speed_before_unseen": float(np.mean([not np.isfinite(e.speed_before) for e in ev])) if ev else None})
