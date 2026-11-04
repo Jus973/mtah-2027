@@ -236,7 +236,7 @@ alive_cut = cut_t & ~is_d
 put("cut-aways: live-play tail (alive, ball seen moving ge 4 m/s)",
     {"share_of_cutaway_frames": float((alive_cut & (speed >= 4)).sum() / max(1, cut_t.sum()))})
 gap = gapstate.long_gaps(observed, graded, cfg_final["gaps"]["min_frames"])
-put("cut-aways: long-gap interior population (frames an interior-only veto could move)",
+put("cut-aways: long-gap interior population (interior-only veto domain)",
     {"gap_frames_in_cutaways_share_of_graded": float((gap & cut_t).sum() / max(1, graded.sum())),
      "alive_share_there": float((~is_d)[gap & cut_t].mean()) if (gap & cut_t).any() else None,
      "alive_share_in_gaps_outside_cutaways": float((~is_d)[gap & ~cut_t].mean()) if (gap & ~cut_t).any() else None})
