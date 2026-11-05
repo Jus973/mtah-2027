@@ -38,6 +38,8 @@ def fit_on(games, cfg):
     import lightgbm as lgb
     pc = cfg["proxowner"]
     train_part = {k: pc[k] for k in ("train_widths", "step_frames", "params")}   # not the decode
+    if pc.get("turn_features"):
+        train_part["turn_features"] = True   # absent when off, so older cache keys still hold
     key = hashlib.sha256(json.dumps([sorted(games), train_part, cfg["ball"], cfg["direction"],
                                      TRAIN_DIR], sort_keys=True).encode()).hexdigest()[:16]
     path = os.path.join(CACHE, "proxowner-{}.txt".format(key))

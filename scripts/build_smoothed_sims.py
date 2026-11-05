@@ -1,6 +1,10 @@
 """Board #67 verification helper: copy sim bundles with the ball smoothed over W frames.
 
     python scripts/build_smoothed_sims.py --width 13 --out ~/opendata/sim_b13 [--src SIM_DIR]
+    python scripts/build_smoothed_sims.py --filter bw4 --param 0.75 --out ~/opendata/sim_bw4
+
+--filter/--param pick a learn/ballfilter.py family (board #84: fitted to the real feed's
+label-free ball-kinematics aggregates); --width W alone is --filter box --param W.
 
 Every DFL-* bundle under --src (default SIM_DIR) is rewritten under --out/<game> with its ball
 x/y replaced by a centred W-frame moving average inside each contiguous run of seen frames
@@ -19,20 +23,26 @@ import shutil
 from mtah import registry
 from mtah.io import atd_write
 from mtah.io.atd import load_game
-from mtah.learn.proxowner import smooth_ball
+from mtah.learn import ballfilter
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--width", type=int, required=True)
+    parser.add_argument("--width", type=int)
+    parser.add_argument("--filter", choices=("box", "sg2", "bw4"))
+    parser.add_argument("--param", type=float)
     parser.add_argument("--out", required=True)
     parser.add_argument("--src", default=registry.SIM_DIR)
     args = parser.parse_args()
+    family, param = (args.filter, args.param) if args.filter else ("box", args.width)
+    if param is None:
+        parser.error("give --width, or --filter with --param")
     out_root = os.path.expanduser(args.out)
     for src in sorted(glob.glob(os.path.join(args.src, "DFL-*"))):
         game = os.path.basename(src)
         atd, _ = load_game(game, src)
-        ball = smooth_ball(atd.ball.copy(), args.width)      # normalised, NaN where missing
+        ball = ballfilter.apply(atd.ball.copy(), family, param, fps=json.load(
+            open(os.path.join(src, "fake_meta.json")))["fps"])   # normalised, NaN where missing
         dst = os.path.join(out_root, game)
         os.makedirs(os.path.join(dst, "tactical"), exist_ok=True)
         for f in ("fake_meta.json", "gt.csv"):
@@ -42,7 +52,7 @@ def main():
         fps = json.load(open(os.path.join(src, "fake_meta.json")))["fps"]
         atd_write.write_raw(os.path.join(dst, "tactical", os.path.basename(xml)[:-4] + ".txt"),
                             atd.xy, ball, atd.pitch, fps)
-        print(game, "-> b{}".format(args.width), dst)
+        print(game, "-> {} {:g}".format(family, param), dst)
 
 
 if __name__ == "__main__":

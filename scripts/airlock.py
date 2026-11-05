@@ -43,6 +43,7 @@ JOBS = {
     "audio": "audio_stats.py",
     "sync": "sync_stats.py",
     "whistle": "whistle_stats.py",
+    "ball-kin": "ball_kin_stats.py",
     # PLAN.md M4 reproducibility: the submission with an empty cache (the ATD is parsed afresh in
     # a temporary cache the airlock creates and deletes), and inside the Docker image (bundle
     # mounted read-only, the container's report collected under the same policy).

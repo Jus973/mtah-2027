@@ -179,3 +179,38 @@ def atd_stats(players, ball, team_of_slot, graded, pitch, cfg, fps=25):
         "collective_speed": collective,
         "carrier": carrier_stats(players, ball, graded, pitch, fps),
     }
+
+
+BALLKIN_LAGS = (1, 2, 3, 4, 6, 8, 12, 16, 25, 50)
+BALLKIN_QS = (50, 75, 90, 95, 99)
+
+
+def ball_kinematics(ball, graded, pitch, fps=25):
+    """Label-free shape of the ball track's filtering (board #84). On graded, in-pitch frames whose
+    whole +/- k window is seen: the curvature b[t+k] - 2 b[t] + b[t-k], as a velocity change in
+    m/s ((.) * fps / k), quantiled per lag k. A filter of width W flattens lags below ~W and leaves
+    longer ones, so the curve over k pins both the width and the filter's shape; the speed
+    quantiles check that the filter keeps the ball's pace. Aggregates only."""
+    T = len(ball)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        ok = (np.isfinite(ball[:, 0]) & graded & (ball[:, 0] >= 0) & (ball[:, 0] <= pitch[0])
+              & (ball[:, 1] >= 0) & (ball[:, 1] <= pitch[1]))
+        curv = {}
+        for k in BALLKIN_LAGS:
+            if T <= 2 * k:
+                curv[str(k)] = None
+                continue
+            c = np.full(T, np.nan)
+            c[k:-k] = np.linalg.norm(ball[2 * k:] - 2 * ball[k:-k] + ball[:-2 * k], axis=1) * fps / k
+            m = ok.copy()
+            m[:k] = m[-k:] = False
+            m[k:-k] &= ok[2 * k:] & ok[:-2 * k]
+            x = c[m & np.isfinite(c)]
+            curv[str(k)] = [float(np.percentile(x, q)) for q in BALLKIN_QS] if x.size else None
+        v = np.full(ball.shape, np.nan)
+        v[1:-1] = (ball[2:] - ball[:-2]) * fps / 2
+        sp = np.linalg.norm(v, axis=1)
+        sp = sp[ok & np.isfinite(sp)]
+    return {"n": int(ok.sum()), "curv_q": curv,
+            "speed_q": [float(np.percentile(sp, q)) for q in BALLKIN_QS] if sp.size else None}
