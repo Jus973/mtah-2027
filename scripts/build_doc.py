@@ -42,8 +42,17 @@ if left:
 if shutil.which("pandoc"):
     pdf = out[:-3] + ".pdf"
     # 10 pt on A4 with 2 cm margins: the layout the <= 6 page estimate assumes (PLAN.md §8).
-    subprocess.run(["pandoc", out, "-o", pdf, "-V", "papersize=a4", "-V", "fontsize=10pt",
-                    "-V", "geometry:margin=2cm"], check=True)
+    cmd = ["pandoc", out, "-o", pdf, "-V", "papersize=a4", "-V", "fontsize=10pt",
+           "-V", "geometry:margin=2cm"]
+    # The text has Unicode the default pdfLaTeX engine rejects (≥, ≈, −): xelatex with a font
+    # that carries them (STIXGeneral; board #56: six A4 pages, no missing glyphs) when present.
+    if shutil.which("xelatex"):
+        cmd += ["--pdf-engine=xelatex", "-V", "mainfont=" + os.environ.get("MTAH_DOC_FONT",
+                                                                           "STIXGeneral")]
+    else:
+        print("xelatex not installed: falling back to pandoc's default engine, which may fail "
+              "on Unicode symbols")
+    subprocess.run(cmd, check=True)
     print("wrote", os.path.relpath(pdf, ROOT))
 else:
     print("pandoc not installed: Markdown only (the Form accepts .md)")
