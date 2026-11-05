@@ -17,7 +17,13 @@ ENV = re.compile(r"\b(MTAH_DATA_DIR|MTAH_CACHE_DIR|MTAH_AIRLOCK_OUT)\s*=|\$\{?(M
 REPO_PROTECTED = re.compile(r"submissions/(candidates|final)/|\.mtah\.local\b")
 # ... except as the CSV argument of one plain airlock call (make airlock T=public-check CSV=...),
 # which reads the file itself and releases aggregates only. Any chaining voids the exemption.
-AIRLOCK_ONLY = re.compile(r"^\s*make airlock\b[^;&|`$()<>\n]*$")
+CSV_DIR = r"(?:\./)?submissions/(?:final|candidates)/"
+CSV_PATH = CSV_DIR + r"[A-Za-z0-9_][A-Za-z0-9_.-]*\.csv"
+QUOTED_PATH = CSV_DIR + r"[A-Za-z0-9_][A-Za-z0-9_ .-]*\.csv"
+AIRLOCK_ONLY = re.compile(
+    r"[ \t]*make[ \t]+airlock[ \t]+T=public-check[ \t]+CSV="
+    rf"""(?:{CSV_PATH}|'{QUOTED_PATH}'|"{QUOTED_PATH}")[ \t]*"""
+)
 
 
 def protected(project):
@@ -54,9 +60,13 @@ def strings(value):
 def main():
     event = json.load(sys.stdin)
     project = os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or os.getcwd()
-    text = "\n".join(strings(event.get("tool_input", {})))
+    inputs = event.get("tool_input", {})
+    text = "\n".join(strings(inputs))
+    command = inputs.get("command")
+    allowed = isinstance(command, str) and AIRLOCK_ONLY.fullmatch(command)
+    other = "\n".join(strings({k: v for k, v in inputs.items() if k != "command"}))
     if (any(path in text for path in protected(project)) or ENV.search(text)
-            or (REPO_PROTECTED.search(text) and not AIRLOCK_ONLY.match(text))):
+            or (REPO_PROTECTED.search(text) and (not allowed or REPO_PROTECTED.search(other)))):
         print("Blocked by .claude/hooks/guard_data.py: the command names the match bundle, its "
               "cache, a data variable, a bundle-derived submission CSV or .mtah.local. Run real-data targets with `make airlock T=<target>`.",
               file=sys.stderr)

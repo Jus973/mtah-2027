@@ -1,6 +1,7 @@
 import json
 
 import numpy as np
+import pytest
 
 from mtah.io import pff
 
@@ -70,3 +71,24 @@ def test_parse_state_follows_match_time_not_file_order():
     m = pff.parse(META, ROSTER, shuffled)
     assert (m.gt_labels() == ordered.gt_labels()).all()
     assert np.allclose(np.nan_to_num(m.players), np.nan_to_num(ordered.players))
+
+
+def test_second_period_cannot_inherit_first_period_owner():
+    lines = [frame(1, 0, "FIRSTKICKOFF", True), frame(2, 0), frame(2, 0.04, "OTB", False)]
+    with pytest.raises(ValueError, match="has no known owner"):
+        pff.parse(META, ROSTER, lines)
+
+
+def test_untimed_second_kickoff_belongs_to_its_own_period():
+    lines = [frame(1, 0, "FIRSTKICKOFF", True), frame(2, None, "SECONDKICKOFF", False),
+             frame(1, 0.04), frame(2, 0)]
+    match = pff.parse(META, ROSTER, lines)
+    assert match.gt_labels()[match.halves[0, 1]] == "H"
+    assert match.gt_labels()[match.halves[1, 0]] == "A"
+
+
+def test_periodless_untimed_kickoffs_start_the_named_half():
+    lines = [frame(None, None, "FIRSTKICKOFF", True), frame(1, 0),
+             frame(None, None, "SECONDKICKOFF", False), frame(1, 0.04), frame(2, 0)]
+    match = pff.parse(META, ROSTER, lines)
+    assert list(match.gt_labels()[match.halves[:, 0]]) == ["H", "A"]

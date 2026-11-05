@@ -22,6 +22,7 @@ OPEN_DIR = os.path.expanduser(os.environ.get("MTAH_PFF_DIR", "~/opendata/pff"))
 FPS = 25
 PAD = 125
 DEAD_EVENTS = ("OUT", "END")
+KICKOFF_PERIOD = {"FIRSTKICKOFF": 1, "SECONDKICKOFF": 2}
 ALIVE_EVENTS = ("FIRSTKICKOFF", "SECONDKICKOFF", "THIRDKICKOFF", "FOURTHKICKOFF", "OTB")
 
 
@@ -59,18 +60,31 @@ def parse(meta, roster, lines):
     idx_a = {j: i for i, j in enumerate(jerseys[away_id])}
     nh, na = len(idx_h), len(idx_a)
     rows = {1: [], 2: []}
-    alive, owner = False, -1
+    period = None
     # The alive/owner state is a running fold over events, so it must see them in match time,
     # not file order: frames are sorted by (period, clock); a frame without a clock keeps the
     # place of the timed frame before it. For a file already in time order this is the identity.
-    frames, key = [], (0, -np.inf)
+    frames, key = [], (1, -np.inf)
     for line in lines:
         f = json.loads(line) if isinstance(line, (str, bytes)) else line
-        if f.get("period") is not None and f.get("periodElapsedTime") is not None:
-            key = (f["period"], float(f["periodElapsedTime"]))
+        q = f.get("period")
+        event_type = (f.get("game_event") or {}).get("game_event_type")
+        if q is None:
+            q = KICKOFF_PERIOD.get(event_type)
+        if q is not None:
+            clock = f.get("periodElapsedTime")
+            if clock is not None:
+                key = (q, float(clock))
+            elif key[0] != q or event_type in KICKOFF_PERIOD:
+                key = (q, -np.inf)
         frames.append((key, len(frames), f))
     frames.sort(key=lambda x: (x[0], x[1]))
-    for _, _, f in frames:
+    for (q, _), _, f in frames:
+        if q not in rows:
+            continue
+        if period != q:
+            period = q
+            alive, owner = False, -1
         ge = f.get("game_event")
         if ge:
             kind = ge.get("game_event_type")
@@ -130,7 +144,7 @@ def parse(meta, roster, lines):
 
 
 def cache_path(game, open_dir=OPEN_DIR):
-    return os.path.join(open_dir, "cache", "PFF-{}.npz".format(game))
+    return os.path.join(open_dir, "cache", "PFF-v2-{}.npz".format(game))
 
 
 def load(game, open_dir=OPEN_DIR, use_cache=True):
