@@ -340,9 +340,9 @@ pre-registered).** Three families of stress test, none of which changed the fina
   1,000 seen frames, vs 21–43 on the sims. On sims smoothed to match (13 frames) the final loses
   0.17 (0.09–0.23 for 7–25 frames, 7/7), and every fix tried on the sims (retraining on
   smoothed-ball rows, relaxed touch thresholds) recovers ≤ 0.003: the smoothed feed no longer
-  shows the short dwell contacts. This hits any tracking-only method alike and does not change
-  the choice of configuration, but the absolute sim scores here overstate what to expect on this
-  match.
+  shows the short dwell contacts. The loss is specific to contact-based owner decoding: a
+  per-frame ball-proximity owner model loses almost nothing on the same smoothed sims (board #67),
+  so the absolute sim scores here overstate what to expect on this match.
 
 ## 6. Limitations and next steps
 
