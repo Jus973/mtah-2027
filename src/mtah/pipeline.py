@@ -161,4 +161,14 @@ def run(game, cfg, data_dir=None, atd=None):
         if gc and gc["enabled"]:
             alive = np.isin(labels[info["gap_mask"]], ["H", "A"])
             info["gap_alive_share"] = float(alive.mean()) if info["gap_frames"] else 0.0
+    po = cfg.get("proxowner")
+    if po and po.get("enabled"):
+        # v12 (board #67): blend the per-frame proximity owner into every alive run, with the
+        # pre-registered setting the match's kick rate selects (learn/proxowner.py).
+        from mtah.learn import proxowner
+        views = proxowner.match_views(atd, sp, kicks, cfg, ball_raw=ball_raw)
+        rate = proxowner.kick_rate(players, ball_raw, graded, atd.pitch, fps)
+        w, lam = proxowner.setting(cfg, rate)
+        labels = proxowner.blend_decode(labels, proxowner.p_home(proxowner.load(cfg), views), w, lam)
+        info["kick_rate"], info["proxowner_setting"] = rate, (w, lam)
     return labels, info

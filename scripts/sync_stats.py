@@ -154,3 +154,112 @@ put("tactical-missing graded frames recovered by the broadcast ball",
      "in predicted D": float(recovered[~alive].sum() / max(1, (missing & ~alive).sum()))})
 check("T3-broadcast falsifier: >= 10% of tactical-missing graded frames recovered",
       share >= 0.10, share=share)
+
+# Broadcast cut-aways as dead-ball evidence, step 1 (board idea 32; pre-registered there).
+# Every run of VALID broadcast homography (a live shot) is mapped onto the tactical clock with the
+# main offset whose ball agreement on that run is best (runs too short to score inherit the
+# previous run's offset). Cut-aways = the runs of invalid homography between two consecutive
+# mapped live runs, bracketed by their tactical ends. Label-free aggregates: coverage and bracket
+# lengths, enrichment of the final pipeline's D inside cut-aways vs live runs, set-piece tag
+# overlap, the lag of the bracket end past the D-run end (replays outlast restarts), the live-play
+# tail and the long-gap interior population an interior-only veto could ever move.
+from mtah.io.tags import load_tags  # noqa: E402
+from mtah.learn import gapstate  # noqa: E402
+from mtah.features.ball import clean_ball, velocity  # noqa: E402
+
+fps = sp["fps"]
+cfg_final = config.load(os.path.join(registry.ROOT, "configs", "final.yaml"))
+T = len(graded)
+# Offsets are per half (the halftime cut shifts the broadcast clock): a main offset is admissible
+# for a run only if it maps the run into (or next to) a graded block, never across halftime.
+blocks = sorted(sp["half_blocks"], key=lambda b: b[1])
+margin = 60 * fps
+def admissible(a0, b0, o):
+    t0, t1 = a0 + o, b0 + o
+    return any(t1 >= first - margin and t0 <= last + margin for _, first, last in blocks)
+live_runs, last_o, unscorable, inadmissible = [], None, 0, 0
+for a0, n0 in zip(starts_v, lengths_v):
+    b0 = a0 + n0 - 1
+    frames = np.arange(a0, a0 + n0)
+    opts = [o for o in main_offsets if admissible(a0, b0, o)]
+    if not opts:
+        inadmissible += 1
+        continue
+    cand = []
+    for o in opts:
+        ag, nb_ = validate(ball_t, ball_b, o, frames, cfg["tol_m"])
+        if ag is not None and nb_ >= 10:
+            cand.append((ag, o))
+    if cand:
+        last_o = max(cand)[1]
+    elif last_o in opts:
+        unscorable += 1
+    else:
+        last_o = opts[0]; unscorable += 1
+    live_runs.append((int(a0), int(b0), int(last_o)))
+live_t = np.zeros(T, dtype=bool)
+for a0, b0, o in live_runs:
+    live_t[max(0, a0 + o):min(T, b0 + o + 1)] = True
+cut_t = np.zeros(T, dtype=bool)
+brackets = []
+too_long = 0
+for (pa, pb, po), (na, nb2, no) in zip(live_runs[:-1], live_runs[1:]):
+    t0, t1 = max(0, pb + po + 1), min(T - 1, na + no - 1)
+    if t1 < t0:
+        continue
+    if t1 - t0 + 1 > 120 * fps:          # a broadcast discontinuity, not a replay: not a cut-away
+        too_long += 1
+        continue
+    brackets.append((t0, t1)); cut_t[t0:t1 + 1] = True
+cut_t &= graded; live_t &= graded
+blen = np.array([(b - a + 1) / fps for a, b in brackets])
+near = np.zeros(T, dtype=bool)
+for a, b in brackets:
+    near[max(0, a - 10 * fps):min(T, b + 10 * fps + 1)] = True
+put("cut-aways: coverage", {"live_runs": len(live_runs), "unscorable_runs_inheriting_offset": unscorable,
+                            "inadmissible_runs": inadmissible, "brackets_over_120s_dropped": too_long,
+                            "brackets": len(brackets),
+                            "graded_share_within_10s_of_a_bracket (chance for the tag overlap)": float((near & graded).sum() / max(1, graded.sum())),
+                            "bracket_length_s_p50_p90": [float(np.percentile(blen, q)) for q in (50, 90)] if len(blen) else None,
+                            "share_of_graded_frames": float(cut_t.sum() / max(1, graded.sum())),
+                            "live_share_of_graded_frames": float(live_t.sum() / max(1, graded.sum()))})
+is_d = np.asarray(labels) == "D"
+enrich = {}
+for name, mask in (("pooled", graded),) + tuple(("half {}".format(h), np.isin(np.arange(T), np.arange(a, b + 1)))
+                                                for h, a, b in sp["half_blocks"]):
+    pc_ = float(is_d[cut_t & mask].mean()) if (cut_t & mask).any() else None
+    pl_ = float(is_d[live_t & mask].mean()) if (live_t & mask).any() else None
+    enrich[name] = {"p_D_given_cutaway": pc_, "p_D_given_live": pl_,
+                    "ratio": (pc_ / pl_) if (pc_ is not None and pl_) else None}
+put("cut-aways: enrichment of final-pipeline D (gate ratio ge 2)", enrich)
+tag_path = registry.asset_paths(args.game, args.data_dir)["smart_tagging"]
+tags = load_tags(tag_path, fps) if os.path.isfile(tag_path) else []
+sp_tags = [t for t in tags if t.is_code("SET PIECES")]
+hit = 0
+for t in sp_tags:
+    lo, hi = max(0, t.start - 10 * fps), min(T, t.end + 10 * fps + 1)
+    hit += bool(cut_t[lo:hi].any())
+put("cut-aways: set-piece tags overlapped within 10 s (gate ge 0.70)",
+    {"tags": len(sp_tags), "overlapped": hit, "share": float(hit / len(sp_tags)) if sp_tags else None})
+starts_d, lengths_d = runs(is_d & graded)
+lags = []
+for a0, n0 in zip(starts_d, lengths_d):
+    d1 = a0 + n0 - 1
+    over = [b for b in brackets if b[0] <= d1 and b[1] >= a0]
+    if over:
+        lags.append((max(b[1] for b in over) - d1) / fps)
+lags = np.array(lags)
+put("cut-aways: bracket end minus D-run end, s (p50 gt 0 = replay outlasts restart)",
+    {"d_runs_overlapping": int(len(lags)),
+     "p50_p90": [float(np.percentile(lags, q)) for q in (50, 90)] if len(lags) else None,
+     "share_positive": float((lags > 0).mean()) if len(lags) else None})
+ball_c, observed, _ = clean_ball(ball_t, atd_t.pitch, cfg_final["ball"], fps)
+speed = np.linalg.norm(velocity(ball_c, 2, fps), axis=1)
+alive_cut = cut_t & ~is_d
+put("cut-aways: live-play tail (alive, ball seen moving ge 4 m/s)",
+    {"share_of_cutaway_frames": float((alive_cut & (speed >= 4)).sum() / max(1, cut_t.sum()))})
+gap = gapstate.long_gaps(observed, graded, cfg_final["gaps"]["min_frames"])
+put("cut-aways: long-gap interior population (interior-only veto domain)",
+    {"gap_frames_in_cutaways_share_of_graded": float((gap & cut_t).sum() / max(1, graded.sum())),
+     "alive_share_there": float((~is_d)[gap & cut_t].mean()) if (gap & cut_t).any() else None,
+     "alive_share_in_gaps_outside_cutaways": float((~is_d)[gap & ~cut_t].mean()) if (gap & ~cut_t).any() else None})

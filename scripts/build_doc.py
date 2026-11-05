@@ -47,7 +47,8 @@ pdf = out[:-3] + ".pdf"
 with tempfile.TemporaryDirectory(dir=os.path.dirname(out)) as tmp:
     proof = os.path.join(tmp, "proof.pdf")
     subprocess.run(["pandoc", out, "-o", proof, "--pdf-engine=xelatex", "--fail-if-warnings",
-                    "-V", "mainfont=STIXGeneral", "-V", "papersize=a4", "-V", "fontsize=10pt",
+                    "-V", "mainfont=" + os.environ.get("MTAH_DOC_FONT", "STIXGeneral"),
+                    "-V", "papersize=a4", "-V", "fontsize=10pt",
                     "-V", "geometry:margin=2cm"], check=True)
     info = subprocess.check_output(["pdfinfo", proof], text=True, env=dict(os.environ, LC_ALL="C"))
     pages = re.search(r"^Pages:\s+(\d+)\s*$", info, re.MULTILINE)

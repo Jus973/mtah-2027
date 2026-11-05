@@ -54,8 +54,36 @@ for team, name in ((HOME, "home"), (AWAY, "away")):
             {"n": r["n"], "mean_frames": r["mean"], "hist": [int(c) for c in r["hist"]]})
 put("collective player speed m/s (median, p75, p90)", s["collective_speed"])
 c = s["carrier"]
-put("carrier loss proxies (board #55): ball seen in pitch, no player within 1 m",
+put("carrier loss proxies: ball seen in pitch, no player within 1 m",
     {"n_frames": c["n_seen_inpitch"], "absent": c["absent"],
      "carry_speed_frames": c["n_carry"], "carry_absent": c["carry_absent"]})
-put("carrier loss proxies: kicks (dv > 3 m/s) with no player within 1.5 m",
-    {"n_kicks": c["n_kicks"], "kick_far": c["kick_far"]})
+put("carrier loss proxies: nearest-player distance bins at carry speed (see stats.py)",
+    c["carry_dmin_hist"])
+put("ball speed-vector change over k frames, m/s (p50, p90, p99, share gt 3)", c["accel_quantiles"])
+put("carrier loss proxies: kicks (dv gt 3 m/s) with no player within 1.5 m",
+    {"n_kicks": c["n_kicks"], "kicks_per_1e3_seen": c["kicks_per_1e3_seen"], "kick_far": c["kick_far"]})
+
+# Contact episodes of the FINAL config's touch detector per 1,000 graded frames (label-free; the
+# takeover model's candidate set). Lets the real feed be placed against the sim worlds (board 19).
+from mtah.events.touches import touch_events  # noqa: E402
+from mtah.features.ball import clean_ball  # noqa: E402
+from mtah.features.players import team_distances  # noqa: E402
+cfg_final = config.load("final.yaml")
+ball_c, _, _ = clean_ball(atd.ball_m(), atd.pitch, cfg_final["ball"], sp["fps"])
+d_team, _ = team_distances(atd.players_m()[..., :2].astype(np.float64), ball_c, atd.team_of_slot)
+ev = touch_events(ball_c, d_team, dict(cfg_final["touch"], r_touch_m=cfg_final["owner"]["contact_r_m"], min_frames=1), sp["fps"])
+ev = [e for e in ev if graded[e.start]]
+put("contact episodes per 1e3 graded frames (final touch rules)",
+    {"n": len(ev), "per_1e3": float(1e3 * len(ev) / max(1, graded.sum())),
+     "median_frames": float(np.median([e.n_frames for e in ev])) if ev else None})
+# Contact-episode kinematics (the takeover model's inputs), quantiles over the episodes above:
+# closest approach, ball speed before / after, speed change and heading turn. Places the real
+# feed against the sim worlds in the owner model's own feature space (board 19).
+def _q(vals):
+    v = np.array([x for x in vals if np.isfinite(x)], dtype=float)
+    return [float(np.percentile(v, q)) for q in (10, 50, 90)] if v.size else None
+put("contact kinematics quantiles p10 p50 p90 (see atd_stats.py)",
+    {"d_min": _q([e.d_min for e in ev]), "speed_before": _q([e.speed_before for e in ev]),
+     "speed_after": _q([e.speed_after for e in ev]),
+     "abs_dv": _q([abs(e.speed_after - e.speed_before) for e in ev]), "turn_deg": _q([e.turn_deg for e in ev]),
+     "share_speed_before_unseen": float(np.mean([not np.isfinite(e.speed_before) for e in ev])) if ev else None})
