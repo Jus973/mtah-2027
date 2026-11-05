@@ -360,10 +360,10 @@ pre-registered).** Three families of stress test, none of which changed the fina
   only, which is also where the held-out gain (+0.037) comes from.
 - **Restarts:** after tagged corners, the first spell is the corner team's 5 times in 11; fouls
   and offsides with the ball still tracked produce no evidence.
-- **Semantics:** the labels are DFL's notion of possession; a systematic mismatch with this
-  match's GT is bounded by the convention worlds of §5.7 (the final leads in every one, by
-  only +0.001 when `D` ends are placed ~1.5 s late) but not removed, and is otherwise checked
-  only by the bands and consistency.
+- **Semantics:** the labels use DFL's definition of possession. Across the eight primary matches
+  in §5.7, the final leads its predecessor on average under every convention tested. When `D`
+  ends are placed about 1.5 s later, the mean lead is only +0.001, with wins on five of eight
+  matches. For this match, the bands and consistency checks provide only indirect evidence.
 - **Ball kinematics:** the sim matches this feed's gaps, visibility and tempo but not its ball
   kinematics; the real ball track is about ten times smoother, which costs the final ~0.17 on
   matched sims (§5.7). Expect the absolute score here to sit below the held-out sim estimate.
