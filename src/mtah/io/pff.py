@@ -4,7 +4,9 @@ Source: PFF's public WC2022 release (Metadata/<id>.json, Rosters/<id>.json, Trac
 under MTAH_PFF_DIR (default ~/opendata/pff), never inside the repo. Mechanical labels from the
 game_event stream embedded in the tracking frames, the kloppy PFF convention: OUT / END make the
 ball dead; a kick-off or an on-the-ball (OTB) event makes it alive; the owner is the team of the
-last event's home_ball flag. Halves 1-2 only, resampled from the source rate (29.97 fps) to 25 fps
+last event's home_ball flag. In-pitch stoppages (fouls, offsides) emit no OUT, so the ball stays
+alive through them: this GT is fit for paired candidate signs only, never for calibrating dead-ball
+detection or spell-length distributions. Halves 1-2 only, resampled from the source rate (29.97 fps) to 25 fps
 by nearest earlier source frame on the period clock; coordinates moved to a pitch-corner origin.
 """
 
@@ -58,8 +60,17 @@ def parse(meta, roster, lines):
     nh, na = len(idx_h), len(idx_a)
     rows = {1: [], 2: []}
     alive, owner = False, -1
+    # The alive/owner state is a running fold over events, so it must see them in match time,
+    # not file order: frames are sorted by (period, clock); a frame without a clock keeps the
+    # place of the timed frame before it. For a file already in time order this is the identity.
+    frames, key = [], (0, -np.inf)
     for line in lines:
         f = json.loads(line) if isinstance(line, (str, bytes)) else line
+        if f.get("period") is not None and f.get("periodElapsedTime") is not None:
+            key = (f["period"], float(f["periodElapsedTime"]))
+        frames.append((key, len(frames), f))
+    frames.sort(key=lambda x: (x[0], x[1]))
+    for _, _, f in frames:
         ge = f.get("game_event")
         if ge:
             kind = ge.get("game_event_type")

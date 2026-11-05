@@ -36,6 +36,8 @@ Usage: .venv/bin/python scripts/regret_matrix.py [--rebuild] [--committed]
 """
 
 import argparse
+import glob
+import hashlib
 import os
 import pickle
 import sys
@@ -220,13 +222,32 @@ def build(extra, committed):
     return data
 
 
+def fingerprint():
+    """What the cached labels depend on: both resolved configs, every committed model file and
+    the sim bundles' metadata. A cache built under a different fingerprint is stale."""
+    h = hashlib.sha256()
+    for path in (V6, V11):
+        h.update(config.config_hash(config.load(path)).encode())
+    for path in sorted(glob.glob(os.path.join(ROOT, "models", "*"))):
+        with open(path, "rb") as handle:
+            h.update(os.path.basename(path).encode() + hashlib.sha256(handle.read()).digest())
+    for path in sorted(glob.glob(os.path.join(registry.SIM_DIR, "*", registry.FAKE_META))):
+        with open(path, "rb") as handle:
+            h.update(path.encode() + handle.read())
+    return h.hexdigest()[:16]
+
+
 def load_or_build(extra, committed, rebuild):
-    data = None
+    data, fp = None, fingerprint()
     if not rebuild and os.path.isfile(CACHE):
         with open(CACHE, "rb") as handle:
             data = pickle.load(handle)
+        if data.get("fingerprint") != fp:
+            print("cache {} is stale (configs, models or sims changed): rebuilding".format(CACHE))
+            data = None
     if data is None:
         data = build(extra, committed)
+        data["fingerprint"] = fp
     else:  # top up what the cache is missing
         for game in [g for g in extra if g not in data["gt"]]:
             print("committed-model pipeline on {}...".format(game), flush=True)

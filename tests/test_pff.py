@@ -57,3 +57,16 @@ def test_attacking_direction_widens_window_when_a_team_is_untracked():
         pass
     else:
         raise AssertionError("expected ValueError when a team is never visible")
+
+
+def test_parse_state_follows_match_time_not_file_order():
+    dt = 1 / 29.97
+    lines = [frame(1, 0.0, "FIRSTKICKOFF", True)] + [frame(1, k * dt) for k in range(1, 40)]
+    lines += [frame(1, 40 * dt, "OUT", False)] + [frame(1, k * dt) for k in range(41, 80)]
+    lines += [frame(2, 0.0, "SECONDKICKOFF", False)] + [frame(2, k * dt) for k in range(1, 30)]
+    ordered = pff.parse(META, ROSTER, lines)
+    shuffled = lines[:]
+    np.random.default_rng(0).shuffle(shuffled)
+    m = pff.parse(META, ROSTER, shuffled)
+    assert (m.gt_labels() == ordered.gt_labels()).all()
+    assert np.allclose(np.nan_to_num(m.players), np.nan_to_num(ordered.players))
