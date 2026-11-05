@@ -24,6 +24,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-01 23:08 | final | 259d8aae1d1a | 7f23da4+dirty | 7b83f3a89bb15fa8 | pass | 0.6636 | pass | **FINAL** (adoption entry; §6.4): configs/final.yaml = v11, same resolved pipeline config (hash differs from v11's only via the inert clipviewer map); consistency 0.730; cold ×2 + docker arm64/amd64 byte-identical | no |
 | 2026-11-05 00:18 | v12 | 5b9e56cd549b | 3a958c9+dirty | 609343ecfdf06761 | pass | 0.6600 | pass | consistency 0.721 | no |
 | 2026-11-05 07:27 | v12h | c90a8155334f | 3a958c9+dirty | 961e800ef78f189a | pass | 0.6600 | pass | consistency 0.733 | no |
+| 2026-11-05 12:32 | v12hA | 1ba66b0a54f5 | 452efcb | 25876f5bb7eb2124 | pass | 0.6680 | pass | consistency 0.733 | no |
 
 
 ## Work log

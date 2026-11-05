@@ -1,0 +1,4 @@
+inherit: rules_v12_hedge.yaml
+proxowner:
+  model: models/proxowner_v2.txt   # variant A: 600 rounds of 63 leaves (board #67 lead)
+  params: {num_leaves: 63, learning_rate: 0.05, min_data_in_leaf: 50, rounds: 600, seed: 0}
