@@ -194,6 +194,21 @@ minutes are a correctness check only: the tool prints *pass* (spellF1 ≥ 0.35, 
 *fail*, never the number, and our scoring wrapper refuses to score a candidate on the public GT.
 No rule or constant is tied to specific frames of this match.
 
+*Training and tuning data.* Every model, threshold and decoder cost in the final configuration
+was fitted or selected on degraded external open data (DFL/IDSSE), which the organisers called
+permissible on the challenge repository's issue #16. The one link to this match is the
+degradation recipe (§5.2). Before the organisers' 3 Nov clarification, it was calibrated to
+label-free aggregate statistics of the provided tracking file: ball-missing share, gap rates and
+lengths, player track lengths. No labels, video or frame-level information went into it. To
+remove that link on the ball side, we re-fitted it to external automatic tracking only (Metrica
+Sports Sample Games 1–2, the vendor's own ball loss). The fitted parameters agree with the
+original within one grid step (q 1.0, f 0.6, s 0.5 vs 1.0, 0.7, 0.4), and on sims built from it the
+final still beats its predecessor on all 7 matches (+0.018, p = 0.008;
+`configs/sim_external.yaml`). The player side (track dropouts, g) is still calibrated to the
+provided file, because the sample games have no tracker dropout to measure it from. Real-match
+signals were otherwise used only as automatic guards and to choose between whole, externally
+tuned versions. The organisers confirmed that is allowed (3 Nov).
+
 **5.2 Simulation on open data (primary).** Each DFL match is rewritten in the bundle's ATD format.
 Its ground truth is `D` where DFL marks the ball dead, else the team in possession. It is then
 degraded to label-free statistics of the real ATD: stoppage ball loss (probability q, fraction
