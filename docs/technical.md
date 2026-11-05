@@ -312,19 +312,18 @@ sim's held-out residual (§3.7) and this match's label-free restart profile (`ma
 T=dend-stats`). v11's median `D`-end move (−1.72 s) is the size of that lateness: the mechanical
 basis for the §5.4 one-way adoption.
 
-**5.7 Robustness to ground-truth conventions and feed shifts (3–4 Nov, open data, all
-pre-registered).** Three families of stress test, none of which changed the final configuration:
+**5.7 Robustness to ground-truth conventions and feed shifts (3–5 Nov, open data).** We tested v11 under alternative labelling conventions and tracking conditions, then compared the selected v12-hedge blend with v11.
 
 - *Ground-truth conventions.* A target labeller may place `D` starts, `D` ends or owner switches
   elsewhere than DFL does, or absorb short spells. So the outputs on the 8 primary matches (7 DFL
   sims, cross-fitted, plus Metrica Game 3) were re-scored against transformed ground truths, one
   axis at a time. With H↔A boundaries or `D` starts moved −10 to +25 frames, or spells under 1 s
-  or 2 s folded into their neighbours, the final beats its predecessor on all 8 matches in each of
+  or 2 s folded into their neighbours, v11 beats v6 on all 8 matches in each of
   the 10 worlds (+0.023 to +0.035) and on Metrica Games 1–2. Moving `D` ends later erodes the lead:
   +0.029 at 0 frames, +0.012 at +20, +0.001 at +38 (about v6's measured lateness, §5.6), where the
-  final wins 5 of 8 and loses on the Metrica builds (Game 3 −0.017, Games 1–2 −0.030 / −0.008).
+  v11 model wins 5 of 8 and loses on the Metrica builds (Game 3 −0.017, Games 1–2 −0.030 / −0.008).
   That stays above the pre-registered −0.010 bar, but a late, whistle-timed `D`-end convention is
-  the final's main residual exposure. Its own score is highest at the untransformed ground truth
+  v11's main residual exposure. Its own score is highest at the untransformed ground truth
   on every boundary axis tested, so no post-hoc boundary shift is applied.
 - *Degradation redraw floor.* Three more random degradations of the held-out matches move a
   configuration's absolute spellF1 by ±0.020 (SD) but a paired difference by only ±0.004, so a
@@ -337,12 +336,18 @@ pre-registered).** Three families of stress test, none of which changed the fina
   it. Nobody is near the ball more often here (no player within 1 m on 52.6% of visible
   carry-speed ball frames, vs 30.5–35.4% on the sims), so the carrier-loss sensitivity applies to
   this match. And the real ball track is velocity-filtered: 2.6 kicks (speed change > 3 m/s) per
-  1,000 seen frames, vs 21–43 on the sims. On sims smoothed to match (13 frames) the final loses
-  0.17 (0.09–0.23 for 7–25 frames, 7/7), and every fix tried on the sims (retraining on
-  smoothed-ball rows, relaxed touch thresholds) recovers ≤ 0.003: the smoothed feed no longer
-  shows the short dwell contacts. The loss is specific to contact-based owner decoding: a
-  per-frame ball-proximity owner model loses almost nothing on the same smoothed sims (board #67),
-  so the absolute sim scores here overstate what to expect on this match.
+  1,000 seen frames, vs 21–43 on the sims. On the two held-out matches, smoothing the ball over 13 frames reduced
+  v11's mean spellF1 by 0.165. A per-frame proximity and team-shape model scored almost
+  identically before and after smoothing. Smoothing obscured the short contacts that v11 uses
+  to identify the owner.
+- *Owner blend.* The selected v12-hedge blends contact and proximity evidence during live play.
+  The observed kick rate informed the smoothing range. Training used external simulations at
+  widths 0, 7 and 25, with blend settings chosen out of fold. Width 13 was reserved for evaluation.
+  On the same two held-out matches, raw mean spellF1 went from 0.6636 (v11) to 0.6600
+  (hedge), within the 0.008 noise floor. With 13-frame smoothing it rose from 0.4949 to
+  0.5379, with gains on both matches. Across all seven matches the paired gains were
+  +0.0021 on raw tracking (5/7) and +0.0363 with 13-frame smoothing (7/7). The provided feed
+  has a low kick rate but retains many contacts, so the smoothed gain may overstate the benefit there.
 
 ## 6. Limitations and next steps
 
