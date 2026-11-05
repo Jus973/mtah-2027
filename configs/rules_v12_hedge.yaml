@@ -1,0 +1,4 @@
+inherit: rules_v12.yaml
+proxowner:
+  kick_threshold: 18.0
+  smooth: [1.0, 5.0]

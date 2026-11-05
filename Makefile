@@ -5,7 +5,7 @@ GAME    ?= BAR-ATH
 FAKE    ?= BAR-FAKE
 export PYTHONHASHSEED := 0
 
-.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps train-dead train-hybrid paired sim-latency sim-ablate sim-costs score autopsy clips candidate dend-stats gap-stats sync submission doc audit docker-build check-data metrica-data metrica-sim
+.PHONY: setup fake test airlock cache baseline-check anchors anchors-diag probe atd-stats open-data sim-fit sim sim-check sim-rules sim-dead train-takeover train-gaps train-dead train-hybrid train-proxowner paired sim-latency sim-ablate sim-costs score autopsy clips candidate dend-stats gap-stats sync submission doc audit docker-build check-data metrica-data metrica-sim
 
 setup:
 	python3.11 -m venv .venv
@@ -84,6 +84,10 @@ train-dead:
 # P3e hybrid dead model (causal features; boundary refinement) -> deadhybrid.model
 train-hybrid:
 	$(PY) scripts/train_hybrid.py --config $(or $(CFG),configs/rules_v11.yaml)
+
+# v12 proximity owner model (board #67): fit sims only -> models/proxowner_v1.txt
+train-proxowner:
+	$(PY) scripts/train_proxowner.py --config $(or $(CFG),configs/rules_v12.yaml)
 
 # PLAN.md §6.4: paired per-match comparison on the sim, learned parts cross-fitted
 paired:

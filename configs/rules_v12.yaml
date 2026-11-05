@@ -1,0 +1,18 @@
+# Rules v12 (board #67): v11 plus the per-frame ball-proximity owner model (learn/proxowner.py),
+# blended into v11's owner inside every alive run, with the blend picked by the match's kick rate.
+# Motivation (label-free, #55/#67): the real ATD's ball is velocity-filtered; on sims smoothed
+# like it v11 loses 0.165 held-out (owner decoding) while a per-frame proximity model loses ~0.
+# Everything below is fitted on the 5 DFL fit sims only (raw and smoothed over train_widths);
+# the two settings were chosen out of fold against v11's cross-fitted labels: kicky on the raw
+# fit sims, smooth on the 7- and 25-frame-smoothed fit sims (board #67, 5 Nov).
+inherit: rules_v11.yaml
+
+proxowner:
+  enabled: true
+  model: models/proxowner_v1.txt   # make train-proxowner writes it (fit sims only)
+  train_widths: [0, 7, 25]         # ball smoothing (frames) of the training copies
+  step_frames: 3                   # every 3rd alive GT frame, both team views
+  params: {num_leaves: 31, learning_rate: 0.05, min_data_in_leaf: 50, rounds: 300, seed: 0}
+  kick_threshold: 18.0             # kicks / 1,000 seen frames: raw sims 21-43, 7-frame 12-13
+  kicky: [2.0, 5.0]                # (w on v11's owner, switch cost) when rate >= threshold
+  smooth: [0.5, 5.0]               # ... and below it
