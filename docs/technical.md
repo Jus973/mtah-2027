@@ -205,7 +205,10 @@ Sports Sample Games 1–2, the vendor's own ball loss). The fitted parameters ag
 original within one grid step (q 1.0, f 0.6, s 0.5 vs 1.0, 0.7, 0.4), and on sims built from it the
 final still beats its predecessor on all 7 matches (+0.018, p = 0.008;
 `configs/sim_external.yaml`). The player side (track dropouts, g) is still calibrated to the
-provided file, because the sample games have no tracker dropout to measure it from. Real-match
+provided file: no external feed we hold has comparable tracker dropout (the sample games have
+none, broadcast tracking sees about half the players). The selection does not depend on it: with
+g at a quarter or five times the fitted value, the final still wins on all 7 matches (+0.022 /
++0.019). Real-match
 signals were otherwise used only as automatic guards and to choose between whole, externally
 tuned versions. The organisers confirmed that is allowed (3 Nov).
 
