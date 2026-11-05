@@ -127,9 +127,9 @@ docker-build:
 audit:
 	$(PY) scripts/audit_repo.py $(if $(HISTORY),--history)
 
-# make doc REPO=<public repo URL> [TEAM="<name>"] -> docs/<team>.md (+ .pdf with pandoc)
+# make doc [REPO=<public repo URL>] [TEAM="<name>"] -> docs/<team>.md and .pdf
 doc:
-	$(PY) scripts/build_doc.py $(if $(TEAM),--team "$(TEAM)") --repo "$(REPO)"
+	$(PY) scripts/build_doc.py $(if $(TEAM),--team "$(TEAM)") $(if $(REPO),--repo "$(REPO)")
 
 # make submission [TEAM="<name>"] (default: configs/base.yaml team; agents: make airlock T=submission)
 submission: check-data

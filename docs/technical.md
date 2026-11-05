@@ -371,16 +371,18 @@ pre-registered).** Three families of stress test, none of which changed the fina
 
 ## 7. Reproduction
 
-```bash
+```text
 make setup                          # Python 3.11.14 venv, pinned requirements.txt
-make test                           # 116 tests, no match data needed
+make test                           # no match data needed
 export MTAH_DATA_DIR=/path/to/bundle
 make cache                          # parse the ATD into an npz cache outside the repo
-make submission                    # -> submissions/final/<team>.csv, validator, bands, sha256
+make submission                     # validate, check bands, and record the CSV hash
 # optional, to retrain and re-check on the sim:
-make open-data && make sim && make train-takeover CFG=configs/rules_v6.yaml && make train-gaps
+make open-data && make sim
+make train-takeover CFG=configs/rules_v6.yaml && make train-gaps
 make train-hybrid                   # the v11 boundary dead model (byte-identical retrain)
-make sim-ablate && make paired B=configs/rules_v11.yaml A=configs/rules_v6_final.yaml
+make sim-ablate
+make paired B=configs/rules_v11.yaml A=configs/rules_v6_final.yaml
 ```
 
 - **Submitted file:** sha256

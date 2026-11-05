@@ -67,8 +67,13 @@ debugging; they never produce labels.
 
 ```bash
 make audit                                  # repo audit: no bundle files, sizes, secrets
-make doc REPO=<url>                         # technical document -> "docs/<team>.md" (+ .pdf)
+make doc                                    # writes docs/<team>.md and docs/<team>.pdf
 ```
+
+The document build requires Pandoc, XeLaTeX, Poppler’s `pdfinfo`, and the original STIX
+font family (`STIXGeneral`) installed for XeLaTeX. On Debian/Ubuntu the packages are
+`pandoc texlive-xetex fonts-stix poppler-utils`. Set `REPO=<url>` to override the default
+repository link. A build over the six-page limit fails.
 
 ## Data and licences
 
