@@ -62,32 +62,17 @@ smoothing baseline levels off near 0.24.
 ≥ 1 s) breaks inside the tag window. It lands 4 frames after the published frame, within our 1 s
 tolerance, uncorrected. Before the derived second-half kick-off, the graded block is `D`.
 
-**Tried and dropped, with the measured reason** (held-out sim spellF1 unless stated; §5):
-- *Other owner rules:* *H2* (controlled touch) 0.522; *H3* (two touches) 0.504 with the true `D`.
-- *Logistic regression* for takeovers (0.63 vs 0.65 with the true `D`); *pressure features*
-  (players within 3 / 8 m: held-out AUC unchanged).
-- *Stillness as `D` evidence:* inert on this match; the output is byte-identical without it.
-- *Four extra `D` rules* (calm-gap filter, release and in-flight restarts, kicks from rest):
-  +0.004 / +0.009, ties under the paired rule (§5.3), with consistency down to 0.728 / 0.726.
-- *Latency corrections:* earlier `D` onsets −0.003; takeovers moved into a gap: a no-op.
-- *Tag-anchored restarts:* set-piece tags are fixed 35 s windows (restart IQR 7 s).
-- *Broadcast ball:* audio gives no consistent offset; ball-track sync finds the half offsets, but
-  only 6 of 93 live segments pass PLAN's acceptance, recovering 0.6% of missing frames (falsifier
-  10%).
-- *Whistles* (2–4.5 kHz tonal heuristic): 0.8% of `D` onsets have one within 1 s vs 0.6% by
-  chance (gate 70%).
-- *Gap timing and contacts as gap-model features:* +0.003, tied to where the sim places gaps.
-- *Learned per-frame `D`:* +0.034, but only by reading the sim's frozen dead-time ball (§5.5).
-  Trained on a realistic dead-time ball (noise, carried, lost; v8): +0.022 on all 7 matches, but
-  on this match its `D` boundaries moved wholesale (median 2.0 s) and the tags disagreed with its
-  new alive frames (0.564), so the free per-frame decode is not used. v11 (adopted 1 Nov) keeps
-  that model out of decoding entirely: it only re-places each evidence boundary within ± 3 s,
-  with causal features (§3.6) — the v8 failure mode is excluded by construction.
-- *Restart must launch the ball* (≥ 4 m/s, v7): a tie on the sim, −0.004 with a carried ball.
-- *Takeover variants:* ball direction +0.001, a 5-seed average −0.002, other capacities ≤ 0,
-  labels 0.5 s / 1 s after the contact −0.011 / −0.038.
-- *Video ball detection:* no-go. Only 18–22% of the missed held-out spells lie in ball gaps,
-  under PLAN's 25% go condition (prior success 0.3).
+**Tried and dropped** (held-out sim spellF1 unless stated; §5): other owner rules (*H2*
+controlled touch 0.522, *H3* two touches 0.504 with the true `D`); logistic takeovers (0.63 vs
+0.65); pressure features (AUC unchanged); stillness as `D` evidence (inert here); four extra `D`
+rules (+0.004 / +0.009, ties under §5.3, consistency down); latency corrections (−0.003 / no-op);
+tag-anchored restarts (tags are fixed 35 s windows); broadcast ball (6 of 93 live segments pass
+sync acceptance, 0.6% of missing frames recovered vs a 10% falsifier); whistles (0.8% of `D`
+onsets vs 0.6% by chance); takeover variants (≤ +0.001); video ball detection (18–22% of missed
+spells lie in ball gaps, under the 25% go bar). A *learned per-frame `D`* gained +0.022 on a
+realistic dead-time ball (v8), but on this match moved `D` boundaries wholesale (median 2.0 s)
+and the tags disagreed with its new alive frames (0.564), so it is used only inside the bounded
+refinement of §3.6, which cannot create, delete or relocate a run.
 
 **External data.** Bassek, Rein, Weber et al., *An integrated dataset of spatiotemporal and event
 data in elite soccer*, Scientific Data 12, 195 (2025), CC BY 4.0: 25 Hz positions from seven
@@ -251,24 +236,16 @@ Decision rule (PLAN.md §6.4, amended 31 Oct before v3 was selected):
    Otherwise it is a tie, decided by fewer components, then consistency, then macroF1.
 
 `make paired` runs this with every learned part cross-fitted. Each selection won all seven
-matches (p ≈ 0.008): v3 over v1; v5 over the v3 final (v3 without stillness, 0.581) by +0.030;
-v6 over v5 by +0.014 (+0.002, +0.004, +0.013, +0.004, +0.038 fit; +0.026, +0.011 held-out);
-v11 over v6 by +0.029 (7/7, paired possession bootstrap P(Δ ≤ 0) < 0.001), robust under three
-degradation stress arms (7/7 on each; +0.044 under the most adversarial). The
-earlier interval-overlap rule cannot resolve less than about 0.07 with two matches. v4's extra
-`D` thresholds are in-sample, so only its held-out pair counts: a tie. v11 also tripped two
-label-free checks on the real match that older candidates pass; §5.4 reports both, the
-mechanical evidence that they are anchored to an error of the older candidates, and the
+matches (p ≈ 0.008): v3 over v1; v5 over v3 by +0.030; v6 over v5 by +0.014; v11 over v6 by
++0.029 (paired possession bootstrap P(Δ ≤ 0) < 0.001), 7/7 under each of three degradation stress
+arms. v11 also tripped two label-free real-match checks that older candidates pass; §5.4 gives
+both, the mechanical evidence that they are anchored to the older candidates' error, and the
 pre-registered one-way rule under which it was adopted with a written sign-off.
 
-*Ablations of the v6 config* (held-out mean, change on removal): back to the hard rules
-−0.086; long-gap evidence −0.055; the gap decoder −0.029; team shape at contacts −0.018;
-out-of-bounds evidence −0.007; stillness 0 (dropped). α = 1 instead of the out-of-fold α = 3
-would be +0.002 held-out; held-out matches never tune.
-Out-of-bounds stays despite PLAN's 0.01 simplicity bar, because it is the one `D` evidence that
-does not lean on the sim's built-in stoppage gaps. On this match, without it fewer `D` runs end
-near set-piece restarts (25% vs 32%). Removing v11's boundary refinement (back to v6) is −0.037
-held-out.
+*Ablations* (held-out mean, change on removal): v11's boundary refinement −0.037; then from v6,
+back to the hard rules −0.086, long-gap evidence −0.055, the gap decoder −0.029, team shape
+−0.018, out-of-bounds evidence −0.007 (kept: the one `D` evidence that does not lean on the
+sim's built-in stoppage gaps). Held-out matches never tune.
 
 **5.4 Label-free checks on the real match.** *Structural bands* were set in PLAN.md before any
 candidate existed. They filter out catastrophic errors and never rank.
@@ -287,17 +264,14 @@ The short-spell shares sit close to the ≈ 20% / ≈ 50% inferred from the offi
 structure as v6 — 325 spells, 8 under 1 s — because it only moves `D` edges; its `D` share of
 graded frames is 0.445, inside the advisory `D`-share band [0.35, 0.57] added 1 Nov (v6: 0.481).
 
-- *Smart-Tagging consistency:* the share of alive frames inside team-tagged phases whose owner
-  is the team the phase implies (attacking: the tag's team; defending: the other) is 0.742
-  for v6 (v5 0.746, v3 and v1 0.740, v2 0.728, v4 0.726) and 0.730 for v11. The pooled rate
-  tracks alive volume (≈ 0.005 per share point), so since 1 Nov the judging statistic is the
-  **exclusive-alive decomposition**: on the 18,930 frames v11 newly decodes alive, the tags agree
-  with its owner 0.600 (the rejected v8: 0.564), 0.686 inside ball gaps (v8: 0.525), while the
-  frames both candidates label alive stay at 0.741 — mid-play is untouched. It flags regressions
-  and is not a target.
-- *Gap frames:* v6 decodes 6.9% of long-gap frames alive (sim 17–20%), and there the tags agree
-  with its owner on 0.814 of 12,759 frames. Team-tagged phases cover 51% of the gap frames it
-  keeps `D`, like other `D` (59%), not alive frames (83%): real dead time, not missed play.
+- *Smart-Tagging consistency:* the share of alive frames in team-tagged phases whose owner is
+  the team the phase implies is 0.742 for v6 and 0.730 for v11 (v1–v5 0.726–0.746). The pooled
+  rate tracks alive volume, so the judging statistic is the exclusive-alive split: on the 18,930
+  frames v11 newly decodes alive the tags agree with its owner 0.600 (rejected v8: 0.564), while
+  frames both label alive stay at 0.741. It flags regressions and is not a target.
+- *Gap frames:* v6 decodes 6.9% of long-gap frames alive (sim 17–20%); the tags agree with its
+  owner there on 0.814. Tag coverage of the gap frames it keeps `D` (51%) looks like other `D`
+  (59%), not alive play (83%).
 - *Set pieces:* 32% of the 57 set-piece tags have a v6 `D` ending within 2 s of the tag-aligned
   restart (chance ≈ 9%). **v11 scores 14% on this check and its `D` ends move median 1.72 s
   earlier than v6's** — the one real-match regression, and the reason adoption needed a sign-off:
@@ -306,13 +280,10 @@ graded frames is 0.445, inside the advisory `D`-share band [0.35, 0.57] added 1 
   leave a ±2 s window centred on the old error. The pre-registered one-way rule (old guard fails,
   every repaired guard passes, mechanical explanation documented) was exercised with a written
   sign-off, recorded in `submissions/LOG.md`.
-- *Stability:* 18 thresholds (19 for v11, including the refinement window) were moved ±10% one at
-  a time, and each model was retrained with two other seeds — since 1 Nov including the learned
-  dead models. v6's worst variant keeps 0.867 spell agreement with its output; v11's keeps 0.917
-  (boundary-model seed retrains 0.999–1.0; window ±10%: 0.997–0.999). Not fragile.
-- *Disagreement:* the active candidates (v1 / v3 / v5 / v6 / v9d / v11) differ on 11.3% of graded
-  frames — above the 10% tripwire, driven by v11 vs v1 (10.2%), which spans every learned
-  component added since the hard rules; humans watch those clips to find bugs, never to label.
+- *Stability:* each of 19 thresholds moved ±10% one at a time, and every model retrained with two
+  other seeds: v11's worst variant keeps 0.917 spell agreement with its output (v6: 0.867).
+- *Disagreement:* the active candidates differ on 11.3% of graded frames, above the 10% tripwire,
+  driven by v11 vs v1 (10.2%), which spans every learned component added since the hard rules.
 - *Public window:* **pass** for v6 and for v11, team sign right.
 
 **5.5 Known sim biases.**
@@ -334,66 +305,51 @@ graded frames is 0.445, inside the advisory `D`-share band [0.35, 0.57] added 1 
    dead-time ball conditions (§4) and on the airlock `D` aggregates, not on a scored bench.
 
 **5.6 Mechanical cross-check (Metrica Game 3).** A second validation family, independent of DFL
-and of the sim recipe: Metrica Sports Sample Game 3 (pinned commit, checksummed), whose event
-feed has a frame-accurate clock, degraded like the sim. Against that mechanical ground truth,
-v6's `D` ends are **+26 / +38 / +78 frames late at p25 / p50 / p75** (clock calibration ±2
-frames) — about 1.5 s at the median, matching the sim's +21.5-frame held-out residual (§3.7) and
-the restart pattern this match's own label-free profile shows (`make airlock T=dend-stats`: the
-ball is missing on ~50% of frames within ±1 s of restarts, so evidence ends trail the restart
-touch). This is the documented mechanical basis for the §5.4 one-way adoption: v11's median
-`D`-end move (−1.72 s) is the size of the lateness the mechanical GT measures for v6.
+and of the sim recipe: Metrica Sports Sample Game 3 (pinned, checksummed), whose event feed has a
+frame-accurate clock, degraded like the sim. Against that mechanical ground truth, v6's `D` ends
+are **+26 / +38 / +78 frames late at p25 / p50 / p75** — about 1.5 s at the median, matching the
+sim's held-out residual (§3.7) and this match's label-free restart profile (`make airlock
+T=dend-stats`). v11's median `D`-end move (−1.72 s) is the size of that lateness: the mechanical
+basis for the §5.4 one-way adoption.
 
 **5.7 Robustness to ground-truth conventions and feed shifts (3–4 Nov, open data, all
 pre-registered).** Three families of stress test, none of which changed the final configuration:
 
-- *Ground-truth conventions.* The DFL possession flag is one convention among several; a target
-  labeller that places `D` starts, `D` ends or owner switches elsewhere, or that absorbs short
-  spells, is a bias the sim cannot see directly. So the outputs on the 8 primary matches (the 7
-  DFL sims, cross-fitted, plus Metrica Game 3) were re-scored against transformed ground truths,
-  one axis at a time. With direct H↔A boundaries moved −10 to +25 frames, `D` starts moved −10 to
-  +25 frames, or sandwiched spells shorter than 1 s or 2 s folded into their neighbours, the final
-  beats the previous configuration on all 8 matches in each of the 10 worlds (margin +0.023 to
-  +0.035; it grows when short spells are merged and shrinks as `D` starts move later), and stays
-  ahead on Metrica Games 1–2. Moving `D` ends later is the one axis that erodes the lead: +0.029
-  at 0 frames, +0.021 at +10, +0.012 at +20 and +0.001 at +38 (about v6's measured lateness,
-  §5.6), where the final wins only 5 of 8 and loses on the Metrica builds (Game 3 −0.017, Games
-  1–2 −0.030 / −0.008). That is still above the pre-registered −0.010 bar, so the final is kept,
-  but a late, whistle-timed `D`-end convention is its main residual exposure. Among the shifts
-  tested (`D` ends only later), the final's own absolute score is highest at the untransformed
-  ground truth on all three boundary axes, so no post-hoc boundary shift is applied.
-- *Degradation redraw floor.* Re-degrading the two held-out matches with three more random
-  draws moves a configuration's absolute spellF1 by ±0.020 per match (SD) while the paired
-  difference between two configurations moves by only ±0.004; a paired held-out gain below
-  +0.008 is therefore treated as a tie, and training on several draws of the same matches
-  (augmentation) was itself a tie under that rule.
-- *Feed shifts, paired.* The committed degraded sims were resampled or edited so that the
-  random gap draw stays identical and only the tested property changes, then scored with
-  cross-fitted models (per-cell noise ≈ 0.006). A ±10% change of the match clock (every speed
-  and frame-counted duration) costs ≤ 0.007; hiding one visible track per team inside every
-  long ball gap costs 0.001; hiding 10% of all slot tracklets costs 0.044, and that loss is
-  contact loss when the player at the ball is untracked. Two label-free comparisons with this
-  match's feed (`make airlock T=atd-stats`) show where the sim departs from it. First, nobody
-  is near the ball more often here: on visible in-pitch ball frames at carry speed (0.5–4 m/s)
-  no player is within 1 m on 52.6% of frames, against 30.5–35.4% on the sims, and every
-  distance bin beyond 1.5 m holds about twice the sims' share, so the carrier-loss sensitivity
-  applies to this match and is not only a stress case. Second, the real ball track is
-  velocity-filtered: 2.6 kicks (speed change > 3 m/s) per 1,000 seen frames, against 21–43 on
-  the sims. On sims whose ball is smoothed to match (13 frames), the final loses 0.17 (0.09–0.23
-  for 7–25 frames, 7/7 matches), and every fix tried (retraining on smoothed-ball rows, relaxed
-  touch thresholds) recovers ≤ 0.003: the lost contacts are short dwell contacts that the
-  smoothed feed no longer shows. This hits any tracking-only method alike and does not change
-  the choice of configuration, but the absolute sim scores in this document overstate what to
-  expect on this match.
+- *Ground-truth conventions.* A target labeller may place `D` starts, `D` ends or owner switches
+  elsewhere than DFL does, or absorb short spells. So the outputs on the 8 primary matches (7 DFL
+  sims, cross-fitted, plus Metrica Game 3) were re-scored against transformed ground truths, one
+  axis at a time. With H↔A boundaries or `D` starts moved −10 to +25 frames, or spells under 1 s
+  or 2 s folded into their neighbours, the final beats its predecessor on all 8 matches in each of
+  the 10 worlds (+0.023 to +0.035) and on Metrica Games 1–2. Moving `D` ends later erodes the lead:
+  +0.029 at 0 frames, +0.012 at +20, +0.001 at +38 (about v6's measured lateness, §5.6), where the
+  final wins 5 of 8 and loses on the Metrica builds (Game 3 −0.017, Games 1–2 −0.030 / −0.008).
+  That stays above the pre-registered −0.010 bar, but a late, whistle-timed `D`-end convention is
+  the final's main residual exposure. Its own score is highest at the untransformed ground truth
+  on every boundary axis tested, so no post-hoc boundary shift is applied.
+- *Degradation redraw floor.* Three more random degradations of the held-out matches move a
+  configuration's absolute spellF1 by ±0.020 (SD) but a paired difference by only ±0.004, so a
+  paired gain below +0.008 is a tie; training on several draws (augmentation) was one.
+- *Feed shifts, paired.* The committed sims were edited so the random gap draw stays fixed and
+  only the tested property changes (cross-fitted, noise ≈ 0.006): a ±10% change of the match clock
+  costs ≤ 0.007; hiding one track per team inside long gaps 0.001; hiding 10% of all tracklets
+  0.044, through contacts lost when the player at the ball is untracked. Two label-free
+  comparisons with this match's feed (`make airlock T=atd-stats`) show where the sim departs from
+  it. Nobody is near the ball more often here (no player within 1 m on 52.6% of visible
+  carry-speed ball frames, vs 30.5–35.4% on the sims), so the carrier-loss sensitivity applies to
+  this match. And the real ball track is velocity-filtered: 2.6 kicks (speed change > 3 m/s) per
+  1,000 seen frames, vs 21–43 on the sims. On sims smoothed to match (13 frames) the final loses
+  0.17 (0.09–0.23 for 7–25 frames, 7/7), and every fix tried on the sims (retraining on
+  smoothed-ball rows, relaxed touch thresholds) recovers ≤ 0.003: the smoothed feed no longer
+  shows the short dwell contacts. This hits any tracking-only method alike and does not change
+  the choice of configuration, but the absolute sim scores here overstate what to expect on this
+  match.
 
 ## 6. Limitations and next steps
 
 - **Changes inside ball gaps:** the gap decoder recovers part of them from the players alone
-  (the 18–22% missed-in-gaps share was measured on v5; v6 changes the takeover model, not the
-  gap handling). With the true labels inside long gaps, the sim ceiling is +0.10 over v3,
-  against the gap decoder's +0.03. Caveat (1 Nov): the committed sim samples open-play gap
-  lengths from a pooled histogram, which plants stoppage-length gaps into live play, so part of
-  the sim's alive-inside-gaps mass is an artefact (`configs/sim_repaired.yaml` is the
-  onset-speed-conditioned lens).
+  (+0.03 over v3, against a +0.10 ceiling with the true labels inside long gaps). The sim's
+  pooled gap-length histogram plants some stoppage-length gaps into live play, so part of its
+  alive-inside-gaps mass is an artefact.
 - **`D` is over-predicted:** 44.5% of graded frames for v11 (v6 48.1%, v3 50.8%), and for v6
   42–45% vs 41% true on the held-out sim.
 - **The adoption risk we accepted (v11):** the two v1-era real-match checks it fails (§5.4) are
@@ -404,10 +360,10 @@ pre-registered).** Three families of stress test, none of which changed the fina
   only, which is also where the held-out gain (+0.037) comes from.
 - **Restarts:** after tagged corners, the first spell is the corner team's 5 times in 11; fouls
   and offsides with the ball still tracked produce no evidence.
-- **Semantics:** the labels are DFL's notion of possession; a systematic mismatch with this
-  match's GT is bounded by the convention worlds of §5.7 (the final leads in every one, by
-  only +0.001 when `D` ends are placed ~1.5 s late) but not removed, and is otherwise checked
-  only by the bands and consistency.
+- **Semantics:** the labels use DFL's definition of possession. Across the eight primary matches
+  in §5.7, the final leads its predecessor on average under every convention tested. When `D`
+  ends are placed about 1.5 s later, the mean lead is only +0.001, with wins on five of eight
+  matches. For this match, the bands and consistency checks provide only indirect evidence.
 - **Ball kinematics:** the sim matches this feed's gaps, visibility and tempo but not its ball
   kinematics; the real ball track is about ten times smoother, which costs the final ~0.17 on
   matched sims (§5.7). Expect the absolute score here to sit below the held-out sim estimate.
@@ -415,16 +371,18 @@ pre-registered).** Three families of stress test, none of which changed the fina
 
 ## 7. Reproduction
 
-```bash
+```text
 make setup                          # Python 3.11.14 venv, pinned requirements.txt
-make test                           # 116 tests, no match data needed
+make test                           # no match data needed
 export MTAH_DATA_DIR=/path/to/bundle
 make cache                          # parse the ATD into an npz cache outside the repo
-make submission                    # -> submissions/final/<team>.csv, validator, bands, sha256
+make submission                     # validate, check bands, and record the CSV hash
 # optional, to retrain and re-check on the sim:
-make open-data && make sim && make train-takeover CFG=configs/rules_v6.yaml && make train-gaps
+make open-data && make sim
+make train-takeover CFG=configs/rules_v6.yaml && make train-gaps
 make train-hybrid                   # the v11 boundary dead model (byte-identical retrain)
-make sim-ablate && make paired B=configs/rules_v11.yaml A=configs/rules_v6_final.yaml
+make sim-ablate
+make paired B=configs/rules_v11.yaml A=configs/rules_v6_final.yaml
 ```
 
 - **Submitted file:** sha256
