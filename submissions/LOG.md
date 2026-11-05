@@ -24,6 +24,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-01 23:08 | final | 259d8aae1d1a | 7f23da4+dirty | 7b83f3a89bb15fa8 | pass | 0.6636 | pass | **FINAL** (adoption entry; §6.4): configs/final.yaml = v11, same resolved pipeline config (hash differs from v11's only via the inert clipviewer map); consistency 0.730; cold ×2 + docker arm64/amd64 byte-identical | no |
 | 2026-11-05 00:18 | v12 | 5b9e56cd549b | 3a958c9+dirty | 609343ecfdf06761 | pass | 0.6600 | pass | consistency 0.721 | no |
 | 2026-11-05 07:27 | v12h | c90a8155334f | 3a958c9+dirty | 961e800ef78f189a | pass | 0.6600 | pass | consistency 0.733 | no |
+| 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
 
 
 ## Work log
@@ -684,3 +685,33 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
     placement, short-spell merge and D-start; keep FINAL." Nothing fires.** Ledger: +1 outcome
     recorded (robust). Configs untouched; the FINAL and its sha are unchanged. Standing
     addition: the axis-2 s=2 sign is a mandatory reporting row for any short-spell candidate.
+- 2026-11-05: **ADOPTION: v12-hedge adopted as FINAL by claude-fable-b under Justin's delegated
+  authority (board #70).** Justin's instruction (chat, 5 Nov, recorded on board #70): one
+  independent agent that passes the pre-declared checklist items 1–5 promotes the candidate
+  itself, with no further human sign-off. All five passed on the airlock host, each an exact
+  reproduction of the author's claim (board #67): code review (training on the 5 raw fit sims
+  only, fold models exclude the evaluated match, D/X never changed, pipeline and paired hooks at
+  the same stage); retrain of models/proxowner_v1.txt from an empty cache byte-identical
+  (b48c34de45873c7e); paired v11 → v12-hedge raw +0.0021, 5/7 (tie within the §6.4 noise floor;
+  held-out 0.6636 → 0.6600); b13 (13-frame centred ball average, the world whose kick rate
+  brackets the real feed's 2.56 per 1,000 seen frames) +0.0363, 7/7, p = 0.0078, held-out
+  0.4949 → 0.5379, in an independently rebuilt world; forced downside (smooth setting on raw)
+  −0.0109, 1/7; convention matrix on raw, four axes (D-end, switch, merge, D-start), no world
+  below −0.010 with ≥ 5/8 losses (worst D-end k=+38 −0.0051). Critique recorded on #70: the
+  real feed is between the raw and b13 worlds (kinematics b13-like, ball tighter on the carrier
+  than either), so the expected real delta is bounded in [−0.011, +0.036]; the hedge (smooth
+  setting w 1.0, λ 5) is the max-min choice over w 0.5 (−0.043 in the same downside world);
+  the Smart-Tagging owner-diff evidence is a no-regression signal only (pooled agreement
+  unchanged). Rules: every learned part and every setting is fitted on open data (DFL sims raw
+  / 7 / 25 frames, out of fold); the smoothing range was chosen to bracket a kick rate observed
+  label-free on the provided tracking and no parameter was fitted to it (Justin's ruling on
+  #67, 5 Nov; to be disclosed in the tech doc). Execution: PR mtah-2027#25 merged (6d82c44);
+  configs/final.yaml → rules_v12_hedge.yaml; `make airlock T=submission` twice on the airlock
+  host → validator PASS, all structural bands PASS, D share 0.445, sha256
+  961e800ef78f189a0a7cb832837d06e602d460b03cd59b255368f73b0517d65d both runs (= the v12h
+  candidate row's file, whose public bug check passed and whose consistency is 0.733);
+  resolved config hash c90a8155334f. Before: v11 (configs/rules_v11.yaml preserved; sha
+  7b83f3a89bb15fa8 retired). Follow-ups filed on the board: the #7 freeze drill (cold ×2,
+  Docker arm64/amd64) on the new FINAL, the technical document (§3/§4/§5 describe v11), and
+  the hedge's convention matrix in the b13 world. Ledger: +0 (verification reproduces
+  registered outcomes; no new selection test).
