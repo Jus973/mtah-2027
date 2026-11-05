@@ -33,7 +33,7 @@ from train_takeover import Prepared, fit_on, predict
 # Sections scores() applies to the sim labels. deadball includes the release-restart window
 # (restarts injected by Prepared.labels); dead_model holds the dead boosters' parameters.
 APPLIED = {"ball", "touch", "deadball", "owner", "takeover_model", "gaps", "gap_model",
-           "deadstate", "deadhybrid", "dead_model", "postprocess", "matches"}
+           "deadstate", "deadhybrid", "dead_model", "postprocess", "matches", "proxowner"}
 # Sections that cannot change sim labels: reporting, guards and real-match-only machinery.
 # kickoff/direction are label-relevant only through Smart Tagging, which the sim does not have
 # (pipeline.kickoffs returns {} there, and Prepared uses the same empty-kickoff direction).
@@ -199,6 +199,25 @@ def labels_for(path):
                               gc["lam_owner"]) for lab, g, pr in zip(labels, G, probs)]
     if ppc and ppc.get("enabled"):
         labels = [postprocess.apply(lab, ppc, q.runs_meta) for q, lab in zip(Q, labels)]
+    pc = cfg.get("proxowner")
+    if pc and pc.get("enabled"):
+        # v12: the proximity owner model cross-fitted like every other learned part (trained on
+        # the RAW fit sims, see train_proxowner.py), its blend picked by each match's kick rate
+        # in the world being evaluated.
+        from mtah.learn import proxowner
+        from train_proxowner import fit_on as fit_prox
+        games = [q.m.game for q in Q]
+        models = [fit_prox([games[j] for j in range(nf) if j != i], cfg) for i in range(nf)]
+        models += [fit_prox(games[:nf], cfg)] * (len(Q) - nf)
+        out = []
+        for q, lab, mdl in zip(Q, labels, models):
+            m = q.m
+            views = proxowner.match_views(m.atd, m.spec, {}, cfg, ball_raw=m.ball_raw)
+            rate = proxowner.kick_rate(m.players, m.ball_raw, m.graded, m.atd.pitch, m.fps)
+            w, lam = proxowner.setting(cfg, rate)
+            out.append(proxowner.blend_decode(lab, proxowner.p_home(mdl, views), w, lam))
+            print("{}: kick rate {:.1f} -> proxowner setting w {} lam {}".format(m.game, rate, w, lam))
+        labels = out
     return [q.m.game for q in Q], nf, labels, Q
 
 

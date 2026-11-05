@@ -39,6 +39,7 @@ JOBS = {
     "submission": "make_submission.py",
     "stability": "stability.py",
     "disagreement": "disagreement.py",
+    "owner-diff": "owner_diff_stats.py",
     "audio": "audio_stats.py",
     "sync": "sync_stats.py",
     "whistle": "whistle_stats.py",
@@ -53,8 +54,8 @@ DOCKER_IMAGE = "mtah"
 JOB_OPTIONS = {"public-check": {"csv"}, "candidate": {"config", "name"}, "dead-stats": {"config"},
                "dend-stats": {"config"}, "gap-stats": {"config"}, "submission": {"config", "name"},
                "stability": {"config"}, "submission-cold": {"config", "name"},
-               "submission-docker": {"name"}}
-REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}}
+               "submission-docker": {"name"}, "owner-diff": {"config"}}
+REQUIRED = {"public-check": {"csv"}, "candidate": {"name"}, "owner-diff": {"config"}}
 LOCAL = os.path.join(registry.ROOT, ".mtah.local")
 BLOCKED = 3
 
