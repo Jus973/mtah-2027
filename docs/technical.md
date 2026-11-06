@@ -355,7 +355,7 @@ blend with it.
   overstate the blend's gain; the change on this match is unknown. Under the four convention
   axes above the hedge's difference to v11 runs from −0.005 (raw sims, late `D` ends) to +0.012
   (short spells merged) and stays between +0.022 and +0.036 in all 17 worlds at 13 frames; the
-  final's own matrix is re-run before the freeze.
+  final's own lead there runs from +0.031 to +0.052, every world 8 of 8.
 
 ## 6. Limitations and next steps
 
