@@ -374,8 +374,10 @@ blend with it.
 - **Restarts:** fouls and offsides with the ball still tracked produce no evidence.
 - **Semantics:** the labels use DFL's definition of possession. Across the eight primary matches
   in §5.7, v11 leads v6 on average under every convention tested, but with `D` ends placed about
-  1.5 s later the lead is only +0.001 (five of eight); the final's blend changes v11's result by
-  −0.005 to +0.012 across those worlds. Here, the bands and consistency checks are only indirect.
+  1.5 s later the lead is only +0.001 (five of eight). The earlier v12-hedge changes v11's
+  result by −0.005 to +0.012 on raw tracking. With 13-frame smoothing, v12-hedgeA leads v11 by
+  +0.031 to +0.052 across all 17 convention worlds, winning all eight matches in each (§5.7).
+  On this match, bands and consistency checks give only indirect evidence.
 - **Ball kinematics:** the sim matches this feed's gaps, visibility and tempo but not its ball
   kinematics; the real ball track is about ten times smoother. On sims smoothed like it the
   contact model alone loses 0.17 and the §3.8 blend recovers 0.07 of that (§5.7). Expect the
