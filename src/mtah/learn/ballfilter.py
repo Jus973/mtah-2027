@@ -34,3 +34,11 @@ def apply(ball, family, param, fps=25):
         b, a = butter(4, float(param) / (fps / 2))
         return _per_run(ball, lambda x: filtfilt(b, a, x, axis=0), 28)
     raise ValueError("unknown ball filter family: {}".format(family))
+
+
+def apply_players(xy, family, param, fps=25):
+    """The same filters on every player slot (T, S, 2), each slot's seen runs separately."""
+    out = xy.copy()
+    for s in range(xy.shape[1]):
+        out[:, s] = apply(xy[:, s], family, param, fps)
+    return out

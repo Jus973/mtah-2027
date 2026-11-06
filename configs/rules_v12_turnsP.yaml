@@ -1,0 +1,7 @@
+# Experiment: v12-turns whose proximity owner model also trains on copies of the fit sims with the
+# ball AND the players filtered like the real feed's label-free fingerprints (ball Butterworth
+# 0.70 Hz, players Butterworth 3.0 Hz; airlock ball-kin / player-kin, 5 Nov).
+inherit: rules_v12_turns.yaml
+proxowner:
+  model: models/proxowner_v5.txt
+  train_widths: [0, 7, 25, "bw4:0.70/p3.0"]

@@ -1,0 +1,8 @@
+# Experiment: v12-turns whose proximity owner model also trains on copies of the fit sims with
+# the ball run through the filter fitted to the real feed's label-free ball statistics (4th-order
+# Butterworth, 0.70 Hz, zero phase; board #85). Evaluated in every world, including filters it
+# never trained on (box 13, Savitzky-Golay 45).
+inherit: rules_v12_turns.yaml
+proxowner:
+  model: models/proxowner_v4.txt
+  train_widths: [0, 7, 25, "bw4:0.70"]

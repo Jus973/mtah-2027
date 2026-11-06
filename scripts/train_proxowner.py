@@ -2,7 +2,7 @@
 sims (each also with its ball smoothed over proxowner.train_widths frames) -> proxowner.model.
 
 fit_on() is also the cross-fitting entry point for scripts/paired.py. Training always reads the
-RAW sims (MTAH_TRAIN_SIM_DIR, default SIM_DIR), whatever world is being evaluated, and caches
+RAW sims (MTAH_TRAIN_SIM_DIR, default ~/opendata/sim, never the evaluated world), whatever world is being evaluated, and caches
 fold models by (games, section) under MTAH_PROX_CACHE. Open data only.
 """
 
@@ -17,7 +17,10 @@ from mtah import config, registry
 from mtah.io.atd import load_game
 from mtah.learn import proxowner
 
-TRAIN_DIR = os.path.expanduser(os.environ.get("MTAH_TRAIN_SIM_DIR", registry.SIM_DIR))
+# The raw sims, NOT SIM_DIR: pointing MTAH_SIM_DIR at a smoothed world must not move training into
+# it (that silently happened once, 5 Nov). Same string as an explicit $HOME/opendata/sim, so the
+# fold cache keys of pinned runs still hold.
+TRAIN_DIR = os.path.expanduser(os.environ.get("MTAH_TRAIN_SIM_DIR", "~/opendata/sim"))
 CACHE = os.path.expanduser(os.environ.get("MTAH_PROX_CACHE", "~/opendata/proxowner_cache"))
 
 

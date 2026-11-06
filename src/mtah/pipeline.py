@@ -168,7 +168,8 @@ def run(game, cfg, data_dir=None, atd=None):
         from mtah.learn import proxowner
         views = proxowner.match_views(atd, sp, kicks, cfg, ball_raw=ball_raw)
         rate = proxowner.kick_rate(players, ball_raw, graded, atd.pitch, fps)
-        w, lam = proxowner.setting(cfg, rate)
+        w, lam = proxowner.weights(cfg, rate, ball_raw, fps)
         labels = proxowner.blend_decode(labels, proxowner.p_home(proxowner.load(cfg), views), w, lam)
-        info["kick_rate"], info["proxowner_setting"] = rate, (w, lam)
+        info["kick_rate"] = rate
+        info["proxowner_setting"] = (float(w) if np.ndim(w) == 0 else "gated", lam)
     return labels, info

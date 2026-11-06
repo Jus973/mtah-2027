@@ -61,3 +61,18 @@ def test_turn_features_flag_and_symmetry():
     late = np.isfinite(a[:, k])
     assert late[250:].all() and not late[:150].any()
     assert np.allclose(a[late, k], -b[late, k])
+
+
+def test_turn_gate_weights():
+    import numpy as np
+    from mtah.learn import proxowner
+    cfg = {"proxowner": {"kick_threshold": 18.0, "kicky": [2.0, 5.0], "smooth": [1.0, 5.0]}}
+    T = 400
+    ball = np.zeros((T, 2))
+    ball[:, 0] = np.arange(T) * 0.4                      # 10 m/s straight run ...
+    ball[200:, 0] = ball[199, 0] - (np.arange(T - 200) + 1) * 0.4   # ... reversed at t=200
+    assert proxowner.weights(cfg, 3.0, ball, 25) == (1.0, 5.0)       # no gate: setting()
+    cfg["proxowner"]["smooth_turn_gate"] = {"scale": 25, "thresh": 2.0, "radius": 25, "w_near": 0.0}
+    w, lam = proxowner.weights(cfg, 3.0, ball, 25)
+    assert lam == 5.0 and w[200] == 0.0 and w[0] == 1.0 and w[T - 1] == 1.0
+    assert proxowner.weights(cfg, 30.0, ball, 25) == (2.0, 5.0)      # kicky feed: never gated

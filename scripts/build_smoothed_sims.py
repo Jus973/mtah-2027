@@ -31,6 +31,8 @@ def main():
     parser.add_argument("--width", type=int)
     parser.add_argument("--filter", choices=("box", "sg2", "bw4"))
     parser.add_argument("--param", type=float)
+    parser.add_argument("--player-filter", choices=("box", "sg2", "bw4"))
+    parser.add_argument("--player-param", type=float)
     parser.add_argument("--out", required=True)
     parser.add_argument("--src", default=registry.SIM_DIR)
     args = parser.parse_args()
@@ -43,6 +45,9 @@ def main():
         atd, _ = load_game(game, src)
         ball = ballfilter.apply(atd.ball.copy(), family, param, fps=json.load(
             open(os.path.join(src, "fake_meta.json")))["fps"])   # normalised, NaN where missing
+        xy = atd.xy
+        if args.player_filter:
+            xy = ballfilter.apply_players(atd.xy.copy(), args.player_filter, args.player_param)
         dst = os.path.join(out_root, game)
         os.makedirs(os.path.join(dst, "tactical"), exist_ok=True)
         for f in ("fake_meta.json", "gt.csv"):
@@ -51,8 +56,9 @@ def main():
         shutil.copy(xml, os.path.join(dst, "tactical", os.path.basename(xml)))
         fps = json.load(open(os.path.join(src, "fake_meta.json")))["fps"]
         atd_write.write_raw(os.path.join(dst, "tactical", os.path.basename(xml)[:-4] + ".txt"),
-                            atd.xy, ball, atd.pitch, fps)
-        print(game, "-> {} {:g}".format(family, param), dst)
+                            xy, ball, atd.pitch, fps)
+        print(game, "-> {} {:g}".format(family, param),
+              "players {} {}".format(args.player_filter, args.player_param) if args.player_filter else "", dst)
 
 
 if __name__ == "__main__":
