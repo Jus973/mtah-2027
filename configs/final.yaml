@@ -1,8 +1,11 @@
 # The final candidate (PLAN.md §6.4, M4): make submission runs exactly this config.
-# Selected 1 Nov 2026: v11 (configs/rules_v11.yaml, the P3e learned-D hybrid), by the paired §6.4
-# rule (make paired): better than v6 on all 7 sim matches, +0.029, sign test p = 0.0078, with the
-# pre-registered one-way-rule sign-off over the two confounded legacy guards and the P0.7 waiver
-# recorded in submissions/LOG.md (1 Nov adoption entry). Before: v6 (over v5, +0.014, 7/7,
-# preserved as configs/rules_v6_final.yaml), v5 (over v3, +0.030, 7/7) and v3 (over v1, 7/7).
+# Selected 5 Nov 2026: v12-hedge (configs/rules_v12_hedge.yaml: v11 plus the per-frame ball-
+# proximity owner model, blended inside alive runs with the setting the match's kick rate picks),
+# by the paired §6.4 rule (make paired) in the smoothed-ball worlds that bracket the real feed's
+# kick rate: b13 +0.0363, 7/7, sign test p = 0.0078; b7 +0.0124, 6/7; raw (kicky setting)
+# +0.0021, 5/7, a tie within the noise floor; forced-downside (smooth setting on raw) −0.0109.
+# Verified independently and promoted under the delegated authority recorded on board #70
+# (candidate board #67); adoption entry in submissions/LOG.md. Before: v11 (configs/rules_v11.yaml,
+# preserved; over v6 +0.029, 7/7), v6 (configs/rules_v6_final.yaml), v5, v3.
 # Change the parent only by the decision rule, and record it in submissions/LOG.md.
-inherit: rules_v11.yaml
+inherit: rules_v12_hedge.yaml
