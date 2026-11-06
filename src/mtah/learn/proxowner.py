@@ -267,12 +267,18 @@ def blend_decode(labels, p, w, lam):
 
 
 def match_views(atd, sp, kicks, cfg, ball_raw=None, width=0):
-    """Both views for one match (optionally with its raw ball smoothed first), using the same
+    """Both views for one match (optionally with its raw ball smoothed first: an int is a box width,
+    a "family:param" string a ballfilter.apply filter, e.g. "bw4:0.70"), using the same
     ball cleaning and home direction as the pipeline."""
     from mtah.learn import gapstate
     fps = sp["fps"]
     raw = atd.ball_m() if ball_raw is None else ball_raw
-    raw = smooth_ball(raw, width)
+    if isinstance(width, str):
+        from mtah.learn import ballfilter
+        family, param = width.split(":")
+        raw = ballfilter.apply(raw, family, float(param), fps)
+    else:
+        raw = smooth_ball(raw, width)
     ball, _, _ = clean_ball(raw, atd.pitch, cfg["ball"], fps)
     players = atd.players_m()[..., :2].astype(float)
     hdir = gapstate.home_direction(atd, sp, kicks, cfg["direction"]["window_frames"])

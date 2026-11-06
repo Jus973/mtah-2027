@@ -240,3 +240,58 @@ def ball_player_lag(players, ball, graded, pitch):
             out_med[str(s)] = float(np.median(d)) if d.size else None
             out_close[str(s)] = float(np.mean(d < 1.5)) if d.size else None
     return {"n": int(len(idx)), "median_dmin_by_shift": out_med, "share_within_1p5m_by_shift": out_close}
+
+
+PLAYERKIN_LAGS = (1, 2, 4, 8, 25)
+
+
+def player_kinematics(xy, speed, graded, fps=25):
+    """Label-free shape of the player tracks (the player-side twin of ball_kinematics). On graded
+    frames, pooled over slots: curvature quantiles per lag (m/s, as ball_kinematics), the provider
+    speed field against the speed derived from positions (|x[t+1] - x[t-1]| * fps / 2), the number
+    of slots seen per frame, and the length of seen runs per slot. xy in metres. Aggregates only."""
+    T, S = xy.shape[:2]
+    seen = np.isfinite(xy[..., 0]) & graded[:, None]
+    out = {"n_frames": int(graded.sum())}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        curv = {}
+        for k in PLAYERKIN_LAGS:
+            if T <= 2 * k:
+                curv[str(k)] = None
+                continue
+            c = np.linalg.norm(xy[2 * k:] - 2 * xy[k:-k] + xy[:-2 * k], axis=2) * fps / k
+            m = seen[k:-k] & seen[2 * k:] & seen[:-2 * k]
+            x = c[m & np.isfinite(c)]
+            curv[str(k)] = [float(np.percentile(x, q)) for q in BALLKIN_QS] if x.size else None
+        out["curv_q"] = curv
+        d = np.linalg.norm(xy[2:] - xy[:-2], axis=2) * fps / 2
+        m = seen[1:-1] & seen[2:] & seen[:-2] & np.isfinite(speed[1:-1])
+        derived, field = d[m], speed[1:-1][m]
+        out["derived_speed_q"] = [float(np.percentile(derived, q)) for q in BALLKIN_QS] if derived.size else None
+        out["field_speed_q"] = [float(np.percentile(field, q)) for q in BALLKIN_QS] if field.size else None
+        diff = np.abs(field - derived)
+        out["abs_field_minus_derived_q"] = [float(np.percentile(diff, q)) for q in BALLKIN_QS] if diff.size else None
+        out["field_derived_corr"] = float(np.corrcoef(field, derived)[0, 1]) if derived.size > 2 else None
+        # does the field look like a lagged or smoothed derived speed? correlation by shift
+        corr = {}
+        for s in (-8, -4, 0, 4, 8, 12, 16, 20, 25, 30, 40, 50):
+            a = np.roll(d, s, axis=0)
+            mm = m & np.roll(m, s, axis=0)
+            if s > 0:
+                mm[:s] = False
+            elif s < 0:
+                mm[s:] = False
+            corr[str(s)] = float(np.corrcoef(speed[1:-1][mm], a[mm])[0, 1]) if mm.sum() > 2 else None
+        out["field_vs_derived_corr_by_shift"] = corr
+    nseen = seen.sum(axis=1)[graded]
+    out["slots_seen_per_frame_share"] = {str(v): float(np.mean(nseen == v)) for v in range(18, 25)}
+    out["slots_seen_lt18_share"] = float(np.mean(nseen < 18))
+    lens = []
+    for s in range(S):
+        _, n = runs(seen[:, s])
+        lens.extend(n.tolist())
+    lens = np.array(lens)
+    out["seen_runs"] = int(lens.size)
+    out["seen_run_len_frames_q"] = [float(np.percentile(lens, q)) for q in (10, 25, 50, 75, 90)] if lens.size else None
+    return out
