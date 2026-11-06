@@ -296,14 +296,20 @@ def match_views(atd, sp, kicks, cfg, ball_raw=None, width=0):
     from mtah.learn import gapstate
     fps = sp["fps"]
     raw = atd.ball_m() if ball_raw is None else ball_raw
+    players = atd.players_m()[..., :2].astype(float)
     if isinstance(width, str):
+        # "family:param" filters the ball; an optional "/p<Hz>" also runs the players through a
+        # 4th-order zero-phase Butterworth at that cutoff (the real feed's tracks are filtered).
         from mtah.learn import ballfilter
-        family, param = width.split(":")
-        raw = ballfilter.apply(raw, family, float(param), fps)
+        spec, _, pl = width.partition("/p")
+        family, param = spec.split(":")
+        if float(param) > 0:
+            raw = ballfilter.apply(raw, family, float(param), fps)
+        if pl:
+            players = ballfilter.apply_players(players, "bw4", float(pl), fps)
     else:
         raw = smooth_ball(raw, width)
     ball, _, _ = clean_ball(raw, atd.pitch, cfg["ball"], fps)
-    players = atd.players_m()[..., :2].astype(float)
     hdir = gapstate.home_direction(atd, sp, kicks, cfg["direction"]["window_frames"])
     return both_views(players, ball, atd.team_of_slot, hdir, atd.pitch, fps,
                       bool(cfg["proxowner"].get("turn_features", False)))
