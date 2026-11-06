@@ -241,6 +241,29 @@ def setting(cfg, rate):
     return pc["smooth"] if rate < pc["kick_threshold"] else pc["kicky"]
 
 
+def turn_gate(ball_raw, fps, gate):
+    """Frames within gate["radius"] of a ball turn (scale gate["scale"] frames, strength >
+    gate["thresh"] m/s; see _turn_features), on the raw-world ball in metres."""
+    s, r = int(gate["scale"]), int(gate["radius"])
+    before = (ball_raw - _shift2(ball_raw, -s)) * (fps / s)
+    after = (_shift2(ball_raw, s) - ball_raw) * (fps / s)
+    hit = np.nan_to_num(np.linalg.norm(after - before, axis=1)) > float(gate["thresh"])
+    c = np.concatenate([[0], np.cumsum(hit)])
+    t = np.arange(len(hit))
+    return (c[np.minimum(t + r + 1, len(hit))] - c[np.maximum(t - r, 0)]) > 0
+
+
+def weights(cfg, rate, ball_raw, fps):
+    """(w, lam) for blend_decode: the pre-registered setting for this kick rate, and on a smooth
+    feed with proxowner.smooth_turn_gate set, w replaced by gate["w_near"] near ball turns (a
+    per-frame array). Without the gate this is setting()."""
+    w, lam = setting(cfg, rate)
+    gate = cfg["proxowner"].get("smooth_turn_gate")
+    if gate and rate < cfg["proxowner"]["kick_threshold"]:
+        w = np.where(turn_gate(ball_raw, fps, gate), float(gate["w_near"]), float(w))
+    return w, lam
+
+
 def blend_decode(labels, p, w, lam):
     """Re-decide H/A inside every alive run of `labels`: emissions = proximity log-odds + w * (+1
     where labels say H, -1 where A); 2-state Viterbi, switch cost lam. D and X are untouched."""

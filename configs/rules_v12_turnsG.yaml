@@ -1,0 +1,10 @@
+# Candidate (board #87): v12-turns with the smooth-feed blend weight gated by ball turns. On a
+# smooth feed (kick rate < threshold) v11's owner vote gets w_near instead of the smooth w within
+# `radius` frames of a ball turn stronger than `thresh` m/s at `scale` frames
+# (proxowner.turn_gate). Prototype (5 Nov, decode-only on cached turns probabilities): in the
+# real-feed-fitted Butterworth world, w_near 0 within 25 frames beats the plain smooth setting
+# +0.024 (6/7) and uniform w 0 (+0.016); w_near picked on the 5 fit sims only (-1.0 vs -0.75:
+# 0.5292 vs 0.5278). Raw feeds take the kicky setting, so the gate never runs there.
+inherit: rules_v12_turns.yaml
+proxowner:
+  smooth_turn_gate: {scale: 25, thresh: 2.0, radius: 25, w_near: 0.0}

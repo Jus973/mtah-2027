@@ -214,9 +214,10 @@ def labels_for(path):
             m = q.m
             views = proxowner.match_views(m.atd, m.spec, {}, cfg, ball_raw=m.ball_raw)
             rate = proxowner.kick_rate(m.players, m.ball_raw, m.graded, m.atd.pitch, m.fps)
-            w, lam = proxowner.setting(cfg, rate)
+            w, lam = proxowner.weights(cfg, rate, m.ball_raw, m.fps)
             out.append(proxowner.blend_decode(lab, proxowner.p_home(mdl, views), w, lam))
-            print("{}: kick rate {:.1f} -> proxowner setting w {} lam {}".format(m.game, rate, w, lam))
+            print("{}: kick rate {:.1f} -> proxowner setting w {} lam {}".format(
+                m.game, rate, w if np.ndim(w) == 0 else "gated mean %.3f" % np.mean(w), lam))
         labels = out
     return [q.m.game for q in Q], nf, labels, Q
 
