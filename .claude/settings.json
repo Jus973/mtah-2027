@@ -9,6 +9,8 @@
       "Read(/Users/justinzhang/mtah2027/**)",
       "Read(/Users/justinzhang/mtah2027_cache/**)",
       "Read(./submissions/candidates/**)",
+      "Read(./submissions/final/**)",
+      "Read(./.mtah.local)",
       "Bash(cat:*)",
       "Bash(head:*)",
       "Bash(tail:*)",

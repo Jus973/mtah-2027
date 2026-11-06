@@ -10,6 +10,7 @@ a view (Atd.players_m) rather than the stored representation.
 Nothing in this module prints data. Callers that run on the real bundle print aggregates only.
 """
 
+import hashlib
 import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -160,15 +161,27 @@ def load_cache(path):
                pitch=tuple(float(p) for p in z["pitch"]))
 
 
+def sim_tracking_digest(game, data_dir=None, source="tactical"):
+    """Identify the source bytes used by the sim ATD parser, including pitch and timeline."""
+    root = registry.data_dir_for(game, data_dir)
+    sources = registry.require(["atd_meta", "atd_raw"], game, root, source)
+    digest = hashlib.sha256()
+    for path in [os.path.join(root, registry.FAKE_META), *sources]:
+        with open(path, "rb") as handle:
+            digest.update(hashlib.file_digest(handle, "sha256").digest())
+    return digest.hexdigest()
+
+
 def load_game(game, data_dir=None, source="tactical", use_cache=True):
     """Atd for a registered match. Real matches are cached outside the repo, sim matches inside
     their own folder (also outside the repo); fakedata matches are small and never cached."""
     registry.gate(game, data_dir)
     sp = registry.spec(game, data_dir)
-    if sp["kind"] == "sim":
+    if sp["kind"] == "sim" and use_cache:
         path = os.path.join(registry.data_dir_for(game, data_dir),
-                            "{}_atd_v{}.npz".format(source, CACHE_VERSION))
-    else:
+                            "{}_atd_v{}_{}.npz".format(source, CACHE_VERSION,
+                                                       sim_tracking_digest(game, data_dir, source)))
+    elif sp["kind"] == "real" and use_cache:
         path = cache_path(game, source)
     cached = use_cache and sp["kind"] in ("real", "sim")
     if cached and os.path.isfile(path):

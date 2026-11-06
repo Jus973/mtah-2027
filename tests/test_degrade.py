@@ -113,6 +113,24 @@ def test_write_sim_round_trip(match, tmp_path):
     assert 0.0 <= s["spell_f1_mean"] <= 1.0
 
 
+def test_sim_parse_cache_refreshes_after_tracking_edit(tmp_path):
+    match = make_clean(n_half=200)
+    game = "SIM-EDIT"
+    out, _ = degrade.write_sim(match, DCFG, MCFG, seed=1, out_root=str(tmp_path), game=game)
+    original, _ = load_game(game, out)
+    _, stats = load_game(game, out)
+    assert stats is None
+
+    from pathlib import Path
+    meta = Path(registry.asset_paths(game, out)["atd_meta"])
+    assert "Away" in meta.read_text()
+    meta.write_text(meta.read_text().replace("Away", "Road"))
+    updated, stats = load_game(game, out)
+    assert stats is not None
+    assert original.team_names != updated.team_names
+    assert "Road" in updated.team_names
+
+
 def test_hazard_rates_shrink_to_margins():
     rates = degrade.hazard_rates(DCFG)
     assert rates.shape == (2, 6, 4) and np.isfinite(rates).all() and (rates > 0).all()
