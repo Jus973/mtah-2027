@@ -214,3 +214,29 @@ def ball_kinematics(ball, graded, pitch, fps=25):
         sp = sp[ok & np.isfinite(sp)]
     return {"n": int(ok.sum()), "curv_q": curv,
             "speed_q": [float(np.percentile(sp, q)) for q in BALLKIN_QS] if sp.size else None}
+
+
+BALLLAG_SHIFTS = tuple(range(-20, 21, 2))
+
+
+def ball_player_lag(players, ball, graded, pitch):
+    """Label-free time alignment of the ball against the players (board #84). For each shift s,
+    the median over graded in-pitch frames of the nearest player's distance to ball[t + s], and
+    the share of frames with a player within 1.5 m. A ball delayed by L frames (a causal filter)
+    sits closest to the players at s = +L; a zero-phase filter or none at s = 0. Curvature
+    quantiles cannot see a uniform delay, the turn features can."""
+    T = len(ball)
+    out_med, out_close = {}, {}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        ok = (np.isfinite(ball[:, 0]) & graded & (ball[:, 0] >= 0) & (ball[:, 0] <= pitch[0])
+              & (ball[:, 1] >= 0) & (ball[:, 1] <= pitch[1]))
+        m = 25
+        idx = np.arange(m, T - m)
+        idx = idx[ok[idx] & np.all([ok[idx + s] for s in BALLLAG_SHIFTS], axis=0)]
+        for s in BALLLAG_SHIFTS:
+            d = np.nanmin(np.linalg.norm(players[idx] - ball[idx + s][:, None, :], axis=-1), axis=1)
+            d = d[np.isfinite(d)]
+            out_med[str(s)] = float(np.median(d)) if d.size else None
+            out_close[str(s)] = float(np.mean(d < 1.5)) if d.size else None
+    return {"n": int(len(idx)), "median_dmin_by_shift": out_med, "share_within_1p5m_by_shift": out_close}

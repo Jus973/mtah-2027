@@ -29,3 +29,7 @@ put("curvature dv m/s quantiles p50 p75 p90 p95 p99 by lag in frames", k["curv_q
 put("ball speed m/s quantiles p50 p75 p90 p95 p99", k["speed_q"])
 put("kicks per 1e3 seen", stats.carrier_stats(atd.players_m()[..., :2].astype(float), ball, graded,
                                               atd.pitch, sp["fps"])["kicks_per_1e3_seen"])
+lag = stats.ball_player_lag(atd.players_m()[..., :2].astype(float), ball, graded, atd.pitch)
+put("lag frames used", lag["n"])
+put("nearest player median m by ball shift s (ball t+s vs players t)", lag["median_dmin_by_shift"])
+put("share nearest player within 1.5 m by ball shift s", lag["share_within_1p5m_by_shift"])
