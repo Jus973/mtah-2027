@@ -1,6 +1,7 @@
 """Board #67 verification helper: copy sim bundles with the ball smoothed over W frames.
 
     python scripts/build_smoothed_sims.py --width 13 --out ~/opendata/sim_b13 [--src SIM_DIR]
+                                          [--pattern 'MET-G3']
 
 Every DFL-* bundle under --src (default SIM_DIR) is rewritten under --out/<game> with its ball
 x/y replaced by a centred W-frame moving average inside each contiguous run of seen frames
@@ -27,9 +28,11 @@ def main():
     parser.add_argument("--width", type=int, required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--src", default=registry.SIM_DIR)
+    parser.add_argument("--pattern", default="DFL-*",
+                        help="bundle glob under --src (e.g. MET-G3 for the Metrica copy, #69)")
     args = parser.parse_args()
     out_root = os.path.expanduser(args.out)
-    for src in sorted(glob.glob(os.path.join(args.src, "DFL-*"))):
+    for src in sorted(glob.glob(os.path.join(args.src, args.pattern))):
         game = os.path.basename(src)
         atd, _ = load_game(game, src)
         ball = smooth_ball(atd.ball.copy(), args.width)      # normalised, NaN where missing
