@@ -1,4 +1,4 @@
-# Candidate (board #72): v12-hedgeA plus multi-scale ball-turn features in the proximity owner
+# Candidate (board #85): v12-hedgeA plus multi-scale ball-turn features in the proximity owner
 # model (turns of the ball over 0.5-2 s survive the smoothing that hides per-frame kicks).
 inherit: rules_v12_hedgeA.yaml
 proxowner:

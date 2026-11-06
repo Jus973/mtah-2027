@@ -3,7 +3,7 @@
     python scripts/build_smoothed_sims.py --width 13 --out ~/opendata/sim_b13 [--src SIM_DIR]
     python scripts/build_smoothed_sims.py --filter bw4 --param 0.75 --out ~/opendata/sim_bw4
 
---filter/--param pick a learn/ballfilter.py family (board #84: fitted to the real feed's
+--filter/--param pick a learn/ballfilter.py family (board #85: fitted to the real feed's
 label-free ball-kinematics aggregates); --width W alone is --filter box --param W.
 
 Every DFL-* bundle under --src (default SIM_DIR) is rewritten under --out/<game> with its ball

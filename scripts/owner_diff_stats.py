@@ -75,3 +75,22 @@ for key, sel in (("differ", clear & (a != b)), ("agree", clear & (a == b)), ("al
                 float(np.mean(b[sel] == side1[sel])) if sel.any() else None, int(sel.sum())]
 put("unambiguous-tag frames [final, candidate, frames]", out)
 put("alive frames under conflicting tags (both teams implied)", int((alive & hH & hA).sum()))
+# Board #84: the differing frames by stretch type and length (eval/ownerdiff.py), each judged by
+# the unambiguous tag side: [stretches, frames, final agrees, candidate agrees, judged frames].
+from mtah.eval import ownerdiff  # noqa: E402
+put("differ stretches by type and length bin (len0 <0.5s .. len4 >4s)",
+    ownerdiff.summary(a, b, graded, side1, clear))
+# Board #84 tag-granularity check: on frames where final and candidate AGREE, tag agreement by
+# the length of the spell (maximal H or A run of the final) containing the frame. If phase tags
+# cannot see short possessions, agreement on short agreed spells collapses toward the share of
+# the opponent's phase, whatever any model does.
+bounds = np.flatnonzero(np.diff(np.concatenate([[-1], np.where(np.isin(a, ["H", "A"]), np.where(a == "H", 0, 1), 2), [-1]])) != 0)
+spell_len = np.zeros(len(a), dtype=int)
+for s, e in zip(bounds[:-1], bounds[1:]):
+    spell_len[s:e] = e - s
+agree_clear = clear & (a == b)
+rows = {}
+for lo, hi, name in ((0, 25, "lt1s"), (25, 50, "1-2s"), (50, 100, "2-4s"), (100, 250, "4-10s"), (250, 10 ** 9, "gt10s")):
+    sel = agree_clear & (spell_len >= lo) & (spell_len < hi)
+    rows[name] = [float(np.mean(a[sel] == side1[sel])) if sel.any() else None, int(sel.sum())]
+put("tag agreement on agreed frames by containing spell length [agree, frames]", rows)

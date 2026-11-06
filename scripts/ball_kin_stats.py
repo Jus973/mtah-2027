@@ -1,4 +1,4 @@
-"""make airlock T=ball-kin: label-free shape of the ball track's filtering (board #84).
+"""make airlock T=ball-kin: label-free shape of the ball track's filtering (board #85).
 
 Quantiles of the ball's curvature (as m/s velocity change) at lags 1-50 frames on graded,
 in-pitch, seen frames, plus speed quantiles and the kick rate. The same function runs on the

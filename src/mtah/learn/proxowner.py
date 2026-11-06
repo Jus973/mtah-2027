@@ -92,7 +92,7 @@ TURN_THRESH = (2.0, 4.0)
 
 
 def _turn_features(ball, d1h, d1a, fps):
-    """Ball turns that survive smoothing (board #72). At scale s frames: the change between the
+    """Ball turns that survive smoothing (board #85). At scale s frames: the change between the
     mean velocity over the s frames before t and the s frames after, in m/s. Turns above a
     threshold, at their local peak, are 'events'; each event is attributed to the team nearer the
     ball there (margin d1a - d1h, + = home nearer). Per frame: the last and next event's

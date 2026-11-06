@@ -1,4 +1,4 @@
-"""Ball-track filters for building evaluation worlds that look like a filtered real feed (board #84).
+"""Ball-track filters for building evaluation worlds that look like a filtered real feed (board #85).
 
 Each filter runs inside every contiguous run of seen frames (NaN = missing) and leaves runs too
 short for it unchanged. Families: "box" (centred moving average, width = param frames), "sg2"

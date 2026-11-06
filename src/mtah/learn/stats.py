@@ -186,7 +186,7 @@ BALLKIN_QS = (50, 75, 90, 95, 99)
 
 
 def ball_kinematics(ball, graded, pitch, fps=25):
-    """Label-free shape of the ball track's filtering (board #84). On graded, in-pitch frames whose
+    """Label-free shape of the ball track's filtering (board #85). On graded, in-pitch frames whose
     whole +/- k window is seen: the curvature b[t+k] - 2 b[t] + b[t-k], as a velocity change in
     m/s ((.) * fps / k), quantiled per lag k. A filter of width W flattens lags below ~W and leaves
     longer ones, so the curve over k pins both the width and the filter's shape; the speed
@@ -220,7 +220,7 @@ BALLLAG_SHIFTS = tuple(range(-20, 21, 2))
 
 
 def ball_player_lag(players, ball, graded, pitch):
-    """Label-free time alignment of the ball against the players (board #84). For each shift s,
+    """Label-free time alignment of the ball against the players (board #85). For each shift s,
     the median over graded in-pitch frames of the nearest player's distance to ball[t + s], and
     the share of frames with a player within 1.5 m. A ball delayed by L frames (a causal filter)
     sits closest to the players at s = +L; a zero-phase filter or none at s = 0. Curvature
