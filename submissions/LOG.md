@@ -747,14 +747,14 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   rule on the CLEAN tracking (L1-h1/h5/h12 nearest-team hysteresis at 1.5 m, L2 control rule,
   L3 last touch (circular, reported only), L4 operator-snapped to L1-h5, L5 pass-release); D
   stays the source flag. Frozen committed models on held-out DFL J03WQQ / J03WR9 + MET-G3 (out of
-  fold for every model), raw and b13 feeds; rival = max(smooth50, prox-only), prox-only = the
-  FINAL's proxowner_v2 decoded with w = 0 (stand-in for the dropped #57 rival). Plausibility
+  fold for every model), raw and b13 feeds; reference = max(smooth50, prox-only), prox-only = the
+  FINAL's proxowner_v2 decoded with w = 0 (an evaluation stand-in, not a candidate). Plausibility
   filter (GT only, before scoring): L1-h1 out (short-spell share 2.5x, switches per
   nearest-team flip 3.0x L0's); counted L1-h5, L1-h12, L2, L4, L5. L0 reproduces #67 exactly
-  (v11 raw 0.6444 / 0.6828, b13 0.4966 / 0.5013). R_F = FINAL − rival, 3-match mean: raw L0
+  (v11 raw 0.6444 / 0.6828, b13 0.4966 / 0.5013). R_F = FINAL − reference, 3-match mean: raw L0
   +0.096, L1-h5 +0.032, L1-h12 −0.030, L2 +0.037, L4 +0.094, L5 +0.085; b13 L0 +0.016, L1-h5
   +0.002, L1-h12 +0.033, L2 +0.004, L4 +0.017, L5 +0.015 (v11's b13 R −0.018 to −0.033 except
-  L1-h12). Pre-registered verdict: MIXED (no b13 world risky; raw L1-h12 below −0.010, prox-only
-  ahead in a proximity-built world, a known bias of the protocol) → table posted, nothing
+  L1-h12). Pre-registered verdict: MIXED (no b13 world below the gap bar; raw L1-h12 below −0.010,
+  prox-only ahead in a proximity-built world, a known bias of the protocol) → table posted, nothing
   changes. `scripts/labeller_worlds.py` + tests; `build_smoothed_sims.py --pattern` for the
   MET-G3 b13 copy. Ledger: +1 outcome recorded (mixed; no selection).

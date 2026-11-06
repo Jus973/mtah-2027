@@ -57,7 +57,7 @@ R_CAND, R_CTRL = 1.5, 1.0            # metres: L1 candidate radius; L2/L3/L5 con
 CTRL_RUN, CTRL_PAIR_S = 25, 3.0      # L2: frames held within 1 m; seconds between two episodes
 SNAP, RELEASE = 25, 50               # L4 snap window; L5 max contact-to-switch frames
 PLAUSIBLE = (0.5, 2.0)               # amendment: descriptives within [0.5x, 2x] of L0's
-RISK_R, RISK_WIDEN, ROBUST_R = -0.03, 0.02, -0.010
+GAP_R, GAP_WIDEN, ROBUST_R = -0.03, 0.02, -0.010
 REPRO = {"raw": (0.6444, 0.6828), "b13": (0.4966, 0.5013)}   # #67 v11 on J03WQQ / J03WR9
 CACHE = os.path.join(ROOT, "cache", "labeller_worlds_labels.pkl")
 
@@ -451,8 +451,8 @@ def main():
         for wname in WORLDS:
             mean = {m: np.mean([F1[(feed, wname, g, m)] for g in PRIMARY]) for m in METHODS}
             per = {m: np.array([F1[(feed, wname, g, m)] for g in PRIMARY]) for m in METHODS}
-            rival = np.maximum(per["smooth50"], per["prox-only"])
-            rf, r11 = per["FINAL"] - rival, per["v11"] - rival
+            ref = np.maximum(per["smooth50"], per["prox-only"])
+            rf, r11 = per["FINAL"] - ref, per["v11"] - ref
             R[(feed, wname)] = (float(rf.mean()), float(r11.mean()))
             tag = {"L0": " (identity)", "L3": " (circular, reported only)"}.get(
                 wname, "" if wname in counted else " (filtered out)")
@@ -463,17 +463,17 @@ def main():
     print("\n== PRE-REGISTERED DECISION (board #69 + amendment; on R_F, FINAL v12-hedgeA) ==")
     for idx, who in ((0, "FINAL (decides)"), (1, "v11 (reported)")):
         l0 = R[("b13", "L0")][idx]
-        risky = [w for w in counted if R[("b13", w)][idx] < RISK_R
-                 and R[("b13", w)][idx] < l0 - RISK_WIDEN]
+        widened = [w for w in counted if R[("b13", w)][idx] < GAP_R
+                   and R[("b13", w)][idx] < l0 - GAP_WIDEN]
         robust = all(R[("raw", w)][idx] >= ROBUST_R for w in counted)
-        if len(risky) >= 2:
-            verdict = "RANK RISK CONFIRMED (b13 worlds: {})".format(", ".join(risky))
+        if len(widened) >= 2:
+            verdict = "GAP TO THE REFERENCE WIDENS (b13 worlds: {})".format(", ".join(widened))
         elif robust:
             verdict = "LEAD ROBUST to automatic-labeller conventions (owner axis)"
         else:
             verdict = "MIXED — post the table, change nothing"
-        print("  {:<16} L0-b13 R {:+.4f}; risky b13 worlds {}; raw min R {:+.4f} -> {}".format(
-            who, l0, risky or "none", min(R[("raw", w)][idx] for w in counted) if counted
+        print("  {:<16} L0-b13 R {:+.4f}; widened b13 worlds {}; raw min R {:+.4f} -> {}".format(
+            who, l0, widened or "none", min(R[("raw", w)][idx] for w in counted) if counted
             else float("nan"), verdict))
     if not repro_ok:
         print("  (verdict void: the L0 reproduction check failed)")
