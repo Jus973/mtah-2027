@@ -15,9 +15,8 @@ produced by `make submission` from `configs/final.yaml` (candidate **v12-hedge**
 
 ## 1. Approach
 
-Possession changes only at **contacts** between the ball and a player, and stoppages come from
-**dead-ball evidence** in the tracking. We don't smooth a per-frame guess. The pipeline has seven
-steps:
+We infer possession from contacts, player positions and ball proximity. Stoppages come from
+dead-ball evidence in the tracking.
 1. Every contact is a candidate change.
 2. A gradient-boosted model, trained only on *other* matches (open DFL data degraded to look
    like this match's tracking), gives each contact by the team without the ball a probability of
@@ -33,8 +32,6 @@ steps:
    a per-frame ball-proximity owner model (§4) is blended into the owner path inside every alive
    stretch, weighted by the match's own kick rate (§3.8). `D` never changes.
 
-Every change lands on the first frame of the contact or evidence that causes it, as the ground
-truth is defined; the §3.8 blend can move an owner switch to where the proximity evidence turns.
 On this match we use only label-free checks and a pass/fail public bug check.
 
 Why events: spellF1 matches predicted to true spells one-to-one, same team only, at IoU 0.3–0.7.
@@ -195,8 +192,7 @@ No rule or constant is tied to specific frames of this match.
 
 *Training and tuning data.* Every model, threshold and decoder cost in the final configuration
 was fitted or selected on degraded external open data (DFL/IDSSE), which the organisers called
-permissible on the challenge repository's issue #16. The one link to this match is the
-degradation recipe (§5.2): before the organisers' 3 Nov clarification it was calibrated to
+permissible on the challenge repository's issue #16. For the degradation recipe (§5.2), before the organisers' 3 Nov clarification it was calibrated to
 label-free aggregate statistics of the provided tracking (ball-missing share, gap rates and
 lengths, player track lengths); no labels, video or frame-level information went into it. To
 remove that link on the ball side we re-fitted it to external automatic tracking only (Metrica
@@ -209,8 +205,8 @@ depend on it: with g at a quarter or five times the fitted value, v11 still wins
 between whole, externally tuned versions. The organisers confirmed that is allowed (3 Nov). The §3.8 blend adds one more
 such link, disclosed here: its training smoothing widths (7, 25 frames) and the two kick-rate
 regimes bracket the kick rate observed label-free on the provided tracking (2.6 per 1,000 seen
-frames vs 21–43 on the raw sims). No parameter was fitted to this match, the 13-frame scoring
-width appears nowhere in training or selection, and every learned part is trained on open data.
+frames vs 21–43 on the raw sims). All fitting used open data. We reserved the 13-frame world for evaluation and used its
+result in the adoption decision (§5.3).
 At run time the kick rate is an input statistic that picks one of two pre-registered settings.
 
 **5.2 Simulation on open data (primary).** Each DFL match is rewritten in the bundle's ATD format.
@@ -249,7 +245,7 @@ choice only if a **paired per-match comparison** favours it (held-out matches al
 matches where the challenger's learned parts are out of fold): a positive mean difference and a
 one-sided sign test at p ≤ 0.05, else a tie, decided by fewer components, then consistency.
 
-`make paired` runs this with every learned part cross-fitted. Each selection won all seven
+`make paired` runs this with every learned part cross-fitted. Through v11, each selection won all seven
 matches (p ≈ 0.008): v3 over v1; v5 over v3 by +0.030; v6 over v5 by +0.014; v11 over v6 by
 +0.029 (paired possession bootstrap P(Δ ≤ 0) < 0.001), 7/7 under each of three degradation stress
 arms. v12-hedge ties v11 on the raw sims (+0.002, 5/7, p = 0.23; held-out 0.664 → 0.660) and was
@@ -344,16 +340,15 @@ blend with it.
   often here (no player within 1 m on 52.6% of visible
   carry-speed ball frames, vs 30.5–35.4% on the sims), so the carrier-loss sensitivity applies.
   And the real ball track is velocity-filtered: 2.6 kicks (speed change > 3 m/s) per 1,000 seen
-  frames, vs 21–43 on the sims. On the two held-out matches, smoothing the ball over 13 frames
-  cost v11 0.165 of mean spellF1, while a per-frame proximity and team-shape model scored almost
-  the same before and after: smoothing hides the short contacts v11 reads the owner from.
+  frames, vs 21–43 on the sims. In the original rival comparison, 13-frame smoothing reduced held-out v11 spellF1 by
+  0.165 (to 0.4990), while the proximity model barely changed. The independent blend test
+  (§5.3) rebuilt the smoothed world and measured v11 at 0.4949.
 - *Owner blend.* v11's contact-based owner decoding was the exposed part, so the final blends a
   per-frame proximity owner into it (§3.8), trained at widths 0, 7 and 25 only; 13 frames, the
   width that matches this feed, was reserved for scoring (results in §5.3). This feed is mixed:
   its ball kinematics are 13-frame-smooth, but the ball hugs the carrier and contacts survive
   (8.9 per 1,000 frames vs 10.4–11 raw and 8.4–8.6 at 13 frames), so the smoothed worlds likely
-  overstate both v11's loss and the blend's gain; the expected change here lies between −0.011
-  and +0.036. Under the four convention axes above, on the raw sims, the hedge's difference to
+  overstate the blend's gain. The change on this match is unknown. Under the four convention axes above, on the raw sims, the hedge's difference to
   v11 runs from −0.005 (late `D` ends) to +0.012 (short spells merged): no world fails the bar.
 
 ## 6. Limitations and next steps
@@ -404,8 +399,7 @@ python scripts/build_smoothed_sims.py --width 13 --out DIR   # §5.7 world; MTAH
   (`submissions/final/Berkeley Sports Research Group.sha256`; FINAL row of `submissions/LOG.md`).
 - **Determinism:** CPU only, single-threaded LightGBM, `PYTHONHASHSEED=0`. Two independent
   runs reproduce the committed sha256 (5 Nov); the cold-cache and Docker (linux/arm64 and amd64,
-  from a mounted bundle) reproductions of 4 Nov were of v11 and are repeated on the final at the
-  freeze.
+  from a mounted bundle) reproduced v11 on 4 Nov. The same freeze checks are pending for v12-hedge.
 - **Tooling:** the code was written with an AI coding assistant that never received match data,
   video, raw tracking lines or per-frame labels: real-data runs released only aggregate
   statistics and pass/fail verdicts, filtered by a mechanical policy and logged
