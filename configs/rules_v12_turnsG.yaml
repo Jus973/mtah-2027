@@ -1,4 +1,4 @@
-# Candidate (board #87): v12-turns with the smooth-feed blend weight gated by ball turns. On a
+# Candidate (board #88): v12-turns with the smooth-feed blend weight gated by ball turns. On a
 # smooth feed (kick rate < threshold) v11's owner vote gets w_near instead of the smooth w within
 # `radius` frames of a ball turn stronger than `thresh` m/s at `scale` frames
 # (proxowner.turn_gate). Prototype (5 Nov, decode-only on cached turns probabilities): in the
