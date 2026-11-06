@@ -209,12 +209,11 @@ frames vs 21–43 on the raw sims). All fitting used open data. We reserved the 
 result in the adoption decision (§5.3).
 At run time the kick rate is an input statistic that picks one of two pre-registered settings.
 
-**5.2 Simulation on open data (primary).** Each DFL match is rewritten in the bundle's ATD format.
-Its ground truth is `D` where DFL marks the ball dead, else the team in possession. It is then
-degraded to label-free statistics of the real ATD: stoppage ball loss (probability q, fraction
-f), open-play gaps at the real onset rate by ball speed, crowding and pitch edge (scaled by s)
-with the real gap lengths, and player tracklets, dropouts and duplicates at the real rates
-(gap g). q, f, s and g were fitted on the fit matches:
+**5.2 Simulation on open data (primary).** DFL matches use the bundle's ATD format, with GT
+`D` for dead ball and the owning team otherwise. We match the real ATD's label-free statistics:
+stoppage ball loss (probability q, fraction f), open-play gap onset rates by ball speed,
+crowding and pitch edge (scaled by s), real gap lengths, and player tracklet, dropout and
+duplicate rates (gap g). We fit q, f, s and g on the fit matches:
 
 | Statistic (graded frames) | sim | real ATD |
 |---|---|---|
