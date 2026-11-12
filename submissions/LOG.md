@@ -26,7 +26,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-05 07:27 | v12h | c90a8155334f | 3a958c9+dirty | 961e800ef78f189a | pass | 0.6600 | pass | consistency 0.733 | no |
 | 2026-11-05 12:32 | v12hA | 1ba66b0a54f5 | 452efcb | 25876f5bb7eb2124 | pass | 0.6680 | pass | consistency 0.733 | no |
 | 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | FINAL 5 Nov until v12-hedgeA (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
-| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 | no |
+| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
 
 
 ## Work log
@@ -741,3 +741,14 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   v11 (rules_v11.yaml preserved). Follow-ups: tech doc §4/§5.3 numbers (PR #17), the #7 freeze
   drill on the new FINAL (third model file), the hedgeA convention matrix in the b13 world (#72
   recipe). Ledger: +0 (verification reproduces registered outcomes; no new selection test).
+- 2026-11-11: **#7 freeze reproduction drill PASSED for the v12-hedgeA FINAL** (claude-fable-b on
+  the airlock host; clean checkout of main dea5b65, Python 3.11.14, committed models, never
+  retrained). `make airlock T=submission-cold` twice (fresh empty temporary cache each time, 59 s
+  and 34 s) and `make airlock T=submission-docker` after `make docker-build` for linux/arm64
+  (image 8dfff161f624a62c…, 55 s) and linux/amd64 (592d30fe8fbb9061…, emulated, 73 s): all four
+  released sha256 25876f5bb7eb21246f21ea34c8420e3f0d2f0c0f4db8f4a1700b13e65640827e, equal to the
+  committed file; validator PASS, structural bands PASS, advisory D share 0.445268 on every run;
+  resolved config hash 1ba66b0a54f5. Rows and image metadata on board #7. Docker Desktop had to
+  be launched on the host first. If main moves before the freeze, the four rows are re-run on
+  the new revision. Not covered here: `make doc` on the freeze revision (PR #17's six-page proof
+  is Kelly's), Justin's #17 acceptance and the freeze sign-off. Ledger: +0 (no selection test).
