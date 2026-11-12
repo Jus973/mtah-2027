@@ -5,7 +5,7 @@ one are notes for the team and do not render. Every number below comes from a ma
 real-match numbers are label-free aggregates or verdicts (make airlock T=...).
 Version of 5 Nov 2026 (evening): final candidate v12-hedgeA, adopted after the independent
 verification recorded in submissions/LOG.md (v12-hedge earlier on 5 Nov, v11 on 1 Nov before it).
-Re-check numbers at M4 freeze; §7 "Determinism" is updated after the cold-cache and Docker drill.
+Re-check numbers at M4 freeze; §7 "Determinism" records the 11 Nov cold-cache and Docker drill.
 -->
 
 # Ball possession from automatic tracking: <TEAM_NAME>
@@ -404,9 +404,9 @@ python scripts/build_smoothed_sims.py --width 13 --out DIR   # §5.7 world; MTAH
 - **Submitted file:** sha256
   `25876f5bb7eb21246f21ea34c8420e3f0d2f0c0f4db8f4a1700b13e65640827e`
   (`submissions/final/Berkeley Sports Research Group.sha256`; FINAL row of `submissions/LOG.md`).
-- **Determinism:** CPU only, single-threaded LightGBM, `PYTHONHASHSEED=0`. Two independent
-  runs reproduce the committed sha256 (5 Nov); the cold-cache and Docker (linux/arm64 and amd64,
-  from a mounted bundle) reproduced v11 on 4 Nov. The same freeze checks are pending for v12-hedgeA.
+- **Determinism:** CPU only, single-threaded LightGBM, `PYTHONHASHSEED=0`. A fresh parse cache
+  (twice) and the Docker image (linux/arm64 and amd64, from a mounted bundle, committed models)
+  reproduce the committed sha256 byte for byte (11 Nov).
 - **Tooling:** the code was written with an AI coding assistant that never received match data,
   video, raw tracking lines or per-frame labels: real-data runs released only aggregate
   statistics and pass/fail verdicts, filtered by a mechanical policy and logged
