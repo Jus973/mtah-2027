@@ -40,3 +40,24 @@ def test_features_are_team_symmetric():
     assert np.allclose(a[:, i], b[:, j], equal_nan=True) and np.allclose(a[:, j], b[:, i], equal_nan=True)
     k = names.index("diff")
     assert np.allclose(a[:, k], -b[:, k], equal_nan=True)
+
+
+def test_turn_features_flag_and_symmetry():
+    """Board #84: turn features only appear with the flag (old models keep their columns), and a
+    turn's attributed margin flips sign between the two team views."""
+    rng = np.random.default_rng(1)
+    T, S = 400, 4
+    players = rng.uniform(0, 60, (T, S, 2))
+    t = np.arange(T)[:, None]
+    ball = np.where(t < 200, [10.0, 30.0] + 0.4 * t * np.array([1.0, 0.0]),
+                    [90.0, 30.0] + 0.4 * (t - 200) * np.array([0.0, 1.0]))   # one sharp turn
+    team = np.array([0, 0, 1, 1])
+    hdir = np.ones(T)
+    _, _, off = proxowner.both_views(players, ball, team, hdir, (105.0, 68.0), 25)
+    a, b, on = proxowner.both_views(players, ball, team, hdir, (105.0, 68.0), 25, turns=True)
+    assert not any("turn" in n for n in off)
+    assert set(off) < set(on) and "lastturn25_4" in on
+    k = on.index("lastturn25_4")
+    late = np.isfinite(a[:, k])
+    assert late[250:].all() and not late[:150].any()
+    assert np.allclose(a[late, k], -b[late, k])
