@@ -4,7 +4,9 @@ Source: PFF's public WC2022 release (Metadata/<id>.json, Rosters/<id>.json, Trac
 under MTAH_PFF_DIR (default ~/opendata/pff), never inside the repo. Mechanical labels from the
 game_event stream embedded in the tracking frames, the kloppy PFF convention: OUT / END make the
 ball dead; a kick-off or an on-the-ball (OTB) event makes it alive; the owner is the team of the
-last event's home_ball flag. Halves 1-2 only, resampled from the source rate (29.97 fps) to 25 fps
+last event's home_ball flag. In-pitch stoppages (fouls, offsides) emit no OUT, so the ball stays
+alive through them: this GT is fit for paired candidate signs only, never for calibrating dead-ball
+detection or spell-length distributions. Halves 1-2 only, resampled from the source rate (29.97 fps) to 25 fps
 by nearest earlier source frame on the period clock; coordinates moved to a pitch-corner origin.
 """
 
@@ -20,6 +22,7 @@ OPEN_DIR = os.path.expanduser(os.environ.get("MTAH_PFF_DIR", "~/opendata/pff"))
 FPS = 25
 PAD = 125
 DEAD_EVENTS = ("OUT", "END")
+KICKOFF_PERIOD = {"FIRSTKICKOFF": 1, "SECONDKICKOFF": 2}
 ALIVE_EVENTS = ("FIRSTKICKOFF", "SECONDKICKOFF", "THIRDKICKOFF", "FOURTHKICKOFF", "OTB")
 
 
@@ -57,9 +60,31 @@ def parse(meta, roster, lines):
     idx_a = {j: i for i, j in enumerate(jerseys[away_id])}
     nh, na = len(idx_h), len(idx_a)
     rows = {1: [], 2: []}
-    alive, owner = False, -1
+    period = None
+    # The alive/owner state is a running fold over events, so it must see them in match time,
+    # not file order: frames are sorted by (period, clock); a frame without a clock keeps the
+    # place of the timed frame before it. For a file already in time order this is the identity.
+    frames, key = [], (1, -np.inf)
     for line in lines:
         f = json.loads(line) if isinstance(line, (str, bytes)) else line
+        q = f.get("period")
+        event_type = (f.get("game_event") or {}).get("game_event_type")
+        if q is None:
+            q = KICKOFF_PERIOD.get(event_type)
+        if q is not None:
+            clock = f.get("periodElapsedTime")
+            if clock is not None:
+                key = (q, float(clock))
+            elif key[0] != q or event_type in KICKOFF_PERIOD:
+                key = (q, -np.inf)
+        frames.append((key, len(frames), f))
+    frames.sort(key=lambda x: (x[0], x[1]))
+    for (q, _), _, f in frames:
+        if q not in rows:
+            continue
+        if period != q:
+            period = q
+            alive, owner = False, -1
         ge = f.get("game_event")
         if ge:
             kind = ge.get("game_event_type")
@@ -119,7 +144,7 @@ def parse(meta, roster, lines):
 
 
 def cache_path(game, open_dir=OPEN_DIR):
-    return os.path.join(open_dir, "cache", "PFF-{}.npz".format(game))
+    return os.path.join(open_dir, "cache", "PFF-v2-{}.npz".format(game))
 
 
 def load(game, open_dir=OPEN_DIR, use_cache=True):

@@ -1,6 +1,7 @@
 """GT-convention worlds behind scripts/regret_matrix.py (board #8 D-end axis, #46 axes)."""
 
 import os
+from pathlib import Path
 import sys
 
 import numpy as np
@@ -111,3 +112,55 @@ def test_random_worlds_pass_the_structural_checks():
                     check_world(axis, base, pm.label_codes(out), str(seed))
                 else:
                     assert (out == gt).all()
+
+
+def test_regret_cache_reuses_then_rebuilds_on_source_edits(tmp_path, monkeypatch):
+    import regret_matrix as matrix
+
+    game = "TEST-SIM"
+    root = tmp_path / game
+    root.mkdir()
+    monkeypatch.setattr(matrix.registry, "SIM_DIR", str(tmp_path))
+    monkeypatch.setattr(matrix, "CACHE", str(tmp_path / "labels.pkl"))
+    monkeypatch.setattr(matrix, "PRIMARY_EXTRA", (game,))
+    monkeypatch.setattr(matrix.config, "load", lambda path: {"matches": {"fit": [], "holdout": []}})
+    (root / matrix.registry.FAKE_META).write_text("{}")
+    paths = matrix.registry.asset_paths(game)
+    raw, xml = Path(paths["atd_raw"]), Path(paths["atd_meta"])
+    raw.parent.mkdir()
+    gt = root / "gt.csv"
+    for path in (raw, xml, gt):
+        path.write_bytes(b"A")
+
+    builds = []
+
+    def build(extra, committed):
+        builds.append(1)
+        return {"build": len(builds)}
+
+    monkeypatch.setattr(matrix, "build", build)
+
+    def cached_build():
+        return matrix.load_or_build([], False, False)["build"]
+
+    assert cached_build() == cached_build() == 1
+    for expected, path in enumerate((gt, raw, xml), start=2):
+        path.write_bytes(b"B")
+        assert cached_build() == cached_build() == expected
+
+    tags = Path(paths["smart_tagging"])
+    tags.write_bytes(b"A")
+    assert cached_build() == 5
+    tags.write_bytes(b"B")
+    assert cached_build() == 6
+    tags.unlink()
+    assert cached_build() == 7
+
+
+def test_regret_cache_rejects_extra_overwriting_cross_fitted_game(monkeypatch):
+    import pytest
+    import regret_matrix as matrix
+
+    monkeypatch.setattr(matrix.config, "load", lambda path: {"matches": {"fit": ["X"], "holdout": []}})
+    with pytest.raises(ValueError, match="cross-fitted"):
+        matrix.fingerprint(["DFL-X"])

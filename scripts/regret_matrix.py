@@ -36,8 +36,12 @@ Usage: .venv/bin/python scripts/regret_matrix.py [--rebuild] [--committed]
 """
 
 import argparse
+import glob
+import hashlib
 import os
 import pickle
+import re
+import tempfile
 import sys
 
 import numpy as np
@@ -48,6 +52,7 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, HERE)
 
 from mtah import config, registry            # noqa: E402
+from mtah.io.atd import sim_tracking_digest
 from mtah.eval.score import pm               # noqa: E402
 import paired                                # noqa: E402
 
@@ -220,27 +225,67 @@ def build(extra, committed):
     return data
 
 
+def fingerprint(extra):
+    """Hash the configs, models and source bytes of the open matches being evaluated."""
+    h = hashlib.sha256()
+    games = set(PRIMARY_EXTRA).union(extra)
+    for path in (V6, V11):
+        cfg = config.load(path)
+        h.update(config.config_hash(cfg).encode())
+        matches = cfg["matches"]
+        prefix = matches.get("prefix", "DFL-")
+        folds = {prefix + game for game in matches["fit"] + matches["holdout"]}
+        if folds.intersection(extra):
+            raise ValueError("extra matches must be separate from the cross-fitted matches")
+        games.update(folds)
+    for path in sorted(glob.glob(os.path.join(ROOT, "models", "*"))):
+        with open(path, "rb") as handle:
+            h.update(os.path.basename(path).encode() + hashlib.file_digest(handle, "sha256").digest())
+    for game in sorted(games):
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", game) or game in registry.games.GAMES:
+            raise ValueError("expected an open simulation match ID")
+        root = registry.data_dir_for(game)
+        if not registry.is_fake(game, root):
+            raise ValueError("missing simulation bundle for {}".format(game))
+        h.update(game.encode() + b"\0" + sim_tracking_digest(game, root).encode())
+        with open(os.path.join(root, "gt.csv"), "rb") as handle:
+            h.update(hashlib.file_digest(handle, "sha256").digest())
+        tags = registry.asset_paths(game, root)["smart_tagging"]
+        if os.path.isfile(tags):
+            with open(tags, "rb") as handle:
+                h.update(b"tags:" + hashlib.file_digest(handle, "sha256").digest())
+        else:
+            h.update(b"no tags")
+    return h.hexdigest()
+
+
 def load_or_build(extra, committed, rebuild):
-    data = None
+    data, fp = None, fingerprint(extra)
     if not rebuild and os.path.isfile(CACHE):
         with open(CACHE, "rb") as handle:
             data = pickle.load(handle)
+        if data.get("fingerprint") != fp:
+            print("cache {} is stale (configs, models or sims changed): rebuilding".format(CACHE))
+            data = None
     if data is None:
         data = build(extra, committed)
-    else:  # top up what the cache is missing
-        for game in [g for g in extra if g not in data["gt"]]:
+        data["fingerprint"] = fp
+    elif committed and not data["v6_cm"]:
+        for game in data["dfl"]:
             print("committed-model pipeline on {}...".format(game), flush=True)
-            for name, path in (("v6", V6), ("v11", V11)):
+            for name, path in (("v6_cm", V6), ("v11_cm", V11)):
                 data[name][game] = committed_labels(game, path)
-            data["gt"][game] = gt_of(game)
-        if committed and not data["v6_cm"]:
-            for game in data["dfl"]:
-                print("committed-model pipeline on {}...".format(game), flush=True)
-                for name, path in (("v6_cm", V6), ("v11_cm", V11)):
-                    data[name][game] = committed_labels(game, path)
+    else:
+        return data
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-    with open(CACHE, "wb") as handle:
-        pickle.dump(data, handle)
+    with tempfile.NamedTemporaryFile(dir=os.path.dirname(CACHE), delete=False) as handle:
+        try:
+            pickle.dump(data, handle)
+            handle.close()
+            os.replace(handle.name, CACHE)
+        finally:
+            if os.path.exists(handle.name):
+                os.unlink(handle.name)
     return data
 
 

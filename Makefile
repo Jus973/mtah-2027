@@ -24,7 +24,7 @@ test:
 # The bundle path comes from MTAH_DATA_DIR or .mtah.local; the full log stays beside the cache.
 T ?=
 airlock:
-	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv $(CSV)) $(if $(CFG),--config $(CFG)) $(if $(NAME),--name "$(NAME)")
+	@$(PY) scripts/airlock.py $(T) --game $(GAME) $(if $(CSV),--csv "$(CSV)") $(if $(CFG),--config $(CFG)) $(if $(NAME),--name "$(NAME)")
 
 check-data:
 	@test -n "$(MTAH_DATA_DIR)" || (echo "MTAH_DATA_DIR is not set" && exit 1)

@@ -24,7 +24,9 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-01 23:08 | final | 259d8aae1d1a | 7f23da4+dirty | 7b83f3a89bb15fa8 | pass | 0.6636 | pass | **FINAL** (adoption entry; §6.4): configs/final.yaml = v11, same resolved pipeline config (hash differs from v11's only via the inert clipviewer map); consistency 0.730; cold ×2 + docker arm64/amd64 byte-identical | no |
 | 2026-11-05 00:18 | v12 | 5b9e56cd549b | 3a958c9+dirty | 609343ecfdf06761 | pass | 0.6600 | pass | consistency 0.721 | no |
 | 2026-11-05 07:27 | v12h | c90a8155334f | 3a958c9+dirty | 961e800ef78f189a | pass | 0.6600 | pass | consistency 0.733 | no |
-| 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
+| 2026-11-05 12:32 | v12hA | 1ba66b0a54f5 | 452efcb | 25876f5bb7eb2124 | pass | 0.6680 | pass | consistency 0.733 | no |
+| 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | FINAL 5 Nov until v12-hedgeA (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
+| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
 
 
 ## Work log
@@ -715,3 +717,38 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   Docker arm64/amd64) on the new FINAL, the technical document (§3/§4/§5 describe v11), and
   the hedge's convention matrix in the b13 world. Ledger: +0 (verification reproduces
   registered outcomes; no new selection test).
+- 2026-11-05: **ADOPTION: v12-hedgeA adopted as FINAL by claude-fable-b on Justin's decision
+  (chat, 5 Nov: "Yes, promote hedgeA"; board #71).** The candidate (PR mtah-2027#26, board #67
+  variant A) is v12-hedge with a larger proximity owner model: 600 rounds of 63 leaves
+  (models/proxowner_v2.txt) instead of 300 of 31; same training data, widths and decode settings.
+  Independent verification on the airlock host, every item an exact reproduction of the author's
+  claim: diff review (config + model + LOG row only; training code unchanged, fit sims only);
+  retrain from an empty cache byte-identical (3d713842ed5eaf53); paired v11 → hedgeA raw
+  +0.0048, 5/7 (tie within the §6.4 noise floor; held-out 0.6636 → 0.6680); b13 +0.0547, 7/7,
+  p = 0.0078 (held-out 0.4949 → 0.5623) in the independently rebuilt world; forced downside
+  (smooth setting on raw) −0.0121, 1/7; head-to-head v12-hedge → hedgeA on b13 +0.0184, 7/7
+  (held-out 0.5379 → 0.5623, min +0.0094). Per world vs the previous FINAL: raw +0.0027,
+  downside −0.0012, b13 +0.0184 — never materially worse, better in the arm the real feed runs
+  (kick rate 2.56 → smooth setting). Critique on #71: the raw world stays a tie (QQ −0.008), the
+  real-match tag evidence is the same no-regression signal (consistency 0.733; differing-frame
+  split a coin flip), and the author's capacity screen beyond hedgeA plateaus (≤ +0.003), so
+  this is the end of the capacity ladder. Execution: PR #26 merged (20804c1, after merging main
+  into it; LOG rows reconciled); configs/final.yaml → rules_v12_hedgeA.yaml; `make airlock
+  T=submission` twice → validator PASS, all structural bands PASS, D share 0.445, sha256
+  25876f5bb7eb21246f21ea34c8420e3f0d2f0c0f4db8f4a1700b13e65640827e both runs (= the v12hA
+  candidate row's file, whose public bug check passed); resolved config hash 1ba66b0a54f5.
+  Before: v12-hedge (configs/rules_v12_hedge.yaml preserved; sha 961e800ef78f189a retired),
+  v11 (rules_v11.yaml preserved). Follow-ups: tech doc §4/§5.3 numbers (PR #17), the #7 freeze
+  drill on the new FINAL (third model file), the hedgeA convention matrix in the b13 world (#72
+  recipe). Ledger: +0 (verification reproduces registered outcomes; no new selection test).
+- 2026-11-11: **#7 freeze reproduction drill PASSED for the v12-hedgeA FINAL** (claude-fable-b on
+  the airlock host; clean checkout of main dea5b65, Python 3.11.14, committed models, never
+  retrained). `make airlock T=submission-cold` twice (fresh empty temporary cache each time, 59 s
+  and 34 s) and `make airlock T=submission-docker` after `make docker-build` for linux/arm64
+  (image 8dfff161f624a62c…, 55 s) and linux/amd64 (592d30fe8fbb9061…, emulated, 73 s): all four
+  released sha256 25876f5bb7eb21246f21ea34c8420e3f0d2f0c0f4db8f4a1700b13e65640827e, equal to the
+  committed file; validator PASS, structural bands PASS, advisory D share 0.445268 on every run;
+  resolved config hash 1ba66b0a54f5. Rows and image metadata on board #7. Docker Desktop had to
+  be launched on the host first. If main moves before the freeze, the four rows are re-run on
+  the new revision. Not covered here: `make doc` on the freeze revision (PR #17's six-page proof
+  is Kelly's), Justin's #17 acceptance and the freeze sign-off. Ledger: +0 (no selection test).
