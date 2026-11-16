@@ -1,12 +1,13 @@
 # The final candidate (PLAN.md §6.4, M4): make submission runs exactly this config.
-# Selected 5 Nov 2026 (evening): v12-hedgeA (configs/rules_v12_hedgeA.yaml: v12-hedge with a larger
-# proximity owner model, 600 rounds of 63 leaves, models/proxowner_v2.txt), on Justin's decision
-# after the independent verification recorded on board #71 (all five checklist items exact
-# reproductions). Paired §6.4 (make paired), v11 → hedgeA: raw +0.0048, 5/7, a tie within the
-# noise floor; b13 +0.0547, 7/7, sign test p = 0.0078; b7 +0.0221, 7/7 (author); forced downside
-# (smooth setting on raw) −0.0121, 1/7. Head-to-head v12-hedge → hedgeA on b13: +0.0184, 7/7.
-# Adoption entry in submissions/LOG.md. Before: v12-hedge (configs/rules_v12_hedge.yaml, preserved;
-# selected 5 Nov by board #70), v11 (configs/rules_v11.yaml, preserved; over v6 +0.029, 7/7),
-# v6 (configs/rules_v6_final.yaml), v5, v3.
+# Selected 16 Nov 2026: v12-turnsU (configs/rules_v12_turnsU.yaml: v12-hedgeA plus multi-scale
+# ball-turn features in the proximity owner model, models/proxowner_v3.txt, board #85, and a
+# uniform smooth-feed weight of 0.5 on v11's owner vote from the board #88 pre-registered grid),
+# on Justin's decision (chat, 16 Nov: "Yes, promote turnsU"). Paired §6.4, FINAL hedgeA → turnsU,
+# independent second-host run (board #88): +0.027 to +0.039, 7/7 in all six smooth-feed worlds;
+# raw (kicky) feeds: turnsU = turns, hedgeA → turns +0.0153, 7/7; forced smooth setting on raw
+# ties hedgeA (+0.0029, 3/7). Adoption entry in submissions/LOG.md.
+# Before: v12-hedgeA (configs/rules_v12_hedgeA.yaml, preserved; selected 5 Nov by board #71),
+# v12-hedge (configs/rules_v12_hedge.yaml, preserved; board #70), v11 (configs/rules_v11.yaml,
+# preserved; over v6 +0.029, 7/7), v6 (configs/rules_v6_final.yaml), v5, v3.
 # Change the parent only by the decision rule, and record it in submissions/LOG.md.
-inherit: rules_v12_hedgeA.yaml
+inherit: rules_v12_turnsU.yaml

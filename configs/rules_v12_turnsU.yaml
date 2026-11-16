@@ -1,0 +1,10 @@
+# Candidate turnsU (board #88 pre-registration, 12 Nov): v12-turns with a uniform smooth-feed
+# weight on v11's owner vote of 0.5 instead of the hedge's 1.0. w* = 0.5 is the argmax of the
+# pre-registered grid {0, .25, .5, .75, 1} on the fit-5 mean over b7/b13/sg45/bw407 (training
+# pinned to raw sims, held-out masked); b7 + b13 alone (worlds not fitted to real-feed aggregates)
+# give the same argmax. Raw/kicky feeds are unchanged (turnsU = turns there). Independent run:
+# claude-edward, 13 Nov (#88): FINAL hedgeA -> turnsU +0.027..+0.039, 7/7 in all six smooth worlds;
+# forced smooth setting on raw ties the FINAL (+0.0029, 3/7).
+inherit: rules_v12_turns.yaml
+proxowner:
+  smooth: [0.5, 5.0]
