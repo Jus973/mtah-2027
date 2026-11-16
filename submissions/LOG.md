@@ -26,8 +26,12 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-05 07:27 | v12h | c90a8155334f | 3a958c9+dirty | 961e800ef78f189a | pass | 0.6600 | pass | consistency 0.733 | no |
 | 2026-11-05 12:32 | v12hA | 1ba66b0a54f5 | 452efcb | 25876f5bb7eb2124 | pass | 0.6680 | pass | consistency 0.733 | no |
 | 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | FINAL 5 Nov until v12-hedgeA (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
-| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
+| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | FINAL 5 Nov until v12-turnsU (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
 
+| 2026-11-05 16:09 | v12t | e4786ee3a788 | eb4cbe8 | 19a912bc766a0f27 | pass | 0.6861 | pass | consistency 0.728 (board #85; row carried over from PR #29) | no |
+| 2026-11-16 11:25 | v12tU | 39b8b1a4309a | fb35c1a | 3197f8d8273f882c | pass | 0.6861 | pass | consistency 0.724; board #88 pre-registered w* = 0.5 (candidate run from PR #29 head + rules_v12_turnsU.yaml) | no |
+| 2026-11-16 11:26 | v12tU_r2 | 39b8b1a4309a | fb35c1a | 3197f8d8273f882c | pass | 0.6861 | pass | consistency 0.724; repeat run, byte-identical | no |
+| 2026-11-16 11:30 | final | 39b8b1a4309a | 0e3d77c | 3197f8d8273f882c | pass | 0.6861 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds, board #85/#88): configs/final.yaml = v12-turnsU, same resolved config and same file as the v12tU candidate rows (public check pass, consistency 0.724); airlock submission validator PASS, bands PASS, D share 0.445 | no |
 
 ## Work log
 
@@ -752,3 +756,19 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   be launched on the host first. If main moves before the freeze, the four rows are re-run on
   the new revision. Not covered here: `make doc` on the freeze revision (PR #17's six-page proof
   is Kelly's), Justin's #17 acceptance and the freeze sign-off. Ledger: +0 (no selection test).
+- 2026-11-16: **ADOPTION: v12-turnsU adopted as FINAL by Claude (Justin's session) on Justin's
+  decision (chat, 16 Nov: "Yes, promote turnsU"; board #85/#88).** turnsU = v12-turns (hedgeA plus
+  multi-scale ball-turn features in the proximity owner model, models/proxowner_v3.txt, PR #29)
+  with a uniform smooth-feed weight of 0.5 on v11's owner vote instead of the hedge's 1.0. w* = 0.5
+  is the argmax of the grid pre-registered on #88 (12 Nov) over the fit-5 mean of b7 / b13 / sg45 /
+  bw407, held-out masked; b7 + b13 alone (not fitted to real-feed aggregates) give the same argmax.
+  Independent second-host run (claude-edward, 13 Nov): FINAL hedgeA → turnsU +0.0377 / +0.0352 /
+  +0.0270 / +0.0375 / +0.0382 / +0.0391, 7/7 each, in b7 / b13 / sg45 / bw407 / bw407p30 / bw407 +
+  carrier loss; raw feeds never take the smooth setting (turnsU = turns; hedgeA → turns +0.0153,
+  7/7, #85 reproduced); forced smooth setting on raw ties hedgeA (+0.0029, 3/7). Real match
+  (airlock, label-free): validator, all bands, public bug check and team sign PASS; consistency
+  0.724 (hedgeA 0.733; #85 found the phase tags biased against short spells). Only the turnsU
+  pieces of PR #29 were brought over (no ball-filter / feed-stat tooling). Model retraining is
+  byte-identical on one host only (cross-host float drift, general, #85); make submission uses
+  the committed model. Before: v12-hedgeA (rules_v12_hedgeA.yaml preserved; sha 25876f5bb7eb2124
+  retired). Follow-ups: tech doc (PR #17) to turnsU, the four-row freeze drill on the freeze sha.
