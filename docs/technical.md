@@ -184,7 +184,7 @@ rate 0.05, ≥ 50 rows per leaf), used only by the §3.8 blend.
 - *Sequence model (16 Nov, `models/seqnet_v1.json`):* a small dilated 1-D convolutional net over
   the same features plus ball-turn features, read at 5 Hz with ± 25 s of context, three seeds,
   same training data; numpy inference. Its probability is averaged 50/50 with the tree model's.
-  The architecture and the weight were fixed before any evaluation (board #91).
+  The architecture and the weight were fixed before any evaluation (`submissions/LOG.md`).
 
 Touch and dead-ball thresholds were fitted by coordinate descent on the fit matches only.
 
@@ -264,7 +264,8 @@ is +0.005 raw (5/7, p = 0.23; held-out 0.664 → 0.668), +0.055 at 13 frames (7/
 held-out 0.495 → 0.562), +0.022 at 7 frames (7/7), and −0.012 (1/7) with the smooth setting
 forced on a raw-like feed (−0.043 at w = 0.5, which is why the hedge weight ships). The rule was
 applied in the smoothed worlds because this feed's kick rate selects that regime; an independent
-agent reproduced every number before each adoption.
+agent reproduced every number before each adoption up to v12-hedgeA, and re-trained and re-scored the
+sequence-model step on the raw sims after it (+0.020, 7/7).
 v11 also tripped two label-free real-match checks that older candidates pass (§5.4, its one-way
 sign-off).
 

@@ -19,7 +19,7 @@ make submission                             # -> "submissions/final/Berkeley Spo
 ```
 
 `make submission` runs `configs/final.yaml` (the selected candidate, v12-hedgeA-seq — adopted 16 Nov on
-the decision recorded in `submissions/LOG.md` after an independent verification), the official validator
+the decision recorded in `submissions/LOG.md`), the official validator
 and the structural bands on the exact file. It records the file's sha256 in
 `submissions/final/<team>.sha256`, or checks it against that file when it exists. The team name
 (`team` in `configs/base.yaml`; override with `TEAM="..."`) is the file name. The
