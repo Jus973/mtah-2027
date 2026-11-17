@@ -87,7 +87,49 @@ def _since(mask):
     return np.where(last >= 0, t - last, 9999).astype(float)
 
 
-def features(players, ball, team_of_slot, hdir, pitch, fps):
+TURN_SCALES = (12, 25, 50)
+TURN_THRESH = (2.0, 4.0)
+
+
+def _turn_features(ball, d1h, d1a, fps):
+    """Ball turns that survive smoothing (board #85). At scale s frames: the change between the
+    mean velocity over the s frames before t and the s frames after, in m/s. Turns above a
+    threshold, at their local peak, are 'events'; each event is attributed to the team nearer the
+    ball there (margin d1a - d1h, + = home nearer). Per frame: the last and next event's
+    attributed margin and the frames since / until it, plus the raw turn strength."""
+    cols = {}
+    T = len(ball)
+    for s in TURN_SCALES:
+        before = (ball - _shift2(ball, -s)) * (fps / s)
+        after = (_shift2(ball, s) - ball) * (fps / s)
+        tau = np.linalg.norm(after - before, axis=1)
+        cols["turn%d" % s] = tau
+        margin = d1a - d1h
+        for th in TURN_THRESH:
+            t0 = np.where(np.isfinite(tau), tau, -1.0)
+            prev, nxt = np.nan_to_num(_shift(t0, -1), nan=-1.0), np.nan_to_num(_shift(t0, 1), nan=-1.0)
+            peak = (t0 > th) & (t0 >= prev) & (t0 > nxt)
+            ev = np.where(peak & np.isfinite(margin), np.clip(margin, -10, 10), np.nan)
+            key = "%d_%g" % (s, th)
+            cols["lastturn" + key] = _ffill(ev)
+            cols["nextturn" + key] = _ffill(ev[::-1])[::-1]
+            cols["sinceturn" + key] = _since(np.isfinite(ev))
+            cols["untilturn" + key] = _since(np.isfinite(ev)[::-1])[::-1]
+    return cols
+
+
+def _shift2(a, k):
+    out = np.full_like(a, np.nan)
+    if k > 0:
+        out[:-k] = a[k:]
+    elif k < 0:
+        out[-k:] = a[:k]
+    else:
+        out[:] = a
+    return out
+
+
+def features(players, ball, team_of_slot, hdir, pitch, fps, turns=False):
     """(T, k) features and their names. players (T,S,2) m, ball (T,2) m (cleaned), team_of_slot
     (S,) 0/1, hdir (T,) +1 where home attacks towards x = pitch length."""
     team = np.asarray(team_of_slot)
@@ -154,14 +196,16 @@ def features(players, ball, team_of_slot, hdir, pitch, fps):
         cols["speed"] = np.linalg.norm(v, axis=1)
         cols["ballx_home"] = np.where(hdir > 0, ball[:, 0], pitch[0] - ball[:, 0])
         cols["bally"] = ball[:, 1]
+        if turns:
+            cols.update(_turn_features(ball, cols["d1h"], cols["d1a"], fps))
     names = sorted(cols)
     return np.column_stack([cols[n] for n in names]).astype(np.float32), names
 
 
-def both_views(players, ball, team_of_slot, hdir, pitch, fps):
+def both_views(players, ball, team_of_slot, hdir, pitch, fps, turns=False):
     """Features from the home team's view and from the away team's (teams and direction swapped)."""
-    a, names = features(players, ball, team_of_slot, hdir, pitch, fps)
-    b, _ = features(players, ball, 1 - np.asarray(team_of_slot), -hdir, pitch, fps)
+    a, names = features(players, ball, team_of_slot, hdir, pitch, fps, turns)
+    b, _ = features(players, ball, 1 - np.asarray(team_of_slot), -hdir, pitch, fps, turns)
     return a, b, names
 
 
@@ -222,7 +266,7 @@ def blend_decode(labels, p, w, lam):
     return out
 
 
-def match_views(atd, sp, kicks, cfg, ball_raw=None, width=0):
+def match_views(atd, sp, kicks, cfg, ball_raw=None, width=0, turns=None):
     """Both views for one match (optionally with its raw ball smoothed first), using the same
     ball cleaning and home direction as the pipeline."""
     from mtah.learn import gapstate
@@ -232,4 +276,6 @@ def match_views(atd, sp, kicks, cfg, ball_raw=None, width=0):
     ball, _, _ = clean_ball(raw, atd.pitch, cfg["ball"], fps)
     players = atd.players_m()[..., :2].astype(float)
     hdir = gapstate.home_direction(atd, sp, kicks, cfg["direction"]["window_frames"])
-    return both_views(players, ball, atd.team_of_slot, hdir, atd.pitch, fps)
+    if turns is None:
+        turns = bool(cfg["proxowner"].get("turn_features", False))
+    return both_views(players, ball, atd.team_of_slot, hdir, atd.pitch, fps, turns)

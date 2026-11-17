@@ -18,12 +18,12 @@ make cache                                  # parse the ATD into an npz cache ou
 make submission                             # -> "submissions/final/Berkeley Sports Research Group.csv"
 ```
 
-`make submission` runs `configs/final.yaml` (the selected candidate, v12-hedgeA — adopted 5 Nov on
+`make submission` runs `configs/final.yaml` (the selected candidate, v12-hedgeA-seq — adopted 16 Nov on
 the decision recorded in `submissions/LOG.md` after an independent verification), the official validator
 and the structural bands on the exact file. It records the file's sha256 in
 `submissions/final/<team>.sha256`, or checks it against that file when it exists. The team name
 (`team` in `configs/base.yaml`; override with `TEAM="..."`) is the file name. The
-submitted file has sha256 `25876f5bb7eb21246f21ea34c8420e3f0d2f0c0f4db8f4a1700b13e65640827e`
+submitted file has sha256 `077e0932a503e1b78f8f0053c51f75ac635939233180f91f07fc9140f0677383`
 (`submissions/final/Berkeley Sports Research Group.sha256`). Runs are deterministic: CPU only, no randomness at
 inference, single-threaded LightGBM, `PYTHONHASHSEED=0`. About 30 s once the cache exists.
 
@@ -82,7 +82,7 @@ and event data in elite soccer.* Scientific Data 12, 195 (2025),
 doi:10.6084/m9.figshare.28196177 (CC BY 4.0). Degraded copies are rebuilt by `make sim` and never
 committed. Every committed model (`models/takeover_v1.txt`, `takeover_v2.txt`, the two
 `gap_*_v1.txt`, `dead_hybrid_v1.txt` — the boundary model — and `proxowner_v1.txt` / `proxowner_v2.txt` —
-the proximity owner models, v2 the final's) is trained on that sim only.
+the proximity owner models, v2 the final's — and `seqnet_v1.json`, the final's sequence owner model) is trained on that sim only.
 
 Layout: `src/mtah/` (pipeline), `configs/` (every threshold), `models/`, `fakedata/` (synthetic
 generator), `scripts/` (make-target entry points), `tools/clipviewer/`, plus `evaluation/`,

@@ -26,7 +26,9 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-05 07:27 | v12h | c90a8155334f | 3a958c9+dirty | 961e800ef78f189a | pass | 0.6600 | pass | consistency 0.733 | no |
 | 2026-11-05 12:32 | v12hA | 1ba66b0a54f5 | 452efcb | 25876f5bb7eb2124 | pass | 0.6680 | pass | consistency 0.733 | no |
 | 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | FINAL 5 Nov until v12-hedgeA (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
-| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
+| 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | FINAL 5–16 Nov until v12-hedgeA-seq (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
+| 2026-11-16 20:33 | v12hAseq | c3ac226e7e3e | 87b08a5 | 077e0932a503e1b7 | pass | 0.6912 | pass | consistency 0.734 | no |
+| 2026-11-16 20:45 | final | c3ac226e7e3e | a21eba2 | 077e0932a503e1b7 | pass | 0.6912 | pass | **FINAL** (adoption entry, board #91): configs/final.yaml = v12-hedgeA-seq, same resolved config and byte-identical file as the v12hAseq row (public check pass, consistency 0.734); airlock submission ×2, submission-cold ×2 and Docker arm64/amd64 all byte-identical; validator PASS, bands PASS, D share 0.445 | no |
 
 
 ## Work log
@@ -752,3 +754,31 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
   be launched on the host first. If main moves before the freeze, the four rows are re-run on
   the new revision. Not covered here: `make doc` on the freeze revision (PR #17's six-page proof
   is Kelly's), Justin's #17 acceptance and the freeze sign-off. Ledger: +0 (no selection test).
+- 2026-11-16: **ADOPTION: v12-hedgeA-seq adopted as FINAL by claude-justin-alpha on Justin's
+  decision (chat, 16 Nov: "Yes, adopt it"; board #91).** The candidate (PR mtah-2027#34) is
+  v12-hedgeA with its proximity owner probability averaged 50/50 with a sequence owner model
+  (learn/seqnet.py: dilated 1-D conv net over the proxowner features plus the board #85 ball-turn
+  features, 5 Hz, about ±25 s context, three seeds; models/seqnet_v1.json, numpy inference; trained
+  on the RAW open fit sims only, cross-fitted in make paired like proxowner). Architecture, weight
+  0.5 and the decision rule were pre-registered on #91 before any score (raw Δ ≥ +0.008, mean of
+  the four smooth worlds ≥ +0.008, no world < −0.004, ≥ 6/7 wins in ≥ 3 of 5 worlds). First run
+  over turnsU (S50 raw +0.0094 6/7, smooth +0.029..+0.042 7/7: pass; S100 failed raw); turnsU was
+  reverted, so the same arm was re-registered and re-run over hedgeA with nothing retrained:
+  paired hedgeA → hedgeA-seq raw +0.0197, 7/7, p = 0.0078, bootstrap 5–95% [+0.015, +0.025],
+  held-out 0.6680 → 0.6912; b13 +0.0391, b7 +0.0450, sg45 +0.0399, bw407 +0.0398, all 7/7
+  (production paired.py reproduces the harness exactly on raw and b13). Real match, label-free
+  (make airlock T=owner-diff, the check that reverted turnsU): where the two differ under
+  unambiguous tags (2,079 frames) the Smart-Tagging phases side with hedgeA-seq 0.542 / 0.458
+  (all tagged differing frames 2,625: 0.546 / 0.454); D/X unchanged. Fake-match labels identical
+  on macOS, Docker linux/arm64 and linux/amd64 (scripts/seqnet_determinism.py). Execution:
+  configs/final.yaml → rules_v12_hedgeA_seq.yaml; `make airlock T=submission` ×2,
+  `T=submission-cold` ×2 and `T=submission-docker` for linux/arm64 (image 5badb6eef91e…) and
+  linux/amd64 (62c4bfe047c0…) all released sha256
+  077e0932a503e1b78f8f0053c51f75ac635939233180f91f07fc9140f0677383 (= the v12hAseq candidate
+  row's file); validator PASS, structural bands PASS, D share 0.445268; resolved config hash
+  c3ac226e7e3e. Before: v12-hedgeA (configs/rules_v12_hedgeA.yaml preserved; sha
+  25876f5bb7eb2124 retired). Same #91 run, not shipped: team-swap averaging already present in
+  every learned part; a true-ball-height oracle +0.0033 raw (killed; height is sim-only). Doc
+  §1/§3.8/§4/§5.3/§5.4/§7 and README updated; docs/<team>.md rebuilds to 5,043 words (was 4,897),
+  PDF page gate not run here (no xelatex). Ledger: +2 (pre-registered #91 selection tests:
+  oracle, S50/S100 over turnsU; the hedgeA re-run is the same arm).
