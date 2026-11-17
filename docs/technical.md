@@ -3,15 +3,15 @@ Source of the technical document (PLAN.md §8). `make doc REPO=<url>` writes doc
 .pdf when pandoc is installed), <team> from configs/base.yaml. HTML comments like this
 one are notes for the team and do not render. Every number below comes from a make target;
 real-match numbers are label-free aggregates or verdicts (make airlock T=...).
-Version of 5 Nov 2026 (evening): final candidate v12-hedgeA, adopted after the independent
-verification recorded in submissions/LOG.md (v12-hedge earlier on 5 Nov, v11 on 1 Nov before it).
+Version of 16 Nov 2026: final candidate v12-hedgeA-seq (board #91), adopted over v12-hedgeA
+(5 Nov, after the independent verification recorded in submissions/LOG.md; v11 on 1 Nov before it).
 Re-check numbers at M4 freeze; §7 "Determinism" records the 11 Nov cold-cache and Docker drill.
 -->
 
 # Ball possession from automatic tracking: <TEAM_NAME>
 
 More Than A Hack 2027, Phase 1: FC Barcelona (H) vs Athletic Club (A). The submitted file is
-produced by `make submission` from `configs/final.yaml` (candidate **v12-hedgeA**). Code: <REPO_URL>.
+produced by `make submission` from `configs/final.yaml` (candidate **v12-hedgeA-seq**). Code: <REPO_URL>.
 
 ## 1. Approach
 
@@ -119,8 +119,9 @@ fit / held-out, v11's components): turnovers −2 / −2 frames, `D` onsets +0 /
 `D` ends +0 / +0 (v6: +1 / **+21.5**, the lateness §3.6 removes). No global correction is
 applied (§2).
 
-**3.8 Proximity owner blend (v12-hedgeA, adopted 5 Nov).** Per alive frame, the emission is the
-proximity model's log-odds (§4) plus w × (+1 where §3.4–3.5 say `H`, −1 for `A`); a two-state
+**3.8 Proximity owner blend (v12-hedgeA, 5 Nov; v12-hedgeA-seq, 16 Nov).** Per alive frame, the
+emission is the log-odds of the proximity owner probability (§4: the average of the tree model
+and the sequence model) plus w × (+1 where §3.4–3.5 say `H`, −1 for `A`); a two-state
 Viterbi with switch cost 5 re-decides `H`/`A` inside every alive stretch. `D` and `X` frames never
 change. w depends on the match's kick rate, counted on the provided tracking without labels:
 w = 2 when ball speed changes above 3 m/s number at least 18 per 1,000 seen frames (raw sims
@@ -180,6 +181,10 @@ rate 0.05, ≥ 50 rows per leaf), used only by the §3.8 blend.
 - *Tuning:* the blend settings of §3.8, out of fold as above; the capacity (600 × 63 over the
   first 300 × 31 model, `proxowner_v1.txt`, kept) by the paired rule of §5.3, where larger or
   differently sampled models add ≤ 0.003. Retraining is byte-identical (`make train-proxowner`).
+- *Sequence model (16 Nov, `models/seqnet_v1.json`):* a small dilated 1-D convolutional net over
+  the same features plus ball-turn features, read at 5 Hz with ± 25 s of context, three seeds,
+  same training data; numpy inference. Its probability is averaged 50/50 with the tree model's.
+  The architecture and the weight were fixed before any evaluation (board #91).
 
 Touch and dead-ball thresholds were fitted by coordinate descent on the fit matches only.
 
@@ -237,7 +242,8 @@ are the official scorer's bootstrap (1,000 resamples):
 | v6: v5 + team shape at contacts | 0.610 [0.571, 0.649] | 0.644 [0.606, 0.682] | 0.627 | selected 1 Nov |
 | v11: v6 + `D`-boundary refinement | 0.644 [0.603, 0.685] | 0.683 [0.645, 0.721] | 0.664 | selected 1 Nov (sign-off) |
 | v12-hedge: v11 + proximity owner blend (§3.8) | 0.630 | 0.690 | 0.660 | selected 5 Nov, superseded the same day |
-| **v12-hedgeA: the same with a 600 × 63 owner model** | **0.636** | **0.700** | **0.668** | **selected 5 Nov in the smoothed-ball worlds (§5.7)** |
+| v12-hedgeA: the same with a 600 × 63 owner model | 0.636 | 0.700 | 0.668 | selected 5 Nov in the smoothed-ball worlds (§5.7) |
+| **v12-hedgeA-seq: + sequence owner model (§4)** | **0.667** | **0.716** | **0.691** | **selected 16 Nov** |
 
 Decision rule (PLAN.md §6.4, amended 31 Oct before v3 was selected): discard any candidate that
 fails the validator, the bands or the public check; a challenger then replaces the current
@@ -251,7 +257,9 @@ matches (p ≈ 0.008): v3 over v1; v5 over v3 by +0.030; v6 over v5 by +0.014; v
 arms. v12-hedge ties v11 on the raw sims (+0.002, 5/7) and was selected in the worlds whose
 ball is smoothed like this feed's (§5.7): +0.036 on all seven matches at 13 frames. v12-hedgeA,
 the same blend with a larger owner model, then beat it head-to-head on all seven at 13 frames
-(+0.018; held-out 0.538 → 0.562) while tying it on the raw sims (+0.003). Against v11 the final
+(+0.018; held-out 0.538 → 0.562) while tying it on the raw sims (+0.003). v12-hedgeA-seq beat
+v12-hedgeA on all seven matches in every world: +0.020 raw (p = 0.008), +0.039 at 13 frames,
++0.045 at 7; where the two disagree on this match, the tags side with it (0.54 vs 0.46). Against v11 the final
 is +0.005 raw (5/7, p = 0.23; held-out 0.664 → 0.668), +0.055 at 13 frames (7/7, p = 0.008;
 held-out 0.495 → 0.562), +0.022 at 7 frames (7/7), and −0.012 (1/7) with the smooth setting
 forced on a raw-like feed (−0.043 at w = 0.5, which is why the hedge weight ships). The rule was
@@ -279,7 +287,7 @@ candidate existed. They filter out catastrophic errors and never rank.
 
 v11 passes every band (1 Nov) with the same spell structure as v6 — 325 spells, 8 under 1 s —
 because it only moves `D` edges; its `D` share of graded frames is 0.445, inside the advisory
-`D`-share band [0.35, 0.57] added 1 Nov (v6: 0.481). **v12-hedgeA (the final) passes every band**
+`D`-share band [0.35, 0.57] added 1 Nov (v6: 0.481). **v12-hedgeA and v12-hedgeA-seq (the final) pass every band**
 (candidate and submission runs, 5 Nov) with the same `D` share: no `D` or `X` frame changes,
 only owners inside alive stretches (the hedge re-owned about 9% of alive frames).
 
@@ -396,17 +404,18 @@ make open-data && make sim
 make train-takeover CFG=configs/rules_v6.yaml && make train-gaps
 make train-hybrid                   # the v11 boundary dead model (byte-identical retrain)
 make train-proxowner CFG=configs/rules_v12_hedgeA.yaml   # the owner model (byte-identical)
+python scripts/train_seqnet.py      # the sequence owner model (needs torch; not in requirements)
 make sim-ablate
-make paired B=configs/rules_v12_hedgeA.yaml A=configs/rules_v11.yaml
+make paired B=configs/rules_v12_hedgeA_seq.yaml A=configs/rules_v12_hedgeA.yaml
 python scripts/build_smoothed_sims.py --width 13 --out DIR   # §5.7 world; MTAH_SIM_DIR=DIR
 ```
 
 - **Submitted file:** sha256
-  `25876f5bb7eb21246f21ea34c8420e3f0d2f0c0f4db8f4a1700b13e65640827e`
+  `077e0932a503e1b78f8f0053c51f75ac635939233180f91f07fc9140f0677383`
   (`submissions/final/Berkeley Sports Research Group.sha256`; FINAL row of `submissions/LOG.md`).
 - **Determinism:** CPU only, single-threaded LightGBM, `PYTHONHASHSEED=0`. A fresh parse cache
   (twice) and the Docker image (linux/arm64 and amd64, from a mounted bundle, committed models)
-  reproduce the committed sha256 byte for byte (11 Nov).
+  reproduce the committed sha256 byte for byte (11 Nov; for the final, 16 Nov).
 - **Tooling:** the code was written with an AI coding assistant that never received match data,
   video, raw tracking lines or per-frame labels: real-data runs released only aggregate
   statistics and pass/fail verdicts, filtered by a mechanical policy and logged
@@ -416,8 +425,6 @@ python scripts/build_smoothed_sims.py --width 13 --out DIR   # §5.7 world; MTAH
 TEAM, before uploading:
 - The repo URL is filled by `make doc REPO=https://github.com/Jus973/mtah-2027`.
 - Measure the cold ATD parse time (`time make cache` on an empty cache) for §7 if you want it.
-- After the freeze drill (cold cache ×2 + Docker arm64/amd64 on v12-hedgeA), rewrite §7
-  "Determinism" to say they reproduce the committed sha256.
 - The §5.3 v12 rows have no bootstrap interval: add one if `make score` is run on the
   held-out sims before the upload.
 - §7 "Tooling": keep, edit or drop once the organisers answer email 1 (cloud assistants and
