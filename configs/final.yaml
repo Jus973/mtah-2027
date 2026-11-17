@@ -8,5 +8,11 @@
 # Adoption entry in submissions/LOG.md. Before: v12-hedge (configs/rules_v12_hedge.yaml, preserved;
 # selected 5 Nov by board #70), v11 (configs/rules_v11.yaml, preserved; over v6 +0.029, 7/7),
 # v6 (configs/rules_v6_final.yaml), v5, v3.
+# 16 Nov 2026: v12-hedgeA-seq (configs/rules_v12_hedgeA_seq.yaml: hedgeA with its proximity owner
+# probability averaged 50/50 with the sequence owner model, learn/seqnet.py, models/seqnet_v1.json),
+# on Justin's decision after board #91. Paired §6.4, hedgeA → hedgeA-seq: raw +0.0197, 7/7; b13
+# +0.0391, b7 +0.0450, sg45 +0.0399, bw407 +0.0398, all 7/7; real-match Smart-Tagging owner-diff
+# (label-free, unambiguous tags where the two differ) sides with hedgeA-seq 0.542 / 0.458.
+# hedgeA preserved as configs/rules_v12_hedgeA.yaml. Adoption entry in submissions/LOG.md.
 # Change the parent only by the decision rule, and record it in submissions/LOG.md.
-inherit: rules_v12_hedgeA.yaml
+inherit: rules_v12_hedgeA_seq.yaml
