@@ -1,0 +1,16 @@
+# Candidate (board #91): v12-hedgeA with its proximity owner probability averaged 50/50 with a
+# sequence owner model (learn/seqnet.py: dilated 1-D conv net over the proxowner features plus
+# ball-turn features, +-25 s context at 5 Hz; trained on the RAW open fit sims, numpy inference).
+# Everything else, including the kick-rate setting and the decode, is hedgeA's.
+inherit: rules_v12_hedgeA.yaml
+proxowner:
+  seqnet:
+    model: models/seqnet_v1.json
+    weight: 0.5
+    steps: 3000
+    batch: 24
+    crop: 600
+    seeds: [0, 1, 2]
+    lr: 0.002
+    weight_decay: 0.0001
+    dropout: 0.1

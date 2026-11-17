@@ -209,13 +209,28 @@ def labels_for(path):
         games = [q.m.game for q in Q]
         models = [fit_prox([games[j] for j in range(nf) if j != i], cfg) for i in range(nf)]
         models += [fit_prox(games[:nf], cfg)] * (len(Q) - nf)
+        sq = pc.get("seqnet")
+        seqs = [None] * len(Q)
+        if sq:
+            # Board #91: the sequence owner model, cross-fitted the same way (RAW fit sims).
+            from mtah.learn import seqnet
+            from train_seqnet import fit_on as fit_seq
+            seqs = [seqnet.SeqNet(fit_seq([games[j] for j in range(nf) if j != i], cfg))
+                    for i in range(nf)]
+            seqs += [seqnet.SeqNet(fit_seq(games[:nf], cfg))] * (len(Q) - nf)
         out = []
-        for q, lab, mdl in zip(Q, labels, models):
+        for q, lab, mdl, sn in zip(Q, labels, models, seqs):
             m = q.m
             views = proxowner.match_views(m.atd, m.spec, {}, cfg, ball_raw=m.ball_raw)
             rate = proxowner.kick_rate(m.players, m.ball_raw, m.graded, m.atd.pitch, m.fps)
             w, lam = proxowner.setting(cfg, rate)
-            out.append(proxowner.blend_decode(lab, proxowner.p_home(mdl, views), w, lam))
+            p = proxowner.p_home(mdl, views)
+            if sn is not None:
+                tv = views if pc.get("turn_features") else proxowner.match_views(
+                    m.atd, m.spec, {}, cfg, ball_raw=m.ball_raw, turns=True)
+                wt = float(sq["weight"])
+                p = (1 - wt) * p + wt * sn.p_home(tv)
+            out.append(proxowner.blend_decode(lab, p, w, lam))
             print("{}: kick rate {:.1f} -> proxowner setting w {} lam {}".format(m.game, rate, w, lam))
         labels = out
     return [q.m.game for q in Q], nf, labels, Q

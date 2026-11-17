@@ -169,6 +169,15 @@ def run(game, cfg, data_dir=None, atd=None):
         views = proxowner.match_views(atd, sp, kicks, cfg, ball_raw=ball_raw)
         rate = proxowner.kick_rate(players, ball_raw, graded, atd.pitch, fps)
         w, lam = proxowner.setting(cfg, rate)
-        labels = proxowner.blend_decode(labels, proxowner.p_home(proxowner.load(cfg), views), w, lam)
+        p = proxowner.p_home(proxowner.load(cfg), views)
+        sq = po.get("seqnet")
+        if sq:
+            # Board #91: average with the sequence owner model, which reads turn features.
+            from mtah.learn import seqnet
+            tv = views if po.get("turn_features") else proxowner.match_views(
+                atd, sp, kicks, cfg, ball_raw=ball_raw, turns=True)
+            wt = float(sq["weight"])
+            p = (1 - wt) * p + wt * seqnet.load(cfg).p_home(tv)
+        labels = proxowner.blend_decode(labels, p, w, lam)
         info["kick_rate"], info["proxowner_setting"] = rate, (w, lam)
     return labels, info
