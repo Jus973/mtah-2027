@@ -27,6 +27,7 @@ One row per candidate CSV (PLAN.md §6.6). The final choice is the row marked FI
 | 2026-11-05 12:32 | v12hA | 1ba66b0a54f5 | 452efcb | 25876f5bb7eb2124 | pass | 0.6680 | pass | consistency 0.733 | no |
 | 2026-11-05 20:57 | final | c90a8155334f | 6d82c44 | 961e800ef78f189a | pass | 0.6600 | pass | FINAL 5 Nov until v12-hedgeA (adoption entry; §6.4 in the smoothed-ball worlds, board #67/#70): configs/final.yaml = v12-hedge, same resolved config and byte-identical file as the v12h row (its public check and consistency 0.733 carry over); airlock submission ×2 byte-identical; v11 preserved as configs/rules_v11.yaml, its sha 7b83f3a89bb15fa8 retired here | no |
 | 2026-11-05 22:25 | final | 1ba66b0a54f5 | 20804c1 | 25876f5bb7eb2124 | pass | 0.6680 | pass | **FINAL** (adoption entry; §6.4 in the smoothed-ball worlds + head-to-head, board #71): configs/final.yaml = v12-hedgeA, same resolved pipeline config and same file as the v12hA candidate row (public check pass, consistency 0.733); airlock submission ×2 byte-identical; validator PASS, bands PASS, D share 0.445 ; freeze drill 11 Nov on dea5b65: cold ×2 + Docker arm64/amd64 byte-identical | no |
+| 2026-11-16 20:33 | v12hAseq | c3ac226e7e3e | 87b08a5 | 077e0932a503e1b7 | pass | 0.6912 | pass | consistency 0.734 | no |
 
 
 ## Work log
